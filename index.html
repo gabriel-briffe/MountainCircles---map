@@ -57,7 +57,7 @@
 
     <!-- Transparent Box on Bottom Left with Big Bold Text -->
     <div id="parametersBox" style="position: absolute; bottom: 10px; left: 10px; z-index: 1; background: rgba(255, 255, 255, 0.5); padding: 10px; border-radius: 5px; font-family: sans-serif; font-weight: bold; font-size: 24px; color: #000;">
-        parametersPlaceholder
+        L/D 20 - ground 100m - circuit 250m
     </div>
 
     <script>
@@ -184,7 +184,7 @@
         const map = new maplibregl.Map({
             container: 'map',
             style: currentStyle,
-            bounds: [[minx, miny], [maxx, maxy]],  // replaced by python
+            bounds: [[4.9698169, 43.6088902], [13.696105, 47.5644488]],  // replaced by python
             fitBoundsOptions: {
                 padding: 50,
                 maxZoom: 14,
