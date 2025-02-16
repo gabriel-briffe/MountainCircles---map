@@ -1,0 +1,7 @@
+{
+    "name": "Hillshaded Map",
+    "type": "baselayer",
+    "version": "1",
+    "description": "OSM with hillshading",
+    "format": "jpeg"
+}
