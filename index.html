@@ -30,14 +30,14 @@
         <label for="basemapSelect">Basemap: </label>
         <select id="basemapSelect">
             <option value="thunderforest">Thunderforest Landscape</option>
-            <option value="custom">Custom Map</option>
+            <option value="custom" selected>Custom Map</option>
         </select>
     </div>
 
     <!-- New control: Checkbox (for toggling linestrings & labels) and polygon transparency slider -->
     <div id="polygonOpacityControl" style="position: absolute; top: 50px; right: 10px; z-index: 1; background: #fff; padding: 5px; border-radius: 3px; font-family: sans-serif; box-shadow: 0 1px 4px rgba(0,0,0,0.3); display: flex; align-items: center;">
         <input id="toggleLayerCheckbox" type="checkbox" checked style="margin-right: 5px;">
-        <input id="polygonOpacitySlider" type="range" min="0" max="0.5" step="0.01" value="0.2">
+        <input id="polygonOpacitySlider" type="range" min="0" max="0.5" step="0.01" value="0.1">
     </div>
 
     <!-- New control: IGC file button (below the slider) -->
@@ -119,8 +119,8 @@
             custom: customStyle  // Added custom style mapping
         };
 
-        // Start with the Thunderforest style
-        let currentStyle = thunderforestStyle;
+        // Start with the Custom style by default
+        let currentStyle = customStyle;
 
         // Function to show the loading message with a given text.
         function showLoadingMessage(text) {
