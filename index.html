@@ -30,8 +30,6 @@
         <label for="basemapSelect">Basemap: </label>
         <select id="basemapSelect">
             <option value="thunderforest">Thunderforest Landscape</option>
-            <option value="osm">OpenStreetMap</option>
-            <option value="google">Google Maps</option>
             <option value="custom">Custom Map</option>
         </select>
     </div>
@@ -88,63 +86,12 @@
             ]
         };
 
-        const osmStyle = {
-            "version": 8,
-            "name": "OpenStreetMap",
-            "glyphs": "https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf",
-            "sources": {
-                "osm-tiles": {
-                    "type": "raster",
-                    "tiles": [
-                        "https://a.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                    ],
-                    "tileSize": 256,
-                    "attribution": "© OpenStreetMap contributors"
-                }
-            },
-            "layers": [
-                {
-                    "id": "osm-tiles",
-                    "type": "raster",
-                    "source": "osm-tiles",
-                    "minzoom": 0,
-                    "maxzoom": 19
-                }
-            ]
-        };
-
-        // Note: Using Google Maps as a basemap requires proper licensing and API configuration.
-        // This is just a placeholder URL.
-        const googleStyle = {
-            "version": 8,
-            "name": "Google Maps",
-            "glyphs": "https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf",
-            "sources": {
-                "google-tiles": {
-                    "type": "raster",
-                    "tiles": [
-                        "http://mt0.google.com/vt/lyrs=p&hl=en&x={x}&y={y}&z={z}"
-                    ],
-                    "tileSize": 256,
-                    "attribution": "© Google"
-                }
-            },
-            "layers": [
-                {
-                    "id": "google-tiles",
-                    "type": "raster",
-                    "source": "google-tiles",
-                    "minzoom": 0,
-                    "maxzoom": 22
-                }
-            ]
-        };
-
         // Added new custom style. Ensure that your extracted tiles are placed in a folder "tiles"
         // at the root of your repository.
         const customStyle = {
             "version": 8,
             "name": "Custom Map",
+            "glyphs": "https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf",
             "sources": {
                 "custom-tiles": {
                     "type": "raster",
@@ -169,8 +116,6 @@
         // Object mapping for style selection, including our custom style.
         const styles = {
             thunderforest: thunderforestStyle,
-            osm: osmStyle,
-            google: googleStyle,
             custom: customStyle  // Added custom style mapping
         };
 
@@ -337,7 +282,7 @@
                             6, "#FFA500",  // When color_id === 6
                             "#000000"      // Fallback default color
                         ],
-                        'fill-opacity': 0.2  // Default opacity matching the initial slider value
+                        'fill-opacity': 0.1  // Default opacity matching the initial slider value
                     }
                 });
             }
