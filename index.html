@@ -294,6 +294,32 @@
             if (map.getLayer('points-labels')) {
                 map.moveLayer('points-labels');
             }
+
+            // --- New: Add an invisible clickable layer for points with larger radius ---
+            if (!map.getLayer('points-layer-clickable')) {
+                map.addLayer({
+                    id: 'points-layer-clickable',
+                    type: 'circle',
+                    source: 'geojson-data',
+                    filter: ['==', '$type', 'Point'],
+                    paint: {
+                        'circle-radius': 20,          // Clickable area: 20px radius
+                        'circle-color': '#000000',      // Color doesn't matter because it will be invisible
+                        'circle-opacity': 0             // Make layer invisible
+                    }
+                });
+            }
+
+            // --- Ensure point layers are on top of the polygon layer ---
+            if (map.getLayer('points-layer-clickable')) {
+                map.moveLayer('points-layer-clickable');
+            }
+            if (map.getLayer('points-layer')) {
+                map.moveLayer('points-layer');
+            }
+            if (map.getLayer('points-labels')) {
+                map.moveLayer('points-labels');
+            }
         }
 
         // Define a dedicated function to handle point clicks for toggling dynamic layers.
@@ -366,11 +392,11 @@
         // Attach layers and events only once the map has fully loaded.
         map.on('load', () => {
             addGeoJSONLayers();
-            // Only attach the click handler if the points-layer is present.
-            if (map.getLayer('points-layer')) {
-                map.on('click', 'points-layer', handlePointClick);
+            // Attach the click handler to the clickable layer instead of the visible one.
+            if (map.getLayer('points-layer-clickable')) {
+                map.on('click', 'points-layer-clickable', handlePointClick);
             } else {
-                console.warn("points-layer not found on map load.");
+                console.warn("points-layer-clickable not found on map load.");
             }
             if (navigator.onLine) {
                 map.once('idle', hideLoadingMessage);
@@ -380,12 +406,12 @@
         // Re-add custom layers and reattach event listeners when the style changes.
         map.on('styledata', () => {
             addGeoJSONLayers();
-            // Remove then reattach the click handler for the points-layer.
-            map.off('click', 'points-layer', handlePointClick);
-            if (map.getLayer('points-layer')) {
-                map.on('click', 'points-layer', handlePointClick);
+            // Remove then reattach the click handler for the points clickable layer.
+            map.off('click', 'points-layer-clickable', handlePointClick);
+            if (map.getLayer('points-layer-clickable')) {
+                map.on('click', 'points-layer-clickable', handlePointClick);
             } else {
-                console.warn("points-layer not found during styledata event.");
+                console.warn("points-layer-clickable not found during styledata event.");
             }
         });
 
