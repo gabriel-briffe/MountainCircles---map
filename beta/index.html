@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <base href="/MountainCircles---map/">
-    <title>MountainCircles Map</title>
+    <base href="/MountainCircles---map/beta/">
+    <title>MountainCircles Map - Beta</title>
     <!-- Using jsDelivr instead of unpkg to avoid potential network errors on Windows -->
     <script src="https://cdn.jsdelivr.net/npm/maplibre-gl@latest/dist/maplibre-gl.js"></script>
     <link href="https://cdn.jsdelivr.net/npm/maplibre-gl@latest/dist/maplibre-gl.css" rel="stylesheet" />
@@ -136,7 +136,6 @@
         }
 
         // --- Connection Message Logic ---
-        // Function to update the message based solely on the network status.
         function updateConnectionMessage() {
             const messageDiv = document.getElementById('loadingMessage');
             if (!navigator.onLine) {
@@ -147,18 +146,15 @@
             }
         }
 
-        // Initial check
         updateConnectionMessage();
 
-        // Listen for connectivity changes
         window.addEventListener('offline', updateConnectionMessage);
         window.addEventListener('online', updateConnectionMessage);
 
-        // Initialize the map
         const map = new maplibregl.Map({
             container: 'map',
             style: currentStyle,
-            bounds: [[4.9698169, 43.6088902], [13.696105, 47.5644488]],  // replaced by python
+            bounds: [[4.9698169, 43.6088902], [13.696105, 47.5644488]],
             fitBoundsOptions: {
                 padding: 50,
                 maxZoom: 14,
@@ -166,16 +162,14 @@
             }
         });
 
-        // Function to add GeoJSON source and custom layers
         function addGeoJSONLayers() {
             if (!map.getSource('geojson-data')) {
                 map.addSource('geojson-data', {
                     type: 'geojson',
-                    data: 'aa_alps_20-100-250.geojson'  // Replace with your actual GeoJSON file path for lines/points
+                    data: 'aa_alps_20-100-250.geojson'
                 });
             }
             
-            // Add linestrings layer if it doesn't exist
             if (!map.getLayer('linestrings-layer')) {
                 map.addLayer({
                     id: 'linestrings-layer',
@@ -184,12 +178,11 @@
                     filter: ['==', '$type', 'LineString'],
                     paint: {
                         'line-color': '#000',
-                        'line-width': ['step', ['zoom'], 1, 10, 2]  // width 1 for zoom < 8, and 2 for zoom >= 8
+                        'line-width': ['step', ['zoom'], 1, 10, 2]
                     }
                 });
             }
             
-            // Add linestrings labels (only above zoom 8)
             if (!map.getLayer('linestrings-labels')) {
                 map.addLayer({
                     id: 'linestrings-labels',
@@ -216,7 +209,6 @@
                 });
             }
 
-            // Add points layer
             if (!map.getLayer('points-layer')) {
                 map.addLayer({
                     id: 'points-layer',
@@ -232,7 +224,6 @@
                 });
             }
 
-            // Add points labels (only above zoom 8)
             if (!map.getLayer('points-labels')) {
                 map.addLayer({
                     id: 'points-labels',
@@ -255,16 +246,13 @@
                 });
             }
 
-            // --- New code: Adding the polygons layer ---
-            // Check if the polygons source has been added already
             if (!map.getSource('polygons')) {
                 map.addSource('polygons', {
                     type: 'geojson',
-                    data: 'aa_alps_20-100-250_sectors1.geojson'  // Make sure this file is accessible
+                    data: 'aa_alps_20-100-250_sectors1.geojson'
                 });
             }
             
-            // Add the polygon fill layer with dynamic opacity and styled fill-color based on "color_id"
             if (!map.getLayer('polygons-layer')) {
                 map.addLayer({
                     id: 'polygons-layer',
@@ -274,21 +262,20 @@
                         'fill-color': [
                             "match",
                             ["get", "color_id"],
-                            0, "#0000FF",  // When color_id === 0
-                            1, "#FF00FF",  // When color_id === 1
-                            2, "#FFFF00",  // When color_id === 2
-                            3, "#00FFFF",  // When color_id === 3
-                            4, "#00FF00",  // When color_id === 4
-                            5, "#FF0000",  // When color_id === 5
-                            6, "#FFA500",  // When color_id === 6
-                            "#000000"      // Fallback default color
+                            0, "#0000FF",
+                            1, "#FF00FF",
+                            2, "#FFFF00",
+                            3, "#00FFFF",
+                            4, "#00FF00",
+                            5, "#FF0000",
+                            6, "#FFA500",
+                            "#000000"
                         ],
-                        'fill-opacity': 0.1  // Default opacity matching the initial slider value
+                        'fill-opacity': 0.1
                     }
                 });
             }
             
-            // Ensure all label layers are moved on top of the polygons
             if (map.getLayer('linestrings-labels')) {
                 map.moveLayer('linestrings-labels');
             }
@@ -296,7 +283,6 @@
                 map.moveLayer('points-labels');
             }
 
-            // --- New: Add an invisible clickable layer for points with larger radius ---
             if (!map.getLayer('points-layer-clickable')) {
                 map.addLayer({
                     id: 'points-layer-clickable',
@@ -304,14 +290,13 @@
                     source: 'geojson-data',
                     filter: ['==', '$type', 'Point'],
                     paint: {
-                        'circle-radius': 20,          // Clickable area: 20px radius
-                        'circle-color': '#000000',      // Color doesn't matter because it will be invisible
-                        'circle-opacity': 0             // Make layer invisible
+                        'circle-radius': 20,
+                        'circle-color': '#000000',
+                        'circle-opacity': 0
                     }
                 });
             }
 
-            // --- Ensure point layers are on top of the polygon layer ---
             if (map.getLayer('points-layer-clickable')) {
                 map.moveLayer('points-layer-clickable');
             }
@@ -323,9 +308,8 @@
             }
         }
 
-        // Define a dedicated function to handle point clicks for toggling dynamic layers.
         function handlePointClick(e) {
-            console.log("Point clicked event:", e);  // Debug logging to verify click events
+            console.log("Point clicked event:", e);
             if (!e.features || !e.features.length) return;
 
             const feature = e.features[0];
@@ -338,7 +322,6 @@
             const dynamicSourceId = dynamicLayerId + '-source';
             const dynamicLabelId = dynamicLayerId + '-labels';
 
-            // Toggle: remove dynamic layer if exists, or add it if not present.
             if (map.getLayer(dynamicLayerId)) {
                 console.log("Removing dynamic layer:", dynamicLayerId);
                 if (map.getLayer(dynamicLayerId)) map.removeLayer(dynamicLayerId);
@@ -351,7 +334,6 @@
                     data: pointFileName
                 });
                 
-                // Add the dynamic linestring layer with the same style as your other linestrings
                 map.addLayer({
                     id: dynamicLayerId,
                     type: 'line',
@@ -363,7 +345,6 @@
                     }
                 });
                 
-                // Add the dynamic label layer for the linestrings with styling similar to the other labels
                 map.addLayer({
                     id: dynamicLabelId,
                     type: 'symbol',
@@ -390,10 +371,8 @@
             }
         }
 
-        // Attach layers and events only once the map has fully loaded.
         map.on('load', () => {
             addGeoJSONLayers();
-            // Attach the click handler to the clickable layer instead of the visible one.
             if (map.getLayer('points-layer-clickable')) {
                 map.on('click', 'points-layer-clickable', handlePointClick);
             } else {
@@ -404,10 +383,8 @@
             }
         });
 
-        // Re-add custom layers and reattach event listeners when the style changes.
         map.on('styledata', () => {
             addGeoJSONLayers();
-            // Remove then reattach the click handler for the points clickable layer.
             map.off('click', 'points-layer-clickable', handlePointClick);
             if (map.getLayer('points-layer-clickable')) {
                 map.on('click', 'points-layer-clickable', handlePointClick);
@@ -416,19 +393,16 @@
             }
         });
 
-        // Basemap switcher logic using the dropdown.
         const basemapSelect = document.getElementById('basemapSelect');
         basemapSelect.addEventListener('change', (e) => {
             const selectedStyle = styles[e.target.value];
             map.setStyle(selectedStyle);
         });
 
-        // Error handling.
         map.on('error', (e) => {
             console.error('Map error:', e);
         });
 
-        // Polygon transparency slider event listener.
         const polygonOpacitySlider = document.getElementById('polygonOpacitySlider');
         polygonOpacitySlider.addEventListener('input', function() {
             const opacity = parseFloat(this.value);
@@ -437,7 +411,6 @@
             }
         });
 
-        // Checkbox event listener to toggle linestrings, their labels, and the polygon layer visibility.
         const toggleLayerCheckbox = document.getElementById('toggleLayerCheckbox');
         toggleLayerCheckbox.addEventListener('change', function() {
             const visibility = this.checked ? 'visible' : 'none';
@@ -452,43 +425,32 @@
             }
         });
 
-        // Function to parse IGC file and convert to GeoJSON
         function igcToGeoJSON(igcContent) {
-            // Parse IGC file content
             const lines = igcContent.split('\n');
             const coordinates = [];
             let metadata = {};
 
-            // Parse each line
             for (const line of lines) {
-                // Handle B records (position fixes)
                 if (line.startsWith('B')) {
                     try {
-                        // Extract time (HHMMSS)
                         const time = line.substring(1, 7);
-                        // Extract latitude (DDMMmmmN/S)
                         const latRaw = line.substring(7, 15);
                         const latDeg = parseInt(latRaw.substring(0, 2));
                         const latMin = parseFloat(latRaw.substring(2, 7)) / 1000;
                         const latDir = latRaw.substring(7, 8);
-                        // Extract longitude (DDDMMmmmE/W)
                         const lonRaw = line.substring(15, 24);
                         const lonDeg = parseInt(lonRaw.substring(0, 3));
                         const lonMin = parseFloat(lonRaw.substring(3, 8)) / 1000;
                         const lonDir = lonRaw.substring(8, 9);
-                        // Extract altitude (AAAAA)
                         const altPressure = parseInt(line.substring(25, 30));
                         const altGNSS = parseInt(line.substring(30, 35));
 
-                        // Convert latitude to decimal
                         let latitude = latDeg + (latMin / 60);
                         if (latDir === 'S') latitude = -latitude;
 
-                        // Convert longitude to decimal
                         let longitude = lonDeg + (lonMin / 60);
                         if (lonDir === 'W') longitude = -longitude;
 
-                        // Use GNSS altitude if available, otherwise use pressure altitude
                         const altitude = altPressure > 0 ? altPressure : altGNSS;
 
                         coordinates.push([longitude, latitude, altitude]);
@@ -496,7 +458,6 @@
                         console.warn('Error parsing B record:', line, error);
                     }
                 }
-                // Handle H records (header/metadata)
                 else if (line.startsWith('H')) {
                     try {
                         const headerType = line.substring(1, 5);
@@ -512,7 +473,6 @@
                 }
             }
 
-            // Create GeoJSON object
             const geojson = {
                 type: 'FeatureCollection',
                 features: [{
@@ -534,8 +494,6 @@
             return geojson;
         }
 
-        // Function to handle file selection, convert the IGC to GeoJSON,
-        // add it as a new line layer with altitude labels, and recenter the map.
         function handleFileSelect(event) {
             const file = event.target.files[0];
             if (!file) return;
@@ -546,16 +504,13 @@
                 const geojsonData = igcToGeoJSON(igcContent);
                 console.log('Converted IGC to GeoJSON:', geojsonData);
                 
-                // Generate a dynamic layer id from the file name (remove non-alphanumeric characters)
                 const baseLayerId = 'igc-layer-' + file.name.replace(/\W/g, '');
                 let layerId = baseLayerId;
-                // If a layer with the same ID exists, append a timestamp
                 if (map.getLayer(layerId)) {
                     layerId = baseLayerId + '-' + Date.now();
                 }
                 const sourceId = layerId + '-source';
                 
-                // Add a new source and corresponding line layer to the map for the IGC flight track
                 map.addSource(sourceId, {
                     type: 'geojson',
                     data: geojsonData
@@ -570,7 +525,6 @@
                     }
                 });
                 
-                // Compute the bounding box of the IGC track based on its coordinates
                 const coords = geojsonData.features[0].geometry.coordinates;
                 let minLng = Infinity, minLat = Infinity, maxLng = -Infinity, maxLat = -Infinity;
                 coords.forEach(coord => {
@@ -582,15 +536,12 @@
                 });
                 const bounds = [[minLng, minLat], [maxLng, maxLat]];
                 
-                // Recenter the map so that the IGC track fits within the view
                 map.fitBounds(bounds, {
                     padding: 50,
                     maxZoom: 14,
                     duration: 1000
                 });
                 
-                // Create altitude point features based on each vertex of the IGC LineString.
-                // Each point will have its "altitude" property set from the third coordinate value.
                 const altPoints = {
                     type: 'FeatureCollection',
                     features: coords.map(coord => ({
@@ -605,14 +556,12 @@
                     }))
                 };
 
-                // Add a new source for the altitude labels
                 const altSourceId = layerId + '-altitudes-source';
                 map.addSource(altSourceId, {
                     type: 'geojson',
                     data: altPoints
                 });
                 
-                // Add a symbol layer to display the altitude at each point (visible for zoom > 11)
                 map.addLayer({
                     id: layerId + '-altitudes',
                     type: 'symbol',
@@ -633,7 +582,6 @@
             reader.readAsText(file);
         }
 
-        // Wire up the IGC file button and file input
         document.getElementById('igcFileButton').addEventListener('click', function() {
             document.getElementById('igcFileInput').click();
         });
