@@ -471,20 +471,20 @@
             if (!map.getSource('geojson-data')) {
                 map.addSource('geojson-data', {
                     type: 'geojson',
-                    data: currentConfig + '/aa_alps_' + configPrefix + '.geojson'
+                    data: currentConfig + '/aa_three_' + configPrefix + '.geojson'
                 });
             } else {
-                map.getSource('geojson-data').setData(currentConfig + '/aa_alps_' + configPrefix + '.geojson');
+                map.getSource('geojson-data').setData(currentConfig + '/aa_three_' + configPrefix + '.geojson');
             }
             
             // Add or update the polygons source with a rebuilt file name.
             if (!map.getSource('polygons')) {
                 map.addSource('polygons', {
                     type: 'geojson',
-                    data: currentConfig + '/aa_alps_' + configPrefix + '_sectors1.geojson'
+                    data: currentConfig + '/aa_three_' + configPrefix + '_sectors1.geojson'
                 });
             } else {
-                map.getSource('polygons').setData(currentConfig + '/aa_alps_' + configPrefix + '_sectors1.geojson');
+                map.getSource('polygons').setData(currentConfig + '/aa_three_' + configPrefix + '_sectors1.geojson');
             }
             
             // Add static layers if they are not already present.
