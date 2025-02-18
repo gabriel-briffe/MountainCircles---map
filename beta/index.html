@@ -754,17 +754,6 @@
             }
         });
         
-        // Update layers when the style data changes.
-        map.on('styledata', () => {
-            addGeoJSONLayers();
-            map.off('click', 'points-layer-clickable', handlePointClick);
-            if (map.getLayer('points-layer-clickable')) {
-                map.on('click', 'points-layer-clickable', handlePointClick);
-            } else {
-                console.warn("points-layer-clickable not found during styledata event.");
-            }
-        });
-        
         // Global variables for text size of label layers 
         // (adjust these initial values to match your map's initial label sizes)
         let currentPointsLabelSize = 17;
