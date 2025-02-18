@@ -8,6 +8,7 @@
     <!-- Using jsDelivr instead of unpkg to avoid potential network errors on Windows -->
     <script src="https://cdn.jsdelivr.net/npm/maplibre-gl@latest/dist/maplibre-gl.js"></script>
     <link href="https://cdn.jsdelivr.net/npm/maplibre-gl@latest/dist/maplibre-gl.css" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
     <style>
         body { margin: 0; padding: 0; }
         #map { width: 100%; height: 100vh; }
@@ -23,22 +24,299 @@
             font-family: sans-serif;
             box-shadow: 0 1px 4px rgba(0,0,0,0.3);
         }
+        /* Container uses flex, aligning items in the center vertically */
+        #polygonOpacityControl {
+            position: absolute;
+            top: 50px;
+            right: 10px;
+            z-index: 1;
+            background: #fff;
+            padding: 5px;
+            border-radius: 3px;
+            font-family: sans-serif;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+            display: flex;
+            align-items: center;
+        }
+        /* Make the button a flex container so its content centers */
+        #polygonOpacityControl button {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0;
+            margin-right: 5px;
+            background: none;
+            border: none;
+            cursor: pointer;
+            min-height: 24px; /* ensures the button is at least 24px tall */
+        }
+        /* Force the Material Icons font with !important */
+        .material-icons-round {
+            font-family: 'Material Icons Round' !important;
+            font-size: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            line-height: 1;
+            color: #000;
+        }
+        /* Dark mode adjustments */
+        @media (prefers-color-scheme: dark) {
+            .material-icons-round {
+                color: #fff;
+            }
+        }
+
+        /* --------------- MAP DOCK (apple-dock style) --------------- */
+        #mapDock {
+            position: fixed;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            display: flex;
+            align-items: center;
+            flex-direction: column;
+            gap: 10px;
+            z-index: 1100;
+        }
+
+        /* -------------------------- */
+        /* Slider Container (Dock Box) */
+        /* -------------------------- */
+        .dock-slider {
+            width: 48px;       /* Same as other button width */
+            height: 150px;     /* Give enough room for the rotated slider */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(255, 255, 255, 0.8); /* Light mode: white-ish background */
+            border-radius: 8px;
+            padding: 8px;
+            box-sizing: border-box;
+        }
+
+        /* Slider styling remains the same in landscape mode */
+        #polygonOpacitySlider {
+            width: 150px;  /* Length of the slider track */
+            -webkit-transform: rotate(-90deg);
+            -ms-transform: rotate(-90deg);
+            transform: rotate(-90deg);
+            -webkit-appearance: none; /* Remove default styling */
+            background: transparent;  /* Needed for custom pseudo-elements */
+        }
+
+        /* Portrait mode: dock is horizontal, so the slider must be horizontal */
+        @media (orientation: portrait) {
+            #mapDock {
+                position: fixed;
+                top: 10px;
+                left: 50%;
+                right: auto;
+                transform: translateX(-50%);
+                flex-direction: row;
+                align-items: center;
+                gap: 10px;
+            }
+            .dock-slider {
+                /* Adjust container to have the same height as other buttons */
+                width: 150px;
+                height: 48px;
+                background: rgba(255, 255, 255, 0.8);
+                border-radius: 8px;
+                padding: 8px;
+                box-sizing: border-box;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+            /* Force the slider to be horizontal by resetting its rotation */
+            .dock-slider #polygonOpacitySlider {
+                -webkit-transform: rotate(0deg) !important;
+                -ms-transform: rotate(0deg) !important;
+                transform: rotate(0deg) !important;
+                width: 100% !important;
+            }
+        }
+
+        /* Dark mode adjustments: use a grey background similar to the buttons */
+        @media (prefers-color-scheme: dark) {
+            .dock-slider {
+                background: rgba(20, 20, 20, 0.8);
+            }
+        }
+
+        /* ===================== */
+        /* Custom Slider Styling */
+        /* ===================== */
+
+        /* For Webkit Browsers (Chrome, Safari, Opera) */
+        #polygonOpacitySlider::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 6px;
+            background: #ccc;
+            border-radius: 3px;
+        }
+        #polygonOpacitySlider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 20px;
+            width: 20px;
+            border-radius: 50%;
+            background: #fff;
+            margin-top: -7px; /* Center the thumb on the track */
+            cursor: pointer;
+        }
+
+        /* For Firefox */
+        #polygonOpacitySlider::-moz-range-track {
+            width: 100%;
+            height: 6px;
+            background: #ccc;
+            border-radius: 3px;
+        }
+        #polygonOpacitySlider::-moz-range-thumb {
+            height: 20px;
+            width: 20px;
+            border-radius: 50%;
+            background: #fff;
+            cursor: pointer;
+        }
+
+        /* For IE */
+        #polygonOpacitySlider::-ms-track {
+            width: 100%;
+            height: 6px;
+            background: transparent;
+            border-color: transparent;
+            color: transparent;
+        }
+        #polygonOpacitySlider::-ms-fill-lower {
+            background: #ccc;
+            border-radius: 3px;
+        }
+        #polygonOpacitySlider::-ms-fill-upper {
+            background: #ccc;
+            border-radius: 3px;
+        }
+        #polygonOpacitySlider::-ms-thumb {
+            height: 20px;
+            width: 20px;
+            border-radius: 50%;
+            background: #fff;
+            cursor: pointer;
+        }
+
+        /* Dark mode adjustments: use a darker grey for the slider track */
+        @media (prefers-color-scheme: dark) {
+            #polygonOpacitySlider::-webkit-slider-runnable-track {
+                background: #555;
+            }
+            #polygonOpacitySlider::-moz-range-track {
+                background: #555;
+            }
+            #polygonOpacitySlider::-ms-fill-lower,
+            #polygonOpacitySlider::-ms-fill-upper {
+                background: #555;
+            }
+        }
+
+        #mapDock button {
+            background: rgba(255, 255, 255, 0.8);
+            border: none;
+            outline: none;
+            border-radius: 8px;
+            padding: 8px;
+            cursor: pointer;
+            transition: transform 0.3s ease, background 0.3s ease;
+            /* Ensure each button has enough room for the icon */
+            width: 48px;
+            height: 48px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        #mapDock button:hover {
+            transform: scale(1.2);
+            background: rgba(255, 255, 255, 1);
+        }
+        #mapDock .material-icons-round {
+            font-family: 'Material Icons Round';
+            font-size: 24px;
+            line-height: 24px;
+            color: #000;
+        }
+        @media (prefers-color-scheme: dark) {
+            #mapDock button {
+                background: rgba(20, 20, 20, 0.8);
+            }
+            #mapDock button:hover {
+                background: rgba(20, 20, 20, 1);
+            }
+            #mapDock .material-icons-round {
+                color: #fff;
+            }
+        }
+
+        /* --------------- POPUP MENU (centered on screen) --------------- */
+        #popupMenu {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(0, 0, 0, 0.5);
+            display: none; /* Hidden by default */
+            align-items: center;
+            justify-content: center;
+            z-index: 1200;
+        }
+        #popupMenu .popup-content {
+            background: #fff;
+            padding: 20px;
+            border-radius: 12px;
+            max-width: 400px;
+            width: 90%;
+            position: relative;
+            font-family: sans-serif;
+        }
+        #popupMenu .close {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            cursor: pointer;
+            font-size: 20px;
+            font-family: 'Material Icons Round';
+        }
+        @media (prefers-color-scheme: dark) {
+            #popupMenu .popup-content {
+                background: #333;
+                color: #fff;
+            }
+        }
+
+        /* Style for the IGC file control within the popup */
+        #popupMenu button#igcFileButton {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 12px;
+            background: #eee;
+            border: none;
+            border-radius: 4px;
+            padding: 8px 12px;
+            cursor: pointer;
+            font-family: sans-serif;
+        }
+        #popupMenu button#igcFileButton:hover {
+            background: #ddd;
+        }
+        #popupMenu button#igcFileButton .material-icons-round {
+            font-family: 'Material Icons Round';
+            font-size: 20px;
+        }
     </style>
 </head>
 <body>
-    <!-- New control: Checkbox (for toggling linestrings & labels) and polygon transparency slider -->
-    <div id="polygonOpacityControl" style="position: absolute; top: 50px; right: 10px; z-index: 1; background: #fff; padding: 5px; border-radius: 3px; font-family: sans-serif; box-shadow: 0 1px 4px rgba(0,0,0,0.3); display: flex; align-items: center;">
-        <input id="toggleLayerCheckbox" type="checkbox" checked style="margin-right: 5px;">
-        <input id="polygonOpacitySlider" type="range" min="0" max="0.5" step="0.01" value="0.1">
-    </div>
-
-    <!-- New control: IGC file button (below the slider) -->
-    <div id="igcFileControl" style="position: absolute; top: 90px; right: 10px; z-index: 1; background: #fff; padding: 5px; border-radius: 3px; font-family: sans-serif; box-shadow: 0 1px 4px rgba(0,0,0,0.3);">
-        <button id="igcFileButton">Add IGC File</button>
-        <!-- Hidden file input triggered by the button -->
-        <input type="file" id="igcFileInput" accept=".igc" style="display: none;">
-    </div>
-
     <!-- Transparent Loading/Connection Message on Top of the Map -->
     <div id="loadingMessage" style="position: absolute; top: 10px; left: 50%; transform: translateX(-50%); z-index: 1000; background: rgba(255,255,255,0.8); padding: 10px 20px; border-radius: 3px; font-family: sans-serif; display: none;">
         Loading files, please wait...
@@ -49,6 +327,46 @@
     <!-- Transparent Box on Bottom Left with Big Bold Text -->
     <div id="parametersBox" style="position: absolute; bottom: 10px; left: 10px; z-index: 1; background: rgba(255, 255, 255, 0.5); padding: 10px; border-radius: 5px; font-family: sans-serif; font-weight: bold; font-size: 24px; color: #000;">
         L/D 20 - ground 100m - circuit 250m
+    </div>
+
+    <!-- Map Dock: Controls always visible -->
+    <div id="mapDock">
+        <!-- Toggle Button -->
+        <button title="Toggle Layer Visibility" id="toggleLayerButton">
+            <span class="material-icons-round" id="visibilityIcon">visibility</span>
+        </button>
+        
+        <!-- Slider wrapper for polygon opacity -->
+        <div class="dock-slider">
+            <input id="polygonOpacitySlider" type="range" min="0" max="0.5" step="0.01" value="0.1">
+        </div>
+        
+        <!-- Other dock buttons -->
+        <button title="Increase Text Size" id="textIncreaseBtn">
+            <span class="material-icons-round">exposure_plus_1</span>
+        </button>
+        <button title="Decrease Text Size" id="textDecreaseBtn">
+            <span class="material-icons-round">exposure_minus_1</span>
+        </button>
+        <button title="More Options" id="moreOptionsBtn">
+            <span class="material-icons-round">menu</span>
+        </button>
+    </div>
+
+    <!-- Popup Menu: For controls not requiring constant map visibility -->
+    <div id="popupMenu">
+        <div class="popup-content">
+            <span class="close" id="closePopupBtn">&times;</span>
+            <h2>Other Options</h2>
+            <p>Here you can add extra controls or settings.</p>
+            <!-- IGC File Control with Icon -->
+            <button id="igcFileButton">
+                <span class="material-icons-round">folder_open</span>
+                <span>Open IGC File</span>
+            </button>
+            <!-- Hidden file input triggered by the IGC file button -->
+            <input type="file" id="igcFileInput" accept=".igc" style="display: none;">
+        </div>
     </div>
 
     <script>
@@ -369,180 +687,62 @@
             }
         });
 
-        const toggleLayerCheckbox = document.getElementById('toggleLayerCheckbox');
-        toggleLayerCheckbox.addEventListener('change', function() {
-            const visibility = this.checked ? 'visible' : 'none';
-            if (map.getLayer('linestrings-layer')) {
-                map.setLayoutProperty('linestrings-layer', 'visibility', visibility);
+        // Global variables for text size of label layers 
+        // (adjust these initial values to match your map's initial label sizes)
+        let currentPointsLabelSize = 17;
+        let currentLinesLabelSize = 14;
+
+        // Increase text size by 1 for both label layers
+        document.getElementById('textIncreaseBtn').addEventListener('click', () => {
+            currentPointsLabelSize++;
+            currentLinesLabelSize++;
+            if (map.getLayer('points-labels')) {
+                map.setLayoutProperty('points-labels', 'text-size', currentPointsLabelSize);
             }
             if (map.getLayer('linestrings-labels')) {
-                map.setLayoutProperty('linestrings-labels', 'visibility', visibility);
-            }
-            if (map.getLayer('polygons-layer')) {
-                map.setLayoutProperty('polygons-layer', 'visibility', visibility);
+                map.setLayoutProperty('linestrings-labels', 'text-size', currentLinesLabelSize);
             }
         });
 
-        function igcToGeoJSON(igcContent) {
-            const lines = igcContent.split('\n');
-            const coordinates = [];
-            let metadata = {};
-
-            for (const line of lines) {
-                if (line.startsWith('B')) {
-                    try {
-                        const time = line.substring(1, 7);
-                        const latRaw = line.substring(7, 15);
-                        const latDeg = parseInt(latRaw.substring(0, 2));
-                        const latMin = parseFloat(latRaw.substring(2, 7)) / 1000;
-                        const latDir = latRaw.substring(7, 8);
-                        const lonRaw = line.substring(15, 24);
-                        const lonDeg = parseInt(lonRaw.substring(0, 3));
-                        const lonMin = parseFloat(lonRaw.substring(3, 8)) / 1000;
-                        const lonDir = lonRaw.substring(8, 9);
-                        const altPressure = parseInt(line.substring(25, 30));
-                        const altGNSS = parseInt(line.substring(30, 35));
-
-                        let latitude = latDeg + (latMin / 60);
-                        if (latDir === 'S') latitude = -latitude;
-
-                        let longitude = lonDeg + (lonMin / 60);
-                        if (lonDir === 'W') longitude = -longitude;
-
-                        const altitude = altPressure > 0 ? altPressure : altGNSS;
-
-                        coordinates.push([longitude, latitude, altitude]);
-                    } catch (error) {
-                        console.warn('Error parsing B record:', line, error);
-                    }
-                }
-                else if (line.startsWith('H')) {
-                    try {
-                        const headerType = line.substring(1, 5);
-                        const headerValue = line.substring(5).trim();
-                        
-                        if (headerType.startsWith('FDT')) metadata.date = headerValue;
-                        if (headerType.startsWith('FPL')) metadata.pilot = headerValue;
-                        if (headerType.startsWith('FGT')) metadata.gliderType = headerValue;
-                        if (headerType.startsWith('FGI')) metadata.gliderID = headerValue;
-                    } catch (error) {
-                        console.warn('Error parsing H record:', line, error);
-                    }
-                }
+        // Decrease text size by 1 for both label layers (with a minimum value check)
+        document.getElementById('textDecreaseBtn').addEventListener('click', () => {
+            currentPointsLabelSize = Math.max(1, currentPointsLabelSize - 1);
+            currentLinesLabelSize = Math.max(1, currentLinesLabelSize - 1);
+            if (map.getLayer('points-labels')) {
+                map.setLayoutProperty('points-labels', 'text-size', currentPointsLabelSize);
             }
+            if (map.getLayer('linestrings-labels')) {
+                map.setLayoutProperty('linestrings-labels', 'text-size', currentLinesLabelSize);
+            }
+        });
 
-            const geojson = {
-                type: 'FeatureCollection',
-                features: [{
-                    type: 'Feature',
-                    geometry: {
-                        type: 'LineString',
-                        coordinates: coordinates
-                    },
-                    properties: {
-                        ...metadata,
-                        sourceFormat: 'IGC',
-                        coordinateProperties: {
-                            altitudes: coordinates.map(coord => coord[2])
-                        }
-                    }
-                }]
-            };
+        // Toggle the popup menu
+        const popupMenu = document.getElementById('popupMenu');
+        document.getElementById('moreOptionsBtn').addEventListener('click', () => {
+            popupMenu.style.display = "flex";
+        });
+        document.getElementById('closePopupBtn').addEventListener('click', () => {
+            popupMenu.style.display = "none";
+        });
 
-            return geojson;
-        }
+        // Close popup when clicking outside the popup content
+        popupMenu.addEventListener('click', (e) => {
+            if(e.target === popupMenu) {
+                popupMenu.style.display = "none";
+            }
+        });
 
-        function handleFileSelect(event) {
-            const file = event.target.files[0];
-            if (!file) return;
-
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                const igcContent = e.target.result;
-                const geojsonData = igcToGeoJSON(igcContent);
-                console.log('Converted IGC to GeoJSON:', geojsonData);
-                
-                const baseLayerId = 'igc-layer-' + file.name.replace(/\W/g, '');
-                let layerId = baseLayerId;
-                if (map.getLayer(layerId)) {
-                    layerId = baseLayerId + '-' + Date.now();
-                }
-                const sourceId = layerId + '-source';
-                
-                map.addSource(sourceId, {
-                    type: 'geojson',
-                    data: geojsonData
-                });
-                map.addLayer({
-                    id: layerId,
-                    type: 'line',
-                    source: sourceId,
-                    paint: {
-                        'line-color': '#0000FF',
-                        'line-width': 2
-                    }
-                });
-                
-                const coords = geojsonData.features[0].geometry.coordinates;
-                let minLng = Infinity, minLat = Infinity, maxLng = -Infinity, maxLat = -Infinity;
-                coords.forEach(coord => {
-                    const [lng, lat] = coord;
-                    if (lng < minLng) minLng = lng;
-                    if (lat < minLat) minLat = lat;
-                    if (lng > maxLng) maxLng = lng;
-                    if (lat > maxLat) maxLat = lat;
-                });
-                const bounds = [[minLng, minLat], [maxLng, maxLat]];
-                
-                map.fitBounds(bounds, {
-                    padding: 50,
-                    maxZoom: 14,
-                    duration: 1000
-                });
-                
-                const altPoints = {
-                    type: 'FeatureCollection',
-                    features: coords.map(coord => ({
-                        type: 'Feature',
-                        geometry: {
-                            type: 'Point',
-                            coordinates: [coord[0], coord[1]]
-                        },
-                        properties: {
-                            altitude: coord[2]
-                        }
-                    }))
-                };
-
-                const altSourceId = layerId + '-altitudes-source';
-                map.addSource(altSourceId, {
-                    type: 'geojson',
-                    data: altPoints
-                });
-                
-                map.addLayer({
-                    id: layerId + '-altitudes',
-                    type: 'symbol',
-                    source: altSourceId,
-                    minzoom: 9,
-                    layout: {
-                        'text-field': '{altitude}',
-                        'text-size': 15,
-                        'text-offset': [0, -0.5]
-                    },
-                    paint: {
-                        'text-color': '#0000FF',
-                        'text-halo-color': '#fff',
-                        'text-halo-width': 2
-                    }
-                });
-            };
-            reader.readAsText(file);
-        }
-
+        // Trigger file input when Open IGC File button is clicked
         document.getElementById('igcFileButton').addEventListener('click', function() {
             document.getElementById('igcFileInput').click();
         });
+
+        // Handle file selection (place your file processing logic here)
+        function handleFileSelect(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            console.log("Selected file", file);
+        }
         document.getElementById('igcFileInput').addEventListener('change', handleFileSelect);
     </script>
 </body>
