@@ -528,10 +528,10 @@
 
         // Function to add (or update) GeoJSON layers using the current configuration folder.
         function addGeoJSONLayers() {
-            // Rebuild the config prefix from the first three parts of the currentFolder name.
+            // Rebuild the config prefix from the current config
             const configPrefix = currentConfig.split('-').slice(0, 3).join('-');
-            
-            // Add or update the main GeoJSON source with a rebuilt file name.
+
+            // Add or update the main GeoJSON source.
             if (!map.getSource('geojson-data')) {
                 map.addSource('geojson-data', {
                     type: 'geojson',
@@ -541,7 +541,7 @@
                 map.getSource('geojson-data').setData(currentConfig + '/aa_alps_' + configPrefix + '.geojson');
             }
             
-            // Add or update the polygons source with a rebuilt file name.
+            // Add or update the polygons source.
             if (!map.getSource('polygons')) {
                 map.addSource('polygons', {
                     type: 'geojson',
@@ -551,83 +551,8 @@
                 map.getSource('polygons').setData(currentConfig + '/aa_alps_' + configPrefix + '_sectors1.geojson');
             }
             
-            // Add static layers if they are not already present.
-            if (!map.getLayer('linestrings-layer')) {
-                map.addLayer({
-                    id: 'linestrings-layer',
-                    type: 'line',
-                    source: 'geojson-data',
-                    filter: ['==', '$type', 'LineString'],
-                    paint: {
-                        'line-color': '#000',
-                        'line-width': ['step', ['zoom'], 1, 10, 2]
-                    }
-                });
-            }
-            
-            if (!map.getLayer('linestrings-labels')) {
-                map.addLayer({
-                    id: 'linestrings-labels',
-                    type: 'symbol',
-                    source: 'geojson-data',
-                    minzoom: 8,
-                    filter: ['==', '$type', 'LineString'],
-                    layout: {
-                        'text-field': '{ELEV}',
-                        'symbol-placement': 'line',
-                        'text-rotation-alignment': 'auto',
-                        'text-keep-upright': true,
-                        'text-size': baseTextSize, // Uses the global variable
-                        'text-allow-overlap': false,
-                        'text-ignore-placement': false,
-                        'text-offset': [0, 0],
-                        'symbol-spacing': 250
-                    },
-                    paint: {
-                        'text-color': '#000',
-                        'text-halo-color': '#fff',
-                        'text-halo-width': 2
-                    }
-                });
-            }
-            
-            if (!map.getLayer('points-layer')) {
-                map.addLayer({
-                    id: 'points-layer',
-                    type: 'circle',
-                    source: 'geojson-data',
-                    filter: ['==', '$type', 'Point'],
-                    paint: {
-                        'circle-radius': 10,
-                        'circle-color': '#ff0000',
-                        'circle-stroke-width': 2,
-                        'circle-stroke-color': '#fff'
-                    }
-                });
-            }
-            
-            if (!map.getLayer('points-labels')) {
-                map.addLayer({
-                    id: 'points-labels',
-                    type: 'symbol',
-                    source: 'geojson-data',
-                    minzoom: 7,
-                    filter: ['==', '$type', 'Point'],
-                    layout: {
-                        'text-field': '{name}',
-                        'text-size': baseTextSize + 5, // Points use baseTextSize plus 5
-                        'text-allow-overlap': false,
-                        'text-ignore-placement': true,
-                        'text-offset': [0.8, 0.8]
-                    },
-                    paint: {
-                        'text-color': '#000',
-                        'text-halo-color': '#fff',
-                        'text-halo-width': 2
-                    }
-                });
-            }
-            
+            // ---------------------------------------------------------------------
+            // First load the polygon layer so that it renders underneath subsequent layers.
             if (!map.getLayer('polygons-layer')) {
                 map.addLayer({
                     id: 'polygons-layer',
@@ -651,6 +576,36 @@
                 });
             }
             
+            // ---------------------------------------------------------------------
+            // Add non-label layers (features) next.
+            if (!map.getLayer('linestrings-layer')) {
+                map.addLayer({
+                    id: 'linestrings-layer',
+                    type: 'line',
+                    source: 'geojson-data',
+                    filter: ['==', '$type', 'LineString'],
+                    paint: {
+                        'line-color': '#000',
+                        'line-width': ['step', ['zoom'], 1, 10, 2]
+                    }
+                });
+            }
+            
+            if (!map.getLayer('points-layer')) {
+                map.addLayer({
+                    id: 'points-layer',
+                    type: 'circle',
+                    source: 'geojson-data',
+                    filter: ['==', '$type', 'Point'],
+                    paint: {
+                        'circle-radius': 10,
+                        'circle-color': '#ff0000',
+                        'circle-stroke-width': 2,
+                        'circle-stroke-color': '#fff'
+                    }
+                });
+            }
+            
             if (!map.getLayer('points-layer-clickable')) {
                 map.addLayer({
                     id: 'points-layer-clickable',
@@ -661,6 +616,56 @@
                         'circle-radius': 20,
                         'circle-color': '#000000',
                         'circle-opacity': 0
+                    }
+                });
+            }
+            
+            // ---------------------------------------------------------------------
+            // Now add the label layers so they always render on top.
+            if (!map.getLayer('linestrings-labels')) {
+                map.addLayer({
+                    id: 'linestrings-labels',
+                    type: 'symbol',
+                    source: 'geojson-data',
+                    minzoom: 8,
+                    filter: ['==', '$type', 'LineString'],
+                    layout: {
+                        'text-field': '{ELEV}',
+                        'symbol-placement': 'line',
+                        'text-rotation-alignment': 'auto',
+                        'text-keep-upright': true,
+                        'text-size': baseTextSize,
+                        'text-allow-overlap': false,
+                        'text-ignore-placement': false,
+                        'text-offset': [0, 0],
+                        'symbol-spacing': 250
+                    },
+                    paint: {
+                        'text-color': '#000',
+                        'text-halo-color': '#fff',
+                        'text-halo-width': 2
+                    }
+                });
+            }
+            
+            if (!map.getLayer('points-labels')) {
+                map.addLayer({
+                    id: 'points-labels',
+                    type: 'symbol',
+                    source: 'geojson-data',
+                    minzoom: 7,
+                    filter: ['==', '$type', 'Point'],
+                    layout: {
+                        'text-field': '{name}',
+                        'text-size': baseTextSize + 5,
+                        'text-allow-overlap': false,
+                        'text-ignore-placement': true,
+                        'text-offset': [0.8, 0.8]
+                    },
+                    paint: {
+                        'text-color': '#000',
+                        'text-halo-color': '#fff',
+                        'text-halo-width': 2
                     }
                 });
             }
