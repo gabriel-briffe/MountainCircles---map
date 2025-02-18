@@ -359,6 +359,8 @@
             <span class="close" id="closePopupBtn">&times;</span>
             <h2>Other Options</h2>
             <p>Here you can add extra controls or settings.</p>
+            <h3>Select Data Configuration</h3>
+            <div id="configButtons"></div>
             <!-- IGC File Control with Icon -->
             <button id="igcFileButton">
                 <span class="material-icons-round">folder_open</span>
@@ -370,6 +372,333 @@
     </div>
 
     <script>
+        // Global variable to hold the current config folder name.
+        // Default is "20-100-250-4200" so that the parameters box initially shows "L/D 20 - ground 100m - circuit 250m".
+        var currentConfig = '20-100-250-4200';
+        
+        // Helper to update the parameters box text based on the config folder.
+        function updateParametersBox(cfg) {
+            const parts = cfg.split('-'); // e.g. ["20", "100", "250", "4200"]
+            if (parts.length >= 3) {
+                const labelText = "L/D " + parts[0] + " - ground " + parts[1] + "m - circuit " + parts[2] + "m";
+                document.getElementById('parametersBox').textContent = labelText;
+            }
+        }
+        
+        // Call updateParametersBox at startup.
+        updateParametersBox(currentConfig);
+        
+        // Function to remove static GeoJSON layers and sources.
+        function removeGeoJSONLayers() {
+            const layersToRemove = [
+                'linestrings-layer',
+                'linestrings-labels',
+                'points-layer',
+                'points-labels',
+                'points-layer-clickable',
+                'polygons-layer'
+            ];
+            layersToRemove.forEach(id => {
+                if (map.getLayer(id)) {
+                    map.removeLayer(id);
+                }
+            });
+            const sourcesToRemove = ['geojson-data', 'polygons'];
+            sourcesToRemove.forEach(id => {
+                if (map.getSource(id)) {
+                    map.removeSource(id);
+                }
+            });
+        }
+        
+        // Function to remove dynamic layers added when clicking a point.
+        function removeDynamicLayers() {
+            // Remove dynamic layers (their id starts with "dynamic-lines-")
+            const currentLayers = map.getStyle().layers.slice();
+            currentLayers.forEach(layer => {
+                if(layer.id.startsWith('dynamic-lines-')) {
+                    if(map.getLayer(layer.id)) { 
+                        map.removeLayer(layer.id);
+                    }
+                }
+            });
+            
+            // Remove the dynamic sources; we iterate over all source names.
+            const sourceIds = Object.keys(map.style.sourceCaches);
+            sourceIds.forEach(sourceId => {
+                if(sourceId.startsWith('dynamic-lines-')) {
+                    if(map.getSource(sourceId)) { 
+                        map.removeSource(sourceId);
+                    }
+                }
+            });
+        }
+        
+        // Function to add (or update) GeoJSON layers using the current configuration folder.
+        function addGeoJSONLayers() {
+            // Rebuild the config prefix from the first three parts of the currentFolder name.
+            const configPrefix = currentConfig.split('-').slice(0, 3).join('-');
+            
+            // Add or update the main GeoJSON source with a rebuilt file name.
+            if (!map.getSource('geojson-data')) {
+                map.addSource('geojson-data', {
+                    type: 'geojson',
+                    data: currentConfig + '/aa_alps_' + configPrefix + '.geojson'
+                });
+            } else {
+                map.getSource('geojson-data').setData(currentConfig + '/aa_alps_' + configPrefix + '.geojson');
+            }
+            
+            // Add or update the polygons source with a rebuilt file name.
+            if (!map.getSource('polygons')) {
+                map.addSource('polygons', {
+                    type: 'geojson',
+                    data: currentConfig + '/aa_alps_' + configPrefix + '_sectors1.geojson'
+                });
+            } else {
+                map.getSource('polygons').setData(currentConfig + '/aa_alps_' + configPrefix + '_sectors1.geojson');
+            }
+            
+            // Add static layers if they are not already present.
+            if (!map.getLayer('linestrings-layer')) {
+                map.addLayer({
+                    id: 'linestrings-layer',
+                    type: 'line',
+                    source: 'geojson-data',
+                    filter: ['==', '$type', 'LineString'],
+                    paint: {
+                        'line-color': '#000',
+                        'line-width': ['step', ['zoom'], 1, 10, 2]
+                    }
+                });
+            }
+            
+            if (!map.getLayer('linestrings-labels')) {
+                map.addLayer({
+                    id: 'linestrings-labels',
+                    type: 'symbol',
+                    source: 'geojson-data',
+                    minzoom: 8,
+                    filter: ['==', '$type', 'LineString'],
+                    layout: {
+                        'text-field': '{ELEV}',
+                        'symbol-placement': 'line',
+                        'text-rotation-alignment': 'auto',
+                        'text-keep-upright': true,
+                        'text-size': 14,
+                        'text-allow-overlap': false,
+                        'text-ignore-placement': false,
+                        'text-offset': [0, 0],
+                        'symbol-spacing': 250
+                    },
+                    paint: {
+                        'text-color': '#000',
+                        'text-halo-color': '#fff',
+                        'text-halo-width': 2
+                    }
+                });
+            }
+            
+            if (!map.getLayer('points-layer')) {
+                map.addLayer({
+                    id: 'points-layer',
+                    type: 'circle',
+                    source: 'geojson-data',
+                    filter: ['==', '$type', 'Point'],
+                    paint: {
+                        'circle-radius': 10,
+                        'circle-color': '#ff0000',
+                        'circle-stroke-width': 2,
+                        'circle-stroke-color': '#fff'
+                    }
+                });
+            }
+            
+            if (!map.getLayer('points-labels')) {
+                map.addLayer({
+                    id: 'points-labels',
+                    type: 'symbol',
+                    source: 'geojson-data',
+                    minzoom: 7,
+                    filter: ['==', '$type', 'Point'],
+                    layout: {
+                        'text-field': '{name}',
+                        'text-size': 17,
+                        'text-allow-overlap': false,
+                        'text-ignore-placement': true,
+                        'text-offset': [0.8, 0.8]
+                    },
+                    paint: {
+                        'text-color': '#000',
+                        'text-halo-color': '#fff',
+                        'text-halo-width': 2
+                    }
+                });
+            }
+            
+            if (!map.getLayer('polygons-layer')) {
+                map.addLayer({
+                    id: 'polygons-layer',
+                    type: 'fill',
+                    source: 'polygons',
+                    paint: {
+                        'fill-color': [
+                            "match",
+                            ["get", "color_id"],
+                            0, "#0000FF",
+                            1, "#FF00FF",
+                            2, "#FFFF00",
+                            3, "#00FFFF",
+                            4, "#00FF00",
+                            5, "#FF0000",
+                            6, "#FFA500",
+                            "#000000"
+                        ],
+                        'fill-opacity': 0.1
+                    }
+                });
+            }
+            
+            if (!map.getLayer('points-layer-clickable')) {
+                map.addLayer({
+                    id: 'points-layer-clickable',
+                    type: 'circle',
+                    source: 'geojson-data',
+                    filter: ['==', '$type', 'Point'],
+                    paint: {
+                        'circle-radius': 20,
+                        'circle-color': '#000000',
+                        'circle-opacity': 0
+                    }
+                });
+            }
+        }
+        
+        // Function to switch the data configuration.
+        function switchConfig(cfg) {
+            // Remove any dynamic layers (e.g. from previous point clicks).
+            removeDynamicLayers();
+            // Remove the current static layers so they can be reloaded.
+            removeGeoJSONLayers();
+            // Update the parameters box based on the new config folder.
+            updateParametersBox(cfg);
+            // Update the global variable.
+            currentConfig = cfg;
+            addGeoJSONLayers();
+        }
+        
+        // Updated dynamic point click handler to use the current config folder.
+        function handlePointClick(e) {
+            console.log("Point clicked event:", e);
+            if (!e.features || !e.features.length) return;
+        
+            const feature = e.features[0];
+            if (!feature.properties || !feature.properties.filename) {
+                console.warn("Clicked feature missing 'filename' property:", feature);
+                return;
+            }
+            // Prepend the current config folder when building the file path.
+            const filePath = currentConfig + "/" + feature.properties.filename;
+            // Build a dynamic id that includes the config for uniqueness.
+            const dynamicLayerId = 'dynamic-lines-' + currentConfig + '-' + feature.properties.filename;
+            const dynamicSourceId = dynamicLayerId + '-source';
+            const dynamicLabelId = dynamicLayerId + '-labels';
+        
+            if (map.getLayer(dynamicLayerId)) {
+                console.log("Removing dynamic layer:", dynamicLayerId);
+                if (map.getLayer(dynamicLayerId)) map.removeLayer(dynamicLayerId);
+                if (map.getLayer(dynamicLabelId)) map.removeLayer(dynamicLabelId);
+                if (map.getSource(dynamicSourceId)) map.removeSource(dynamicSourceId);
+            } else {
+                console.log("Adding dynamic layer for:", filePath);
+                map.addSource(dynamicSourceId, {
+                    type: 'geojson',
+                    data: filePath
+                });
+                
+                map.addLayer({
+                    id: dynamicLayerId,
+                    type: 'line',
+                    source: dynamicSourceId,
+                    filter: ['==', '$type', 'LineString'],
+                    paint: {
+                        'line-color': '#000',
+                        'line-width': ['step', ['zoom'], 1, 10, 2]
+                    }
+                });
+                
+                map.addLayer({
+                    id: dynamicLabelId,
+                    type: 'symbol',
+                    source: dynamicSourceId,
+                    minzoom: 8,
+                    filter: ['==', '$type', 'LineString'],
+                    layout: {
+                        'text-field': '{ELEV}',
+                        'symbol-placement': 'line',
+                        'text-rotation-alignment': 'auto',
+                        'text-keep-upright': true,
+                        'text-size': 14,
+                        'text-allow-overlap': false,
+                        'text-ignore-placement': false,
+                        'text-offset': [0, 0],
+                        'symbol-spacing': 250
+                    },
+                    paint: {
+                        'text-color': '#000',
+                        'text-halo-color': '#fff',
+                        'text-halo-width': 2
+                    }
+                });
+            }
+        }
+        
+        // Reinitialize layers on map load.
+        map.on('load', () => {
+            addGeoJSONLayers();
+            if (map.getLayer('points-layer-clickable')) {
+                map.on('click', 'points-layer-clickable', handlePointClick);
+            } else {
+                console.warn("points-layer-clickable not found on map load.");
+            }
+            if (navigator.onLine) {
+                map.once('idle', hideLoadingMessage);
+            }
+        });
+        
+        // Update layers when style data changes.
+        map.on('styledata', () => {
+            addGeoJSONLayers();
+            map.off('click', 'points-layer-clickable', handlePointClick);
+            if (map.getLayer('points-layer-clickable')) {
+                map.on('click', 'points-layer-clickable', handlePointClick);
+            } else {
+                console.warn("points-layer-clickable not found during styledata event.");
+            }
+        });
+        
+        // Set up config buttons in the popup menu.
+        // Available config folders.
+        const availableConfigs = [
+            '30-100-250-4200',
+            '25-100-250-4200',
+            '20-100-250-4200',
+            '10-100-250-4200'
+        ];
+        
+        const configButtonsContainer = document.getElementById('configButtons');
+        availableConfigs.forEach(cfg => {
+            const btn = document.createElement('button');
+            // Use only the first part of the folder name as the button label (e.g., "30", "25", "20", or "10").
+            btn.textContent = cfg.split('-')[0];
+            btn.addEventListener('click', () => {
+                switchConfig(cfg);
+                document.getElementById('popupMenu').style.display = "none";
+                console.log("Switched to configuration: " + cfg);
+            });
+            configButtonsContainer.appendChild(btn);
+        });
+        
         // Added new custom style. Ensure that your extracted tiles are placed in a folder "tiles"
         // at the root of your repository.
         const customStyle = {
@@ -442,241 +771,6 @@
                 maxZoom: 14,
                 duration: 1000
             }
-        });
-
-        function addGeoJSONLayers() {
-            if (!map.getSource('geojson-data')) {
-                map.addSource('geojson-data', {
-                    type: 'geojson',
-                    data: 'aa_alps_20-100-250.geojson'
-                });
-            }
-            
-            if (!map.getLayer('linestrings-layer')) {
-                map.addLayer({
-                    id: 'linestrings-layer',
-                    type: 'line',
-                    source: 'geojson-data',
-                    filter: ['==', '$type', 'LineString'],
-                    paint: {
-                        'line-color': '#000',
-                        'line-width': ['step', ['zoom'], 1, 10, 2]
-                    }
-                });
-            }
-            
-            if (!map.getLayer('linestrings-labels')) {
-                map.addLayer({
-                    id: 'linestrings-labels',
-                    type: 'symbol',
-                    source: 'geojson-data',
-                    minzoom: 8,
-                    filter: ['==', '$type', 'LineString'],
-                    layout: {
-                        'text-field': '{ELEV}',
-                        'symbol-placement': 'line',
-                        'text-rotation-alignment': 'auto',
-                        'text-keep-upright': true,
-                        'text-size': 14,
-                        'text-allow-overlap': false,
-                        'text-ignore-placement': false,
-                        'text-offset': [0, 0],
-                        'symbol-spacing': 250
-                    },
-                    paint: {
-                        'text-color': '#000',
-                        'text-halo-color': '#fff',
-                        'text-halo-width': 2
-                    }
-                });
-            }
-
-            if (!map.getLayer('points-layer')) {
-                map.addLayer({
-                    id: 'points-layer',
-                    type: 'circle',
-                    source: 'geojson-data',
-                    filter: ['==', '$type', 'Point'],
-                    paint: {
-                        'circle-radius': 10,
-                        'circle-color': '#ff0000',
-                        'circle-stroke-width': 2,
-                        'circle-stroke-color': '#fff'
-                    }
-                });
-            }
-
-            if (!map.getLayer('points-labels')) {
-                map.addLayer({
-                    id: 'points-labels',
-                    type: 'symbol',
-                    source: 'geojson-data',
-                    minzoom: 7,
-                    filter: ['==', '$type', 'Point'],
-                    layout: {
-                        'text-field': '{name}',
-                        'text-size': 17,
-                        'text-allow-overlap': false,
-                        'text-ignore-placement': true,
-                        'text-offset': [0.8, 0.8]
-                    },
-                    paint: {
-                        'text-color': '#000',
-                        'text-halo-color': '#fff',
-                        'text-halo-width': 2
-                    }
-                });
-            }
-
-            if (!map.getSource('polygons')) {
-                map.addSource('polygons', {
-                    type: 'geojson',
-                    data: 'aa_alps_20-100-250_sectors1.geojson'
-                });
-            }
-            
-            if (!map.getLayer('polygons-layer')) {
-                map.addLayer({
-                    id: 'polygons-layer',
-                    type: 'fill',
-                    source: 'polygons',
-                    paint: {
-                        'fill-color': [
-                            "match",
-                            ["get", "color_id"],
-                            0, "#0000FF",
-                            1, "#FF00FF",
-                            2, "#FFFF00",
-                            3, "#00FFFF",
-                            4, "#00FF00",
-                            5, "#FF0000",
-                            6, "#FFA500",
-                            "#000000"
-                        ],
-                        'fill-opacity': 0.1
-                    }
-                });
-            }
-            
-            if (map.getLayer('linestrings-labels')) {
-                map.moveLayer('linestrings-labels');
-            }
-            if (map.getLayer('points-labels')) {
-                map.moveLayer('points-labels');
-            }
-
-            if (!map.getLayer('points-layer-clickable')) {
-                map.addLayer({
-                    id: 'points-layer-clickable',
-                    type: 'circle',
-                    source: 'geojson-data',
-                    filter: ['==', '$type', 'Point'],
-                    paint: {
-                        'circle-radius': 20,
-                        'circle-color': '#000000',
-                        'circle-opacity': 0
-                    }
-                });
-            }
-
-            if (map.getLayer('points-layer-clickable')) {
-                map.moveLayer('points-layer-clickable');
-            }
-            if (map.getLayer('points-layer')) {
-                map.moveLayer('points-layer');
-            }
-            if (map.getLayer('points-labels')) {
-                map.moveLayer('points-labels');
-            }
-        }
-
-        function handlePointClick(e) {
-            console.log("Point clicked event:", e);
-            if (!e.features || !e.features.length) return;
-
-            const feature = e.features[0];
-            if (!feature.properties || !feature.properties.filename) {
-                console.warn("Clicked feature missing 'filename' property:", feature);
-                return;
-            }
-            const pointFileName = feature.properties.filename;
-            const dynamicLayerId = 'dynamic-lines-' + pointFileName;
-            const dynamicSourceId = dynamicLayerId + '-source';
-            const dynamicLabelId = dynamicLayerId + '-labels';
-
-            if (map.getLayer(dynamicLayerId)) {
-                console.log("Removing dynamic layer:", dynamicLayerId);
-                if (map.getLayer(dynamicLayerId)) map.removeLayer(dynamicLayerId);
-                if (map.getLayer(dynamicLabelId)) map.removeLayer(dynamicLabelId);
-                if (map.getSource(dynamicSourceId)) map.removeSource(dynamicSourceId);
-            } else {
-                console.log("Adding dynamic layer for:", pointFileName);
-                map.addSource(dynamicSourceId, {
-                    type: 'geojson',
-                    data: pointFileName
-                });
-                
-                map.addLayer({
-                    id: dynamicLayerId,
-                    type: 'line',
-                    source: dynamicSourceId,
-                    filter: ['==', '$type', 'LineString'],
-                    paint: {
-                        'line-color': '#000',
-                        'line-width': ['step', ['zoom'], 1, 10, 2]
-                    }
-                });
-                
-                map.addLayer({
-                    id: dynamicLabelId,
-                    type: 'symbol',
-                    source: dynamicSourceId,
-                    minzoom: 8,
-                    filter: ['==', '$type', 'LineString'],
-                    layout: {
-                        'text-field': '{ELEV}',
-                        'symbol-placement': 'line',
-                        'text-rotation-alignment': 'auto',
-                        'text-keep-upright': true,
-                        'text-size': 14,
-                        'text-allow-overlap': false,
-                        'text-ignore-placement': false,
-                        'text-offset': [0, 0],
-                        'symbol-spacing': 250
-                    },
-                    paint: {
-                        'text-color': '#000',
-                        'text-halo-color': '#fff',
-                        'text-halo-width': 2
-                    }
-                });
-            }
-        }
-
-        map.on('load', () => {
-            addGeoJSONLayers();
-            if (map.getLayer('points-layer-clickable')) {
-                map.on('click', 'points-layer-clickable', handlePointClick);
-            } else {
-                console.warn("points-layer-clickable not found on map load.");
-            }
-            if (navigator.onLine) {
-                map.once('idle', hideLoadingMessage);
-            }
-        });
-
-        map.on('styledata', () => {
-            addGeoJSONLayers();
-            map.off('click', 'points-layer-clickable', handlePointClick);
-            if (map.getLayer('points-layer-clickable')) {
-                map.on('click', 'points-layer-clickable', handlePointClick);
-            } else {
-                console.warn("points-layer-clickable not found during styledata event.");
-            }
-        });
-
-        map.on('error', (e) => {
-            console.error('Map error:', e);
         });
 
         const polygonOpacitySlider = document.getElementById('polygonOpacitySlider');
