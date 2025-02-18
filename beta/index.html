@@ -26,15 +26,6 @@
     </style>
 </head>
 <body>
-    <!-- Basemap switcher control -->
-    <div id="styleSwitcher">
-        <label for="basemapSelect">Basemap: </label>
-        <select id="basemapSelect">
-            <option value="thunderforest">Thunderforest Landscape</option>
-            <option value="custom" selected>Custom Map</option>
-        </select>
-    </div>
-
     <!-- New control: Checkbox (for toggling linestrings & labels) and polygon transparency slider -->
     <div id="polygonOpacityControl" style="position: absolute; top: 50px; right: 10px; z-index: 1; background: #fff; padding: 5px; border-radius: 3px; font-family: sans-serif; box-shadow: 0 1px 4px rgba(0,0,0,0.3); display: flex; align-items: center;">
         <input id="toggleLayerCheckbox" type="checkbox" checked style="margin-right: 5px;">
@@ -61,32 +52,6 @@
     </div>
 
     <script>
-        // Define the style objects for each basemap
-        const thunderforestStyle = {
-            "version": 8,
-            "name": "Thunderforest Landscape",
-            "glyphs": "https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf",
-            "sources": {
-                "raster-tiles": {
-                    "type": "raster",
-                    "tiles": [
-                        "https://tile.thunderforest.com/landscape/{z}/{x}/{y}.png?apikey=a2917367be0b429d8c4772c115159b65"
-                    ],
-                    "tileSize": 256,
-                    "attribution": "© <a href='http://www.thunderforest.com/'>Thunderforest</a>, © <a href='https://www.openstreetmap.org/copyright'>OpenStreetMap</a> contributors"
-                }
-            },
-            "layers": [
-                {
-                    "id": "simple-tiles",
-                    "type": "raster",
-                    "source": "raster-tiles",
-                    "minzoom": 0,
-                    "maxzoom": 22
-                }
-            ]
-        };
-
         // Added new custom style. Ensure that your extracted tiles are placed in a folder "tiles"
         // at the root of your repository.
         const customStyle = {
@@ -114,13 +79,12 @@
             ]
         };
 
-        // Object mapping for style selection, including our custom style.
+        // Update the styles object to include only the custom style.
         const styles = {
-            thunderforest: thunderforestStyle,
-            custom: customStyle  // Added custom style mapping
+            custom: customStyle  // Only custom style remains.
         };
 
-        // Start with the Custom style by default
+        // Set the default style
         let currentStyle = customStyle;
 
         // Function to show the loading message with a given text.
@@ -391,12 +355,6 @@
             } else {
                 console.warn("points-layer-clickable not found during styledata event.");
             }
-        });
-
-        const basemapSelect = document.getElementById('basemapSelect');
-        basemapSelect.addEventListener('change', (e) => {
-            const selectedStyle = styles[e.target.value];
-            map.setStyle(selectedStyle);
         });
 
         map.on('error', (e) => {
