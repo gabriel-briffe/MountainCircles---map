@@ -358,12 +358,39 @@
                 color: #fff;
             }
         }
+
+        /* ===== Spinner Styling ===== */
+        #spinner {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 2000;
+            display: none; /* Hidden by default */
+        }
+        .spinner {
+            border: 8px solid #f3f3f3; /* Light grey */
+            border-top: 8px solid #3498db; /* Blue */
+            border-radius: 50%;
+            width: 60px;
+            height: 60px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
     </style>
 </head>
 <body>
     <!-- Transparent Loading/Connection Message on Top of the Map -->
     <div id="loadingMessage" style="position: absolute; top: 10px; left: 50%; transform: translateX(-50%); z-index: 1000; background: rgba(255,255,255,0.8); padding: 10px 20px; border-radius: 3px; font-family: sans-serif; display: none;">
         Loading files, please wait...
+    </div>
+
+    <!-- Spinner for GeoJSON loading -->
+    <div id="spinner">
+        <div class="spinner"></div>
     </div>
 
     <div id="map"></div>
@@ -809,6 +836,28 @@
                 duration: 1000
             },
             attributionControl: false
+        });
+        
+        // --- GeoJSON Spinner Logic ---
+        // This Set will track geojson sources that are still loading.
+        var loadingGeojsonSources = new Set();
+
+        map.on('sourcedata', function(e) {
+            // Check that the event relates to a source (not an individual tile)
+            // and that the source exists and is a GeoJSON source
+            if (e.dataType === 'source' && e.source && e.source.type === 'geojson') {
+                if (!e.isSourceLoaded) {
+                    loadingGeojsonSources.add(e.sourceId);
+                } else {
+                    loadingGeojsonSources.delete(e.sourceId);
+                }
+                // If any GeoJSON sources are still loading, show the spinner.
+                if (loadingGeojsonSources.size > 0) {
+                    document.getElementById('spinner').style.display = 'block';
+                } else {
+                    document.getElementById('spinner').style.display = 'none';
+                }
+            }
         });
         
         // Attach layers and events once the map has fully loaded.

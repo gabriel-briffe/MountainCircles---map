@@ -506,12 +506,32 @@
             });
         }
         
+        // Global variable for the base text size that all labels will use.
+        let baseTextSize = 14; // Default value; adjust as desired
+
+        // Function that iterates over the map's layers and updates the 'text-size' of any symbol layer
+        // If the layer ID is "points-labels", we add 5 to baseTextSize.
+        function updateAllLabelSizes() {
+            // Iterate over all layers in the current map style.
+            map.getStyle().layers.forEach(layer => {
+                if (layer.type === 'symbol' && layer.layout && layer.layout["text-size"] !== undefined) {
+                    // For the points labels, use baseTextSize + 5.
+                    if (layer.id === 'points-labels') {
+                        map.setLayoutProperty(layer.id, 'text-size', baseTextSize + 5);
+                    } else {
+                        // For all other symbol layers (lines labels, dynamic labels, altitude labels, etc.), use baseTextSize.
+                        map.setLayoutProperty(layer.id, 'text-size', baseTextSize);
+                    }
+                }
+            });
+        }
+
         // Function to add (or update) GeoJSON layers using the current configuration folder.
         function addGeoJSONLayers() {
-            // Rebuild the config prefix from the first three parts of the currentFolder name.
+            // Rebuild the config prefix from the current config
             const configPrefix = currentConfig.split('-').slice(0, 3).join('-');
-            
-            // Add or update the main GeoJSON source with a rebuilt file name.
+
+            // Add or update the main GeoJSON source.
             if (!map.getSource('geojson-data')) {
                 map.addSource('geojson-data', {
                     type: 'geojson',
@@ -521,7 +541,7 @@
                 map.getSource('geojson-data').setData(currentConfig + '/aa_alps_' + configPrefix + '.geojson');
             }
             
-            // Add or update the polygons source with a rebuilt file name.
+            // Add or update the polygons source.
             if (!map.getSource('polygons')) {
                 map.addSource('polygons', {
                     type: 'geojson',
@@ -531,83 +551,8 @@
                 map.getSource('polygons').setData(currentConfig + '/aa_alps_' + configPrefix + '_sectors1.geojson');
             }
             
-            // Add static layers if they are not already present.
-            if (!map.getLayer('linestrings-layer')) {
-                map.addLayer({
-                    id: 'linestrings-layer',
-                    type: 'line',
-                    source: 'geojson-data',
-                    filter: ['==', '$type', 'LineString'],
-                    paint: {
-                        'line-color': '#000',
-                        'line-width': ['step', ['zoom'], 1, 10, 2]
-                    }
-                });
-            }
-            
-            if (!map.getLayer('linestrings-labels')) {
-                map.addLayer({
-                    id: 'linestrings-labels',
-                    type: 'symbol',
-                    source: 'geojson-data',
-                    minzoom: 8,
-                    filter: ['==', '$type', 'LineString'],
-                    layout: {
-                        'text-field': '{ELEV}',
-                        'symbol-placement': 'line',
-                        'text-rotation-alignment': 'auto',
-                        'text-keep-upright': true,
-                        'text-size': 14,
-                        'text-allow-overlap': false,
-                        'text-ignore-placement': false,
-                        'text-offset': [0, 0],
-                        'symbol-spacing': 250
-                    },
-                    paint: {
-                        'text-color': '#000',
-                        'text-halo-color': '#fff',
-                        'text-halo-width': 2
-                    }
-                });
-            }
-            
-            if (!map.getLayer('points-layer')) {
-                map.addLayer({
-                    id: 'points-layer',
-                    type: 'circle',
-                    source: 'geojson-data',
-                    filter: ['==', '$type', 'Point'],
-                    paint: {
-                        'circle-radius': 10,
-                        'circle-color': '#ff0000',
-                        'circle-stroke-width': 2,
-                        'circle-stroke-color': '#fff'
-                    }
-                });
-            }
-            
-            if (!map.getLayer('points-labels')) {
-                map.addLayer({
-                    id: 'points-labels',
-                    type: 'symbol',
-                    source: 'geojson-data',
-                    minzoom: 7,
-                    filter: ['==', '$type', 'Point'],
-                    layout: {
-                        'text-field': '{name}',
-                        'text-size': 17,
-                        'text-allow-overlap': false,
-                        'text-ignore-placement': true,
-                        'text-offset': [0.8, 0.8]
-                    },
-                    paint: {
-                        'text-color': '#000',
-                        'text-halo-color': '#fff',
-                        'text-halo-width': 2
-                    }
-                });
-            }
-            
+            // ---------------------------------------------------------------------
+            // First load the polygon layer so that it renders underneath subsequent layers.
             if (!map.getLayer('polygons-layer')) {
                 map.addLayer({
                     id: 'polygons-layer',
@@ -631,6 +576,36 @@
                 });
             }
             
+            // ---------------------------------------------------------------------
+            // Add non-label layers (features) next.
+            if (!map.getLayer('linestrings-layer')) {
+                map.addLayer({
+                    id: 'linestrings-layer',
+                    type: 'line',
+                    source: 'geojson-data',
+                    filter: ['==', '$type', 'LineString'],
+                    paint: {
+                        'line-color': '#000',
+                        'line-width': ['step', ['zoom'], 1, 10, 2]
+                    }
+                });
+            }
+            
+            if (!map.getLayer('points-layer')) {
+                map.addLayer({
+                    id: 'points-layer',
+                    type: 'circle',
+                    source: 'geojson-data',
+                    filter: ['==', '$type', 'Point'],
+                    paint: {
+                        'circle-radius': 10,
+                        'circle-color': '#ff0000',
+                        'circle-stroke-width': 2,
+                        'circle-stroke-color': '#fff'
+                    }
+                });
+            }
+            
             if (!map.getLayer('points-layer-clickable')) {
                 map.addLayer({
                     id: 'points-layer-clickable',
@@ -641,6 +616,56 @@
                         'circle-radius': 20,
                         'circle-color': '#000000',
                         'circle-opacity': 0
+                    }
+                });
+            }
+            
+            // ---------------------------------------------------------------------
+            // Now add the label layers so they always render on top.
+            if (!map.getLayer('linestrings-labels')) {
+                map.addLayer({
+                    id: 'linestrings-labels',
+                    type: 'symbol',
+                    source: 'geojson-data',
+                    minzoom: 8,
+                    filter: ['==', '$type', 'LineString'],
+                    layout: {
+                        'text-field': '{ELEV}',
+                        'symbol-placement': 'line',
+                        'text-rotation-alignment': 'auto',
+                        'text-keep-upright': true,
+                        'text-size': baseTextSize,
+                        'text-allow-overlap': false,
+                        'text-ignore-placement': false,
+                        'text-offset': [0, 0],
+                        'symbol-spacing': 250
+                    },
+                    paint: {
+                        'text-color': '#000',
+                        'text-halo-color': '#fff',
+                        'text-halo-width': 2
+                    }
+                });
+            }
+            
+            if (!map.getLayer('points-labels')) {
+                map.addLayer({
+                    id: 'points-labels',
+                    type: 'symbol',
+                    source: 'geojson-data',
+                    minzoom: 7,
+                    filter: ['==', '$type', 'Point'],
+                    layout: {
+                        'text-field': '{name}',
+                        'text-size': baseTextSize + 5,
+                        'text-allow-overlap': false,
+                        'text-ignore-placement': true,
+                        'text-offset': [0.8, 0.8]
+                    },
+                    paint: {
+                        'text-color': '#000',
+                        'text-halo-color': '#fff',
+                        'text-halo-width': 2
                     }
                 });
             }
@@ -710,7 +735,7 @@
                         'symbol-placement': 'line',
                         'text-rotation-alignment': 'auto',
                         'text-keep-upright': true,
-                        'text-size': 14,
+                        'text-size': baseTextSize, // Dynamic labels use baseTextSize
                         'text-allow-overlap': false,
                         'text-ignore-placement': false,
                         'text-offset': [0, 0],
@@ -800,32 +825,40 @@
             }
         });
         
-        // Global variables for text size of label layers 
-        // (adjust these initial values to match your map's initial label sizes)
-        let currentPointsLabelSize = 17;
-        let currentLinesLabelSize = 14;
 
-        // Increase text size by 1 for both label layers
-        document.getElementById('textIncreaseBtn').addEventListener('click', () => {
-            currentPointsLabelSize++;
-            currentLinesLabelSize++;
-            if (map.getLayer('points-labels')) {
-                map.setLayoutProperty('points-labels', 'text-size', currentPointsLabelSize);
-            }
-            if (map.getLayer('linestrings-labels')) {
-                map.setLayoutProperty('linestrings-labels', 'text-size', currentLinesLabelSize);
-            }
-        });
+        // Function to show the loading message with a given text.
+        function showLoadingMessage(text) {
+            const messageDiv = document.getElementById('loadingMessage');
+            messageDiv.textContent = text;
+            messageDiv.style.display = "block";
+        }
 
-        // Decrease text size by 1 for both label layers (with a minimum value check)
-        document.getElementById('textDecreaseBtn').addEventListener('click', () => {
-            currentPointsLabelSize = Math.max(1, currentPointsLabelSize - 1);
-            currentLinesLabelSize = Math.max(1, currentLinesLabelSize - 1);
-            if (map.getLayer('points-labels')) {
-                map.setLayoutProperty('points-labels', 'text-size', currentPointsLabelSize);
+        // Function to hide the loading message.
+        function hideLoadingMessage() {
+            document.getElementById('loadingMessage').style.display = "none";
+        }
+
+        // --- Connection Message Logic ---
+        function updateConnectionMessage() {
+            const messageDiv = document.getElementById('loadingMessage');
+            if (!navigator.onLine) {
+                messageDiv.textContent = "No internet connection. Please connect to the internet.";
+                messageDiv.style.display = "block";
+            } else {
+                messageDiv.style.display = "none";
             }
-            if (map.getLayer('linestrings-labels')) {
-                map.setLayoutProperty('linestrings-labels', 'text-size', currentLinesLabelSize);
+        }
+
+        updateConnectionMessage();
+
+        window.addEventListener('offline', updateConnectionMessage);
+        window.addEventListener('online', updateConnectionMessage);
+
+        const polygonOpacitySlider = document.getElementById('polygonOpacitySlider');
+        polygonOpacitySlider.addEventListener('input', function() {
+            const opacity = parseFloat(this.value);
+            if (map.getLayer('polygons-layer')) {
+                map.setPaintProperty('polygons-layer', 'fill-opacity', opacity);
             }
         });
 
@@ -1017,7 +1050,7 @@
                     minzoom: 9,
                     layout: {
                         'text-field': '{altitude}',
-                        'text-size': 15,
+                        'text-size': baseTextSize, // Use the base text size for altitude labels
                         'text-offset': [0, -0.5]
                     },
                     paint: {
@@ -1056,40 +1089,15 @@
             document.getElementById('visibilityIcon').textContent = newVisibility === 'visible' ? 'visibility' : 'visibility_off';
         });
 
-        // Function to show the loading message with a given text.
-        function showLoadingMessage(text) {
-            const messageDiv = document.getElementById('loadingMessage');
-            messageDiv.textContent = text;
-            messageDiv.style.display = "block";
-        }
+        document.getElementById('textDecreaseBtn').addEventListener('click', () => {
+            baseTextSize = Math.max(1, baseTextSize - 1);
+            updateAllLabelSizes();
+        });
 
-        // Function to hide the loading message.
-        function hideLoadingMessage() {
-            document.getElementById('loadingMessage').style.display = "none";
-        }
-
-        // --- Connection Message Logic ---
-        function updateConnectionMessage() {
-            const messageDiv = document.getElementById('loadingMessage');
-            if (!navigator.onLine) {
-                messageDiv.textContent = "No internet connection. Please connect to the internet.";
-                messageDiv.style.display = "block";
-            } else {
-                messageDiv.style.display = "none";
-            }
-        }
-
-        updateConnectionMessage();
-
-        window.addEventListener('offline', updateConnectionMessage);
-        window.addEventListener('online', updateConnectionMessage);
-
-        const polygonOpacitySlider = document.getElementById('polygonOpacitySlider');
-        polygonOpacitySlider.addEventListener('input', function() {
-            const opacity = parseFloat(this.value);
-            if (map.getLayer('polygons-layer')) {
-                map.setPaintProperty('polygons-layer', 'fill-opacity', opacity);
-            }
+        // Increase Text Size Button event listener
+        document.getElementById('textIncreaseBtn').addEventListener('click', () => {
+            baseTextSize += 1;
+            updateAllLabelSizes();
         });
     </script>
 </body>
