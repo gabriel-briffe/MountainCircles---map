@@ -278,41 +278,85 @@
             width: 90%;
             position: relative;
             font-family: sans-serif;
+            text-align: center;
+            color: #000;
         }
-        #popupMenu .close {
-            position: absolute;
-            top: 8px;
-            right: 8px;
-            cursor: pointer;
-            font-size: 20px;
-            font-family: 'Material Icons Round';
-        }
-        @media (prefers-color-scheme: dark) {
-            #popupMenu .popup-content {
-                background: #333;
-                color: #fff;
-            }
+        
+        /* Config buttons container: centers buttons and adds gap with extra bottom margin */
+        #popupMenu #configButtons {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 5px;  /* 5px gap between config buttons */
+            margin-bottom: 15px;
         }
 
-        /* Style for the IGC file control within the popup */
+        /* Style for configuration buttons inside the popup menu */
+        #popupMenu #configButtons button {
+            display: inline-block;
+            padding: 12px 20px;
+            font-size: 18px;
+            margin: 5px;  /* fallback margin, in addition to the flex gap */
+            border: none;
+            border-radius: 4px;
+            background: #eee;
+            cursor: pointer;
+        }
+        #popupMenu #configButtons button:hover {
+            background: #ddd;
+        }
+
+        /* Style for the IGC file button; also centered and separated */
         #popupMenu button#igcFileButton {
-            display: flex;
+            display: inline-flex;
             align-items: center;
             gap: 8px;
-            margin-top: 12px;
             background: #eee;
             border: none;
             border-radius: 4px;
             padding: 8px 12px;
+            margin-top: 15px;  /* extra top margin to separate from the config buttons */
             cursor: pointer;
-            font-family: sans-serif;
         }
         #popupMenu button#igcFileButton:hover {
             background: #ddd;
         }
-        #popupMenu button#igcFileButton .material-icons-round {
-            font-family: 'Material Icons Round';
-            font-size: 20px;
+
+        /* Style for the close button in the popup menu using a Material Icon */
+        #popupMenu .popup-content .close {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: transparent;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            color: #000;
+        }
+
+        /* Dark mode styling for the popup (like the dock) */
+        @media (prefers-color-scheme: dark) {
+            #popupMenu .popup-content {
+                background: rgba(20, 20, 20, 0.9);
+                color: #fff;
+            }
+            #popupMenu #configButtons button {
+                background: rgba(20, 20, 20, 0.8);
+                color: #fff;
+            }
+            #popupMenu #configButtons button:hover {
+                background: rgba(20, 20, 20, 1);
+            }
+            #popupMenu button#igcFileButton {
+                background: rgba(20, 20, 20, 0.8);
+                color: #fff;
+            }
+            #popupMenu button#igcFileButton:hover {
+                background: rgba(20, 20, 20, 1);
+            }
+            #popupMenu .popup-content .close {
+                color: #fff;
+            }
         }
     </style>
 </head>
@@ -326,7 +370,7 @@
 
     <!-- Transparent Box on Bottom Left with Big Bold Text -->
     <div id="parametersBox" style="position: absolute; bottom: 10px; left: 10px; z-index: 1; background: rgba(255, 255, 255, 0.5); padding: 10px; border-radius: 5px; font-family: sans-serif; font-weight: bold; font-size: 24px; color: #000;">
-        L/D 20 - ground 100m - circuit 250m
+        glide parameters
     </div>
 
     <!-- Map Dock: Controls always visible -->
@@ -356,10 +400,10 @@
     <!-- Popup Menu: For controls not requiring constant map visibility -->
     <div id="popupMenu">
         <div class="popup-content">
-            <span class="close" id="closePopupBtn">&times;</span>
-            <h2>Other Options</h2>
-            <p>Here you can add extra controls or settings.</p>
-            <h3>Select Data Configuration</h3>
+            <button class="close" id="closePopupBtn">
+                <span class="material-icons-round">close</span>
+            </button>
+            <h3>Select Glide ratio</h3>
             <div id="configButtons"></div>
             <!-- IGC File Control with Icon -->
             <button id="igcFileButton">
