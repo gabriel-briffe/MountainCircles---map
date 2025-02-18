@@ -4,10 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <base href="/MountainCircles---map/">
-    <title>MountainCircles Map</title>
+    <title>MountainCircles Map - Beta</title>
     <!-- Using jsDelivr instead of unpkg to avoid potential network errors on Windows -->
     <script src="https://cdn.jsdelivr.net/npm/maplibre-gl@latest/dist/maplibre-gl.js"></script>
     <link href="https://cdn.jsdelivr.net/npm/maplibre-gl@latest/dist/maplibre-gl.css" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
     <style>
         body { margin: 0; padding: 0; }
         #map { width: 100%; height: 100vh; }
@@ -23,31 +24,343 @@
             font-family: sans-serif;
             box-shadow: 0 1px 4px rgba(0,0,0,0.3);
         }
+        /* Container uses flex, aligning items in the center vertically */
+        #polygonOpacityControl {
+            position: absolute;
+            top: 50px;
+            right: 10px;
+            z-index: 1;
+            background: #fff;
+            padding: 5px;
+            border-radius: 3px;
+            font-family: sans-serif;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+            display: flex;
+            align-items: center;
+        }
+        /* Make the button a flex container so its content centers */
+        #polygonOpacityControl button {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0;
+            margin-right: 5px;
+            background: none;
+            border: none;
+            cursor: pointer;
+            min-height: 24px; /* ensures the button is at least 24px tall */
+        }
+        /* Force the Material Icons font with !important */
+        .material-icons-round {
+            font-family: 'Material Icons Round' !important;
+            font-size: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            line-height: 1;
+            color: #000;
+        }
+        /* Dark mode adjustments */
+        @media (prefers-color-scheme: dark) {
+            .material-icons-round {
+                color: #fff;
+            }
+        }
+
+        /* --------------- MAP DOCK (apple-dock style) --------------- */
+        #mapDock {
+            position: fixed;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            display: flex;
+            align-items: center;
+            flex-direction: column;
+            gap: 10px;
+            z-index: 1100;
+        }
+
+        /* -------------------------- */
+        /* Slider Container (Dock Box) */
+        /* -------------------------- */
+        .dock-slider {
+            width: 48px;       /* Same as other button width */
+            height: 150px;     /* Give enough room for the rotated slider */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(255, 255, 255, 0.8); /* Light mode: white-ish background */
+            border-radius: 8px;
+            padding: 8px;
+            box-sizing: border-box;
+        }
+
+        /* Slider styling remains the same in landscape mode */
+        #polygonOpacitySlider {
+            width: 150px;  /* Length of the slider track */
+            -webkit-transform: rotate(-90deg);
+            -ms-transform: rotate(-90deg);
+            transform: rotate(-90deg);
+            -webkit-appearance: none; /* Remove default styling */
+            background: transparent;  /* Needed for custom pseudo-elements */
+        }
+
+        /* Portrait mode: dock is horizontal, so the slider must be horizontal */
+        @media (orientation: portrait) {
+            #mapDock {
+                position: fixed;
+                top: 10px;
+                left: 50%;
+                right: auto;
+                transform: translateX(-50%);
+                flex-direction: row;
+                align-items: center;
+                gap: 10px;
+            }
+            .dock-slider {
+                /* Adjust container to have the same height as other buttons */
+                width: 150px;
+                height: 48px;
+                background: rgba(255, 255, 255, 0.8);
+                border-radius: 8px;
+                padding: 8px;
+                box-sizing: border-box;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+            /* Force the slider to be horizontal by resetting its rotation */
+            .dock-slider #polygonOpacitySlider {
+                -webkit-transform: rotate(0deg) !important;
+                -ms-transform: rotate(0deg) !important;
+                transform: rotate(0deg) !important;
+                width: 100% !important;
+            }
+        }
+
+        /* Dark mode adjustments: use a grey background similar to the buttons */
+        @media (prefers-color-scheme: dark) {
+            .dock-slider {
+                background: rgba(20, 20, 20, 0.8);
+            }
+        }
+
+        /* ===================== */
+        /* Custom Slider Styling */
+        /* ===================== */
+
+        /* For Webkit Browsers (Chrome, Safari, Opera) */
+        #polygonOpacitySlider::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 6px;
+            background: #ccc;
+            border-radius: 3px;
+        }
+        #polygonOpacitySlider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 20px;
+            width: 20px;
+            border-radius: 50%;
+            background: #fff;
+            margin-top: -7px; /* Center the thumb on the track */
+            cursor: pointer;
+        }
+
+        /* For Firefox */
+        #polygonOpacitySlider::-moz-range-track {
+            width: 100%;
+            height: 6px;
+            background: #ccc;
+            border-radius: 3px;
+        }
+        #polygonOpacitySlider::-moz-range-thumb {
+            height: 20px;
+            width: 20px;
+            border-radius: 50%;
+            background: #fff;
+            cursor: pointer;
+        }
+
+        /* For IE */
+        #polygonOpacitySlider::-ms-track {
+            width: 100%;
+            height: 6px;
+            background: transparent;
+            border-color: transparent;
+            color: transparent;
+        }
+        #polygonOpacitySlider::-ms-fill-lower {
+            background: #ccc;
+            border-radius: 3px;
+        }
+        #polygonOpacitySlider::-ms-fill-upper {
+            background: #ccc;
+            border-radius: 3px;
+        }
+        #polygonOpacitySlider::-ms-thumb {
+            height: 20px;
+            width: 20px;
+            border-radius: 50%;
+            background: #fff;
+            cursor: pointer;
+        }
+
+        /* Dark mode adjustments: use a darker grey for the slider track */
+        @media (prefers-color-scheme: dark) {
+            #polygonOpacitySlider::-webkit-slider-runnable-track {
+                background: #555;
+            }
+            #polygonOpacitySlider::-moz-range-track {
+                background: #555;
+            }
+            #polygonOpacitySlider::-ms-fill-lower,
+            #polygonOpacitySlider::-ms-fill-upper {
+                background: #555;
+            }
+        }
+
+        #mapDock button {
+            background: rgba(255, 255, 255, 0.8);
+            border: none;
+            outline: none;
+            border-radius: 8px;
+            padding: 8px;
+            cursor: pointer;
+            transition: transform 0.3s ease, background 0.3s ease;
+            /* Ensure each button has enough room for the icon */
+            width: 48px;
+            height: 48px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        #mapDock button:hover {
+            transform: scale(1.2);
+            background: rgba(255, 255, 255, 1);
+        }
+        #mapDock .material-icons-round {
+            font-family: 'Material Icons Round';
+            font-size: 24px;
+            line-height: 24px;
+            color: #000;
+        }
+        @media (prefers-color-scheme: dark) {
+            #mapDock button {
+                background: rgba(20, 20, 20, 0.8);
+            }
+            #mapDock button:hover {
+                background: rgba(20, 20, 20, 1);
+            }
+            #mapDock .material-icons-round {
+                color: #fff;
+            }
+        }
+
+        /* --------------- POPUP MENU (centered on screen) --------------- */
+        #popupMenu {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(0, 0, 0, 0.5);
+            display: none; /* Hidden by default */
+            align-items: center;
+            justify-content: center;
+            z-index: 1200;
+        }
+        #popupMenu .popup-content {
+            background: #fff;
+            padding: 20px;
+            border-radius: 12px;
+            max-width: 400px;
+            width: 90%;
+            position: relative;
+            font-family: sans-serif;
+            text-align: center;
+            color: #000;
+        }
+        
+        /* Config buttons container: centers buttons and adds gap with extra bottom margin */
+        #popupMenu #configButtons {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 5px;  /* 5px gap between config buttons */
+            margin-bottom: 15px;
+        }
+
+        /* Style for configuration buttons inside the popup menu */
+        #popupMenu #configButtons button {
+            display: inline-block;
+            padding: 12px 20px;
+            font-size: 18px;
+            margin: 5px;  /* fallback margin, in addition to the flex gap */
+            border: none;
+            border-radius: 4px;
+            background: #eee;
+            cursor: pointer;
+        }
+        #popupMenu #configButtons button:hover {
+            background: #ddd;
+        }
+
+        /* Style for the IGC file button; also centered and separated */
+        #popupMenu button#igcFileButton {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: #eee;
+            border: none;
+            border-radius: 4px;
+            padding: 8px 12px;
+            margin-top: 15px;  /* extra top margin to separate from the config buttons */
+            cursor: pointer;
+        }
+        #popupMenu button#igcFileButton:hover {
+            background: #ddd;
+        }
+
+        /* Style for the close button in the popup menu using a Material Icon */
+        #popupMenu .popup-content .close {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: transparent;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            color: #000;
+        }
+
+        /* Dark mode styling for the popup (like the dock) */
+        @media (prefers-color-scheme: dark) {
+            #popupMenu .popup-content {
+                background: rgba(20, 20, 20, 0.9);
+                color: #fff;
+            }
+            #popupMenu #configButtons button {
+                background: rgba(20, 20, 20, 0.8);
+                color: #fff;
+            }
+            #popupMenu #configButtons button:hover {
+                background: rgba(20, 20, 20, 1);
+            }
+            #popupMenu button#igcFileButton {
+                background: rgba(20, 20, 20, 0.8);
+                color: #fff;
+            }
+            #popupMenu button#igcFileButton:hover {
+                background: rgba(20, 20, 20, 1);
+            }
+            #popupMenu .popup-content .close {
+                color: #fff;
+            }
+        }
     </style>
 </head>
 <body>
-    <!-- Basemap switcher control -->
-    <div id="styleSwitcher">
-        <label for="basemapSelect">Basemap: </label>
-        <select id="basemapSelect">
-            <option value="thunderforest">Thunderforest Landscape</option>
-            <option value="custom" selected>Custom Map</option>
-        </select>
-    </div>
-
-    <!-- New control: Checkbox (for toggling linestrings & labels) and polygon transparency slider -->
-    <div id="polygonOpacityControl" style="position: absolute; top: 50px; right: 10px; z-index: 1; background: #fff; padding: 5px; border-radius: 3px; font-family: sans-serif; box-shadow: 0 1px 4px rgba(0,0,0,0.3); display: flex; align-items: center;">
-        <input id="toggleLayerCheckbox" type="checkbox" checked style="margin-right: 5px;">
-        <input id="polygonOpacitySlider" type="range" min="0" max="0.5" step="0.01" value="0.1">
-    </div>
-
-    <!-- New control: IGC file button (below the slider) -->
-    <div id="igcFileControl" style="position: absolute; top: 90px; right: 10px; z-index: 1; background: #fff; padding: 5px; border-radius: 3px; font-family: sans-serif; box-shadow: 0 1px 4px rgba(0,0,0,0.3);">
-        <button id="igcFileButton">Add IGC File</button>
-        <!-- Hidden file input triggered by the button -->
-        <input type="file" id="igcFileInput" accept=".igc" style="display: none;">
-    </div>
-
     <!-- Transparent Loading/Connection Message on Top of the Map -->
     <div id="loadingMessage" style="position: absolute; top: 10px; left: 50%; transform: translateX(-50%); z-index: 1000; background: rgba(255,255,255,0.8); padding: 10px 20px; border-radius: 3px; font-family: sans-serif; display: none;">
         Loading files, please wait...
@@ -57,38 +370,55 @@
 
     <!-- Transparent Box on Bottom Left with Big Bold Text -->
     <div id="parametersBox" style="position: absolute; bottom: 10px; left: 10px; z-index: 1; background: rgba(255, 255, 255, 0.5); padding: 10px; border-radius: 5px; font-family: sans-serif; font-weight: bold; font-size: 24px; color: #000;">
-        L/D 20 - ground 100m - circuit 250m
+        glide parameters
+    </div>
+
+    <!-- Map Dock: Controls always visible -->
+    <div id="mapDock">
+        <!-- Toggle Button -->
+        <button title="Toggle Layer Visibility" id="toggleLayerButton">
+            <span class="material-icons-round" id="visibilityIcon">visibility</span>
+        </button>
+        
+        <!-- Slider wrapper for polygon opacity -->
+        <div class="dock-slider">
+            <input id="polygonOpacitySlider" type="range" min="0" max="0.5" step="0.01" value="0.1">
+        </div>
+        
+        <!-- Other dock buttons -->
+        <button title="Increase Text Size" id="textIncreaseBtn">
+            <span class="material-icons-round">exposure_plus_1</span>
+        </button>
+        <button title="Decrease Text Size" id="textDecreaseBtn">
+            <span class="material-icons-round">exposure_minus_1</span>
+        </button>
+        <button title="More Options" id="moreOptionsBtn">
+            <span class="material-icons-round">menu</span>
+        </button>
+    </div>
+
+    <!-- Popup Menu: For controls not requiring constant map visibility -->
+    <div id="popupMenu">
+        <div class="popup-content">
+            <button class="close" id="closePopupBtn">
+                <span class="material-icons-round">close</span>
+            </button>
+            <h3>Select Glide ratio</h3>
+            <div id="configButtons"></div>
+            <!-- IGC File Control with Icon -->
+            <button id="igcFileButton">
+                <span class="material-icons-round">folder_open</span>
+                <span>Open IGC File</span>
+            </button>
+            <!-- Hidden file input triggered by the IGC file button -->
+            <input type="file" id="igcFileInput" accept="*/*" style="display: none;">
+        </div>
     </div>
 
     <script>
-        // Define the style objects for each basemap
-        const thunderforestStyle = {
-            "version": 8,
-            "name": "Thunderforest Landscape",
-            "glyphs": "https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf",
-            "sources": {
-                "raster-tiles": {
-                    "type": "raster",
-                    "tiles": [
-                        "https://tile.thunderforest.com/landscape/{z}/{x}/{y}.png?apikey=a2917367be0b429d8c4772c115159b65"
-                    ],
-                    "tileSize": 256,
-                    "attribution": "© <a href='http://www.thunderforest.com/'>Thunderforest</a>, © <a href='https://www.openstreetmap.org/copyright'>OpenStreetMap</a> contributors"
-                }
-            },
-            "layers": [
-                {
-                    "id": "simple-tiles",
-                    "type": "raster",
-                    "source": "raster-tiles",
-                    "minzoom": 0,
-                    "maxzoom": 22
-                }
-            ]
-        };
+        // Global variable to hold the current config folder name.
+        var currentConfig = '20-100-250-4200';
 
-        // Added new custom style. Ensure that your extracted tiles are placed in a folder "tiles"
-        // at the root of your repository.
         const customStyle = {
             "version": 8,
             "name": "Custom Map",
@@ -114,68 +444,94 @@
             ]
         };
 
-        // Object mapping for style selection, including our custom style.
-        const styles = {
-            thunderforest: thunderforestStyle,
-            custom: customStyle  // Added custom style mapping
-        };
-
-        // Start with the Custom style by default
-        let currentStyle = customStyle;
-
-        // Function to show the loading message with a given text.
-        function showLoadingMessage(text) {
-            const messageDiv = document.getElementById('loadingMessage');
-            messageDiv.textContent = text;
-            messageDiv.style.display = "block";
-        }
-
-        // Function to hide the loading message.
-        function hideLoadingMessage() {
-            document.getElementById('loadingMessage').style.display = "none";
-        }
-
-        // --- Connection Message Logic ---
-        // Function to update the message based solely on the network status.
-        function updateConnectionMessage() {
-            const messageDiv = document.getElementById('loadingMessage');
-            if (!navigator.onLine) {
-                messageDiv.textContent = "No internet connection. Please connect to the internet.";
-                messageDiv.style.display = "block";
-            } else {
-                messageDiv.style.display = "none";
+        
+        // Declare map in the global scope.
+        let map;
+        
+        // Helper to update the parameters box text based on the config folder.
+        function updateParametersBox(cfg) {
+            const parts = cfg.split('-'); // e.g. ["20", "100", "250", "4200"]
+            if (parts.length >= 3) {
+                const labelText = "L/D " + parts[0] + " - ground " + parts[1] + "m - circuit " + parts[2] + "m";
+                document.getElementById('parametersBox').textContent = labelText;
             }
         }
-
-        // Initial check
-        updateConnectionMessage();
-
-        // Listen for connectivity changes
-        window.addEventListener('offline', updateConnectionMessage);
-        window.addEventListener('online', updateConnectionMessage);
-
-        // Initialize the map
-        const map = new maplibregl.Map({
-            container: 'map',
-            style: currentStyle,
-            bounds: [[4.9698169, 43.6088902], [13.696105, 47.5644488]],  // replaced by python
-            fitBoundsOptions: {
-                padding: 50,
-                maxZoom: 14,
-                duration: 1000
-            }
-        });
-
-        // Function to add GeoJSON source and custom layers
+        
+        // Call updateParametersBox at startup.
+        updateParametersBox(currentConfig);
+        
+        // Function to remove static GeoJSON layers and sources.
+        function removeGeoJSONLayers() {
+            const layersToRemove = [
+                'linestrings-layer',
+                'linestrings-labels',
+                'points-layer',
+                'points-labels',
+                'points-layer-clickable',
+                'polygons-layer'
+            ];
+            layersToRemove.forEach(id => {
+                if (map.getLayer(id)) {
+                    map.removeLayer(id);
+                }
+            });
+            const sourcesToRemove = ['geojson-data', 'polygons'];
+            sourcesToRemove.forEach(id => {
+                if (map.getSource(id)) {
+                    map.removeSource(id);
+                }
+            });
+        }
+        
+        // Function to remove dynamic layers added when clicking a point.
+        function removeDynamicLayers() {
+            // Remove dynamic layers (their id starts with "dynamic-lines-")
+            const currentLayers = map.getStyle().layers.slice();
+            currentLayers.forEach(layer => {
+                if(layer.id.startsWith('dynamic-lines-')) {
+                    if(map.getLayer(layer.id)) { 
+                        map.removeLayer(layer.id);
+                    }
+                }
+            });
+            
+            // Remove the dynamic sources; we iterate over all source names.
+            const sourceIds = Object.keys(map.style.sourceCaches);
+            sourceIds.forEach(sourceId => {
+                if(sourceId.startsWith('dynamic-lines-')) {
+                    if(map.getSource(sourceId)) { 
+                        map.removeSource(sourceId);
+                    }
+                }
+            });
+        }
+        
+        // Function to add (or update) GeoJSON layers using the current configuration folder.
         function addGeoJSONLayers() {
+            // Rebuild the config prefix from the first three parts of the currentFolder name.
+            const configPrefix = currentConfig.split('-').slice(0, 3).join('-');
+            
+            // Add or update the main GeoJSON source with a rebuilt file name.
             if (!map.getSource('geojson-data')) {
                 map.addSource('geojson-data', {
                     type: 'geojson',
-                    data: 'aa_alps_20-100-250.geojson'  // Replace with your actual GeoJSON file path for lines/points
+                    data: currentConfig + '/aa_alps_' + configPrefix + '.geojson'
                 });
+            } else {
+                map.getSource('geojson-data').setData(currentConfig + '/aa_alps_' + configPrefix + '.geojson');
             }
             
-            // Add linestrings layer if it doesn't exist
+            // Add or update the polygons source with a rebuilt file name.
+            if (!map.getSource('polygons')) {
+                map.addSource('polygons', {
+                    type: 'geojson',
+                    data: currentConfig + '/aa_alps_' + configPrefix + '_sectors1.geojson'
+                });
+            } else {
+                map.getSource('polygons').setData(currentConfig + '/aa_alps_' + configPrefix + '_sectors1.geojson');
+            }
+            
+            // Add static layers if they are not already present.
             if (!map.getLayer('linestrings-layer')) {
                 map.addLayer({
                     id: 'linestrings-layer',
@@ -184,12 +540,11 @@
                     filter: ['==', '$type', 'LineString'],
                     paint: {
                         'line-color': '#000',
-                        'line-width': ['step', ['zoom'], 1, 10, 2]  // width 1 for zoom < 8, and 2 for zoom >= 8
+                        'line-width': ['step', ['zoom'], 1, 10, 2]
                     }
                 });
             }
             
-            // Add linestrings labels (only above zoom 8)
             if (!map.getLayer('linestrings-labels')) {
                 map.addLayer({
                     id: 'linestrings-labels',
@@ -215,8 +570,7 @@
                     }
                 });
             }
-
-            // Add points layer
+            
             if (!map.getLayer('points-layer')) {
                 map.addLayer({
                     id: 'points-layer',
@@ -231,8 +585,7 @@
                     }
                 });
             }
-
-            // Add points labels (only above zoom 8)
+            
             if (!map.getLayer('points-labels')) {
                 map.addLayer({
                     id: 'points-labels',
@@ -254,17 +607,7 @@
                     }
                 });
             }
-
-            // --- New code: Adding the polygons layer ---
-            // Check if the polygons source has been added already
-            if (!map.getSource('polygons')) {
-                map.addSource('polygons', {
-                    type: 'geojson',
-                    data: 'aa_alps_20-100-250_sectors1.geojson'  // Make sure this file is accessible
-                });
-            }
             
-            // Add the polygon fill layer with dynamic opacity and styled fill-color based on "color_id"
             if (!map.getLayer('polygons-layer')) {
                 map.addLayer({
                     id: 'polygons-layer',
@@ -274,29 +617,20 @@
                         'fill-color': [
                             "match",
                             ["get", "color_id"],
-                            0, "#0000FF",  // When color_id === 0
-                            1, "#FF00FF",  // When color_id === 1
-                            2, "#FFFF00",  // When color_id === 2
-                            3, "#00FFFF",  // When color_id === 3
-                            4, "#00FF00",  // When color_id === 4
-                            5, "#FF0000",  // When color_id === 5
-                            6, "#FFA500",  // When color_id === 6
-                            "#000000"      // Fallback default color
+                            0, "#0000FF",
+                            1, "#FF00FF",
+                            2, "#FFFF00",
+                            3, "#00FFFF",
+                            4, "#00FF00",
+                            5, "#FF0000",
+                            6, "#FFA500",
+                            "#000000"
                         ],
-                        'fill-opacity': 0.1  // Default opacity matching the initial slider value
+                        'fill-opacity': 0.1
                     }
                 });
             }
             
-            // Ensure all label layers are moved on top of the polygons
-            if (map.getLayer('linestrings-labels')) {
-                map.moveLayer('linestrings-labels');
-            }
-            if (map.getLayer('points-labels')) {
-                map.moveLayer('points-labels');
-            }
-
-            // --- New: Add an invisible clickable layer for points with larger radius ---
             if (!map.getLayer('points-layer-clickable')) {
                 map.addLayer({
                     id: 'points-layer-clickable',
@@ -304,54 +638,56 @@
                     source: 'geojson-data',
                     filter: ['==', '$type', 'Point'],
                     paint: {
-                        'circle-radius': 20,          // Clickable area: 20px radius
-                        'circle-color': '#000000',      // Color doesn't matter because it will be invisible
-                        'circle-opacity': 0             // Make layer invisible
+                        'circle-radius': 20,
+                        'circle-color': '#000000',
+                        'circle-opacity': 0
                     }
                 });
             }
-
-            // --- Ensure point layers are on top of the polygon layer ---
-            if (map.getLayer('points-layer-clickable')) {
-                map.moveLayer('points-layer-clickable');
-            }
-            if (map.getLayer('points-layer')) {
-                map.moveLayer('points-layer');
-            }
-            if (map.getLayer('points-labels')) {
-                map.moveLayer('points-labels');
-            }
         }
-
-        // Define a dedicated function to handle point clicks for toggling dynamic layers.
+        
+        // Function to switch the data configuration.
+        function switchConfig(cfg) {
+            // Remove any dynamic layers (e.g. from previous point clicks).
+            removeDynamicLayers();
+            // Remove the current static layers so they can be reloaded.
+            removeGeoJSONLayers();
+            // Update the parameters box based on the new config folder.
+            updateParametersBox(cfg);
+            // Update the global variable.
+            currentConfig = cfg;
+            addGeoJSONLayers();
+        }
+        
+        // Updated dynamic point click handler to use the current config folder.
         function handlePointClick(e) {
-            console.log("Point clicked event:", e);  // Debug logging to verify click events
+            console.log("Point clicked event:", e);
             if (!e.features || !e.features.length) return;
-
+        
             const feature = e.features[0];
             if (!feature.properties || !feature.properties.filename) {
                 console.warn("Clicked feature missing 'filename' property:", feature);
                 return;
             }
-            const pointFileName = feature.properties.filename;
-            const dynamicLayerId = 'dynamic-lines-' + pointFileName;
+            // Prepend the current config folder when building the file path.
+            const filePath = currentConfig + "/" + feature.properties.filename;
+            // Build a dynamic id that includes the config for uniqueness.
+            const dynamicLayerId = 'dynamic-lines-' + currentConfig + '-' + feature.properties.filename;
             const dynamicSourceId = dynamicLayerId + '-source';
             const dynamicLabelId = dynamicLayerId + '-labels';
-
-            // Toggle: remove dynamic layer if exists, or add it if not present.
+        
             if (map.getLayer(dynamicLayerId)) {
                 console.log("Removing dynamic layer:", dynamicLayerId);
                 if (map.getLayer(dynamicLayerId)) map.removeLayer(dynamicLayerId);
                 if (map.getLayer(dynamicLabelId)) map.removeLayer(dynamicLabelId);
                 if (map.getSource(dynamicSourceId)) map.removeSource(dynamicSourceId);
             } else {
-                console.log("Adding dynamic layer for:", pointFileName);
+                console.log("Adding dynamic layer for:", filePath);
                 map.addSource(dynamicSourceId, {
                     type: 'geojson',
-                    data: pointFileName
+                    data: filePath
                 });
                 
-                // Add the dynamic linestring layer with the same style as your other linestrings
                 map.addLayer({
                     id: dynamicLayerId,
                     type: 'line',
@@ -363,7 +699,6 @@
                     }
                 });
                 
-                // Add the dynamic label layer for the linestrings with styling similar to the other labels
                 map.addLayer({
                     id: dynamicLabelId,
                     type: 'symbol',
@@ -389,11 +724,72 @@
                 });
             }
         }
-
-        // Attach layers and events only once the map has fully loaded.
+        
+        // Set up config buttons in the popup menu.
+        // Available config folders.
+        const availableConfigs = [
+            '30-100-250-4200',
+            '25-100-250-4200',
+            '20-100-250-4200',
+            '10-100-250-4200'
+        ];
+        
+        const configButtonsContainer = document.getElementById('configButtons');
+        availableConfigs.forEach(cfg => {
+            const btn = document.createElement('button');
+            // Use only the first part of the folder name as the button label (e.g., "30", "25", "20", or "10").
+            btn.textContent = cfg.split('-')[0];
+            btn.addEventListener('click', () => {
+                switchConfig(cfg);
+                document.getElementById('popupMenu').style.display = "none";
+                console.log("Switched to configuration: " + cfg);
+            });
+            configButtonsContainer.appendChild(btn);
+        });
+        
+        // Now that our helper functions and event listeners are set up,
+        // initialize the map. (Ensure any variables like currentStyle are defined or adjust as needed.)
+        const currentStyle = customStyle || {
+            "version": 8,
+            "name": "Custom Map",
+            "glyphs": "https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf",
+            "sources": {
+                "custom-tiles": {
+                    "type": "raster",
+                    "tiles": [
+                        "./tiles/{z}/{x}/{y}.png"
+                    ],
+                    "tileSize": 256,
+                    "attribution": "Map data © Your Attribution"
+                }
+            },
+            "layers": [
+                {
+                    "id": "custom-tiles",
+                    "type": "raster",
+                    "source": "custom-tiles",
+                    "minzoom": 0,
+                    "maxzoom": 22
+                }
+            ]
+        };
+        
+        map = new maplibregl.Map({
+            container: 'map',
+            style: currentStyle,
+            bounds: [[4.9698169, 43.6088902], [13.696105, 47.5644488]],
+            fitBoundsOptions: {
+                padding: 50,
+                maxZoom: 14,
+                duration: 1000
+            },
+            attributionControl: false
+        });
+        
+        // Attach layers and events once the map has fully loaded.
         map.on('load', () => {
             addGeoJSONLayers();
-            // Attach the click handler to the clickable layer instead of the visible one.
+            // Attach the click handler to the clickable layer.
             if (map.getLayer('points-layer-clickable')) {
                 map.on('click', 'points-layer-clickable', handlePointClick);
             } else {
@@ -403,54 +799,53 @@
                 map.once('idle', hideLoadingMessage);
             }
         });
+        
+        // Global variables for text size of label layers 
+        // (adjust these initial values to match your map's initial label sizes)
+        let currentPointsLabelSize = 17;
+        let currentLinesLabelSize = 14;
 
-        // Re-add custom layers and reattach event listeners when the style changes.
-        map.on('styledata', () => {
-            addGeoJSONLayers();
-            // Remove then reattach the click handler for the points clickable layer.
-            map.off('click', 'points-layer-clickable', handlePointClick);
-            if (map.getLayer('points-layer-clickable')) {
-                map.on('click', 'points-layer-clickable', handlePointClick);
-            } else {
-                console.warn("points-layer-clickable not found during styledata event.");
-            }
-        });
-
-        // Basemap switcher logic using the dropdown.
-        const basemapSelect = document.getElementById('basemapSelect');
-        basemapSelect.addEventListener('change', (e) => {
-            const selectedStyle = styles[e.target.value];
-            map.setStyle(selectedStyle);
-        });
-
-        // Error handling.
-        map.on('error', (e) => {
-            console.error('Map error:', e);
-        });
-
-        // Polygon transparency slider event listener.
-        const polygonOpacitySlider = document.getElementById('polygonOpacitySlider');
-        polygonOpacitySlider.addEventListener('input', function() {
-            const opacity = parseFloat(this.value);
-            if (map.getLayer('polygons-layer')) {
-                map.setPaintProperty('polygons-layer', 'fill-opacity', opacity);
-            }
-        });
-
-        // Checkbox event listener to toggle linestrings, their labels, and the polygon layer visibility.
-        const toggleLayerCheckbox = document.getElementById('toggleLayerCheckbox');
-        toggleLayerCheckbox.addEventListener('change', function() {
-            const visibility = this.checked ? 'visible' : 'none';
-            if (map.getLayer('linestrings-layer')) {
-                map.setLayoutProperty('linestrings-layer', 'visibility', visibility);
+        // Increase text size by 1 for both label layers
+        document.getElementById('textIncreaseBtn').addEventListener('click', () => {
+            currentPointsLabelSize++;
+            currentLinesLabelSize++;
+            if (map.getLayer('points-labels')) {
+                map.setLayoutProperty('points-labels', 'text-size', currentPointsLabelSize);
             }
             if (map.getLayer('linestrings-labels')) {
-                map.setLayoutProperty('linestrings-labels', 'visibility', visibility);
-            }
-            if (map.getLayer('polygons-layer')) {
-                map.setLayoutProperty('polygons-layer', 'visibility', visibility);
+                map.setLayoutProperty('linestrings-labels', 'text-size', currentLinesLabelSize);
             }
         });
+
+        // Decrease text size by 1 for both label layers (with a minimum value check)
+        document.getElementById('textDecreaseBtn').addEventListener('click', () => {
+            currentPointsLabelSize = Math.max(1, currentPointsLabelSize - 1);
+            currentLinesLabelSize = Math.max(1, currentLinesLabelSize - 1);
+            if (map.getLayer('points-labels')) {
+                map.setLayoutProperty('points-labels', 'text-size', currentPointsLabelSize);
+            }
+            if (map.getLayer('linestrings-labels')) {
+                map.setLayoutProperty('linestrings-labels', 'text-size', currentLinesLabelSize);
+            }
+        });
+
+        // Toggle the popup menu
+        const popupMenu = document.getElementById('popupMenu');
+        document.getElementById('moreOptionsBtn').addEventListener('click', () => {
+            popupMenu.style.display = "flex";
+        });
+        document.getElementById('closePopupBtn').addEventListener('click', () => {
+            popupMenu.style.display = "none";
+        });
+
+        // Close popup when clicking outside the popup content
+        popupMenu.addEventListener('click', (e) => {
+            if(e.target === popupMenu) {
+                popupMenu.style.display = "none";
+            }
+        });
+
+        // --- IGC File Functionality (ported from production) ---
 
         // Function to parse IGC file and convert to GeoJSON
         function igcToGeoJSON(igcContent) {
@@ -459,7 +854,6 @@
             const coordinates = [];
             let metadata = {};
 
-            // Parse each line
             for (const line of lines) {
                 // Handle B records (position fixes)
                 if (line.startsWith('B')) {
@@ -501,7 +895,7 @@
                     try {
                         const headerType = line.substring(1, 5);
                         const headerValue = line.substring(5).trim();
-                        
+
                         if (headerType.startsWith('FDT')) metadata.date = headerValue;
                         if (headerType.startsWith('FPL')) metadata.pilot = headerValue;
                         if (headerType.startsWith('FGT')) metadata.gliderType = headerValue;
@@ -534,19 +928,23 @@
             return geojson;
         }
 
-        // Function to handle file selection, convert the IGC to GeoJSON,
-        // add it as a new line layer with altitude labels, and recenter the map.
+        // Replace your current handleFileSelect with the following enhanced version.
+        // It reads the IGC file, converts it to GeoJSON, adds a new line layer (with blue color),
+        // computes its bounding box, recenters the map, and adds altitude labels.
         function handleFileSelect(event) {
             const file = event.target.files[0];
             if (!file) return;
 
+            // Close the popup menu after a file has been selected.
+            document.getElementById('popupMenu').style.display = "none";
+            
             const reader = new FileReader();
             reader.onload = function(e) {
                 const igcContent = e.target.result;
                 const geojsonData = igcToGeoJSON(igcContent);
                 console.log('Converted IGC to GeoJSON:', geojsonData);
                 
-                // Generate a dynamic layer id from the file name (remove non-alphanumeric characters)
+                // Generate a dynamic layer ID from the file name (strip non-alphanumeric characters)
                 const baseLayerId = 'igc-layer-' + file.name.replace(/\W/g, '');
                 let layerId = baseLayerId;
                 // If a layer with the same ID exists, append a timestamp
@@ -590,7 +988,6 @@
                 });
                 
                 // Create altitude point features based on each vertex of the IGC LineString.
-                // Each point will have its "altitude" property set from the third coordinate value.
                 const altPoints = {
                     type: 'FeatureCollection',
                     features: coords.map(coord => ({
@@ -611,8 +1008,8 @@
                     type: 'geojson',
                     data: altPoints
                 });
-                
-                // Add a symbol layer to display the altitude at each point (visible for zoom > 11)
+
+                // Add a symbol layer to display the altitude at each point (visible for zoom > 9)
                 map.addLayer({
                     id: layerId + '-altitudes',
                     type: 'symbol',
@@ -633,11 +1030,67 @@
             reader.readAsText(file);
         }
 
-        // Wire up the IGC file button and file input
+        // Wire up the IGC file button (in your popup menu) and file input
         document.getElementById('igcFileButton').addEventListener('click', function() {
             document.getElementById('igcFileInput').click();
+            this.blur(); // Remove focus so the button doesn't stay highlighted.
         });
         document.getElementById('igcFileInput').addEventListener('change', handleFileSelect);
+
+        // Toggle layer visibility using the "toggleLayerButton" (replicates checkbox functionality from index.html)
+        document.getElementById('toggleLayerButton').addEventListener('click', () => {
+            const layerIds = ['linestrings-layer', 'linestrings-labels', 'polygons-layer'];
+            // Determine the new visibility: use one of the layer's current visibility as a basis.
+            let newVisibility = 'visible';
+            if (map.getLayer('linestrings-layer')) {
+                const currentVisibility = map.getLayoutProperty('linestrings-layer', 'visibility') || 'visible';
+                newVisibility = currentVisibility === 'visible' ? 'none' : 'visible';
+            }
+            // Set the new visibility on each layer
+            layerIds.forEach(id => {
+                if (map.getLayer(id)) {
+                    map.setLayoutProperty(id, 'visibility', newVisibility);
+                }
+            });
+            // Update the icon to reflect the current state.
+            document.getElementById('visibilityIcon').textContent = newVisibility === 'visible' ? 'visibility' : 'visibility_off';
+        });
+
+        // Function to show the loading message with a given text.
+        function showLoadingMessage(text) {
+            const messageDiv = document.getElementById('loadingMessage');
+            messageDiv.textContent = text;
+            messageDiv.style.display = "block";
+        }
+
+        // Function to hide the loading message.
+        function hideLoadingMessage() {
+            document.getElementById('loadingMessage').style.display = "none";
+        }
+
+        // --- Connection Message Logic ---
+        function updateConnectionMessage() {
+            const messageDiv = document.getElementById('loadingMessage');
+            if (!navigator.onLine) {
+                messageDiv.textContent = "No internet connection. Please connect to the internet.";
+                messageDiv.style.display = "block";
+            } else {
+                messageDiv.style.display = "none";
+            }
+        }
+
+        updateConnectionMessage();
+
+        window.addEventListener('offline', updateConnectionMessage);
+        window.addEventListener('online', updateConnectionMessage);
+
+        const polygonOpacitySlider = document.getElementById('polygonOpacitySlider');
+        polygonOpacitySlider.addEventListener('input', function() {
+            const opacity = parseFloat(this.value);
+            if (map.getLayer('polygons-layer')) {
+                map.setPaintProperty('polygons-layer', 'fill-opacity', opacity);
+            }
+        });
     </script>
 </body>
 </html>
