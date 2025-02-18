@@ -411,7 +411,7 @@
                 <span>Open IGC File</span>
             </button>
             <!-- Hidden file input triggered by the IGC file button -->
-            <input type="file" id="igcFileInput" accept=".igc" style="display: none;">
+            <input type="file" id="igcFileInput" accept="*/*" style="display: none;">
         </div>
     </div>
 
@@ -782,7 +782,8 @@
                 padding: 50,
                 maxZoom: 14,
                 duration: 1000
-            }
+            },
+            attributionControl: false
         });
         
         // Attach layers and events once the map has fully loaded.
@@ -1032,6 +1033,7 @@
         // Wire up the IGC file button (in your popup menu) and file input
         document.getElementById('igcFileButton').addEventListener('click', function() {
             document.getElementById('igcFileInput').click();
+            this.blur(); // Remove focus so the button doesn't stay highlighted.
         });
         document.getElementById('igcFileInput').addEventListener('change', handleFileSelect);
 
