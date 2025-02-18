@@ -744,6 +744,25 @@
             console.log("Selected file", file);
         }
         document.getElementById('igcFileInput').addEventListener('change', handleFileSelect);
+
+        // Toggle layer visibility using the "toggleLayerButton" (replicates checkbox functionality from index.html)
+        document.getElementById('toggleLayerButton').addEventListener('click', () => {
+            const layerIds = ['linestrings-layer', 'linestrings-labels', 'polygons-layer'];
+            // Determine the new visibility: use one of the layer's current visibility as a basis.
+            let newVisibility = 'visible';
+            if (map.getLayer('linestrings-layer')) {
+                const currentVisibility = map.getLayoutProperty('linestrings-layer', 'visibility') || 'visible';
+                newVisibility = currentVisibility === 'visible' ? 'none' : 'visible';
+            }
+            // Set the new visibility on each layer
+            layerIds.forEach(id => {
+                if (map.getLayer(id)) {
+                    map.setLayoutProperty(id, 'visibility', newVisibility);
+                }
+            });
+            // Update the icon to reflect the current state.
+            document.getElementById('visibilityIcon').textContent = newVisibility === 'visible' ? 'visibility' : 'visibility_off';
+        });
     </script>
 </body>
 </html>
