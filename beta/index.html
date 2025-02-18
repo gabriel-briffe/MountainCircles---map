@@ -1088,6 +1088,12 @@
             baseTextSize = Math.max(1, baseTextSize - 1);
             updateAllLabelSizes();
         });
+
+        // Increase Text Size Button event listener
+        document.getElementById('textIncreaseBtn').addEventListener('click', () => {
+            baseTextSize += 1;
+            updateAllLabelSizes();
+        });
     </script>
 </body>
 </html>
