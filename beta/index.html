@@ -374,6 +374,32 @@
     <script>
         // Global variable to hold the current config folder name.
         var currentConfig = '20-100-250-4200';
+
+        const customStyle = {
+            "version": 8,
+            "name": "Custom Map",
+            "glyphs": "https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf",
+            "sources": {
+                "custom-tiles": {
+                    "type": "raster",
+                    "tiles": [
+                        "./tiles/{z}/{x}/{y}.png"  // Relative path to your tiles folder on GitHub Pages
+                    ],
+                    "tileSize": 256,
+                    "attribution": "Map data © Your Attribution"
+                }
+            },
+            "layers": [
+                {
+                    "id": "custom-tiles",
+                    "type": "raster",
+                    "source": "custom-tiles",
+                    "minzoom": 0,
+                    "maxzoom": 22
+                }
+            ]
+        };
+
         
         // Declare map in the global scope.
         let map;
