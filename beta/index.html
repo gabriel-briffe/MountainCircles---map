@@ -785,9 +785,10 @@
             }
         });
         
-        // When the map loads, add the GeoJSON layers and set up any necessary event listeners.
+        // Attach layers and events once the map has fully loaded.
         map.on('load', () => {
             addGeoJSONLayers();
+            // Attach the click handler to the clickable layer.
             if (map.getLayer('points-layer-clickable')) {
                 map.on('click', 'points-layer-clickable', handlePointClick);
             } else {
