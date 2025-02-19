@@ -220,6 +220,7 @@
             }
         }
 
+        /* Map Dock Buttons: Remove transition and hover effects */
         #mapDock button {
             background: rgba(255, 255, 255, 0.8);
             border: none;
@@ -227,30 +228,27 @@
             border-radius: 8px;
             padding: 8px;
             cursor: pointer;
-            transition: transform 0.3s ease, background 0.3s ease;
-            /* Ensure each button has enough room for the icon */
+            transition: none;  /* Disabled transition for scaling and background changes */
             width: 48px;
             height: 48px;
             display: flex;
             align-items: center;
             justify-content: center;
         }
+
         #mapDock button:hover {
-            transform: scale(1.2);
-            background: rgba(255, 255, 255, 1);
+            transform: none;   /* Disable zooming (scaling) */
+            background: rgba(255, 255, 255, 0.8);  /* Keep same background */
         }
-        #mapDock .material-icons-round {
-            font-family: 'Material Icons Round';
-            font-size: 24px;
-            line-height: 24px;
-            color: #000;
-        }
+
+        /* Dark mode adjustments */
         @media (prefers-color-scheme: dark) {
             #mapDock button {
                 background: rgba(20, 20, 20, 0.8);
             }
             #mapDock button:hover {
-                background: rgba(20, 20, 20, 1);
+                transform: none;   /* Disable zooming in dark mode as well */
+                background: rgba(20, 20, 20, 0.8);
             }
             #mapDock .material-icons-round {
                 color: #fff;
