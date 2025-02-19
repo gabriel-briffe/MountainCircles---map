@@ -848,12 +848,14 @@
             attributionControl: false
         });
         
-        // --- GeoJSON Spinner Logic ---
+        // --- GeoJSON Spinner Logic with Debounce ---
         // This Set will track only GeoJSON sources that are still loading.
         var loadingGeojsonSources = new Set();
+        // Timer to debounce spinner display
+        var spinnerTimeout = null;
 
         map.on('sourcedata', function(e) {
-            // Only process events for sources (not individual tiles) and where the source type is "geojson"
+            // Only process events for sources (not individual tiles) and where the source type is "geojson".
             if (e.dataType !== 'source' || !e.source || e.source.type !== 'geojson') {
                 return;
             }
@@ -862,8 +864,20 @@
             } else {
                 loadingGeojsonSources.delete(e.sourceId);
             }
-            // If any GeoJSON sources are still loading, show the spinner; otherwise, hide it.
-            document.getElementById('spinner').style.display = loadingGeojsonSources.size > 0 ? 'block' : 'none';
+            
+            // If any GeoJSON sources are still loading, set a timer to show the spinner
+            if (loadingGeojsonSources.size > 0) {
+                if (!spinnerTimeout) {
+                    spinnerTimeout = setTimeout(() => {
+                        document.getElementById('spinner').style.display = 'block';
+                    }, 200); // only show spinner if loading takes longer than 100ms
+                }
+            } else {
+                // All GeoJSON sources are loaded: clear the timer and hide the spinner
+                clearTimeout(spinnerTimeout);
+                spinnerTimeout = null;
+                document.getElementById('spinner').style.display = 'none';
+            }
         });
         
         // Attach layers and events once the map has fully loaded.
