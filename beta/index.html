@@ -501,7 +501,7 @@
                     ],
                     "tileSize": 256,
                     "maxzoom": 12,  // This ensures that even if you zoom past level 12, the map uses these tiles.
-                    "attribution": "Map data © Your Attribution"
+                    "attribution": "Map data © OpenStreetMap contributors + Alos topographic data"
                 }
             },
             "layers": [
@@ -509,8 +509,7 @@
                     "id": "custom-tiles",
                     "type": "raster",
                     "source": "custom-tiles",
-                    "minzoom": 0,
-                    "maxzoom": 12
+                    "minzoom": 0   // Remove maxzoom here so the layer remains visible at higher zooms
                 }
             ]
         };
@@ -905,7 +904,7 @@
             style: currentStyle,
             bounds: [[4.9698169, 43.6088902], [13.696105, 47.5644488]],
             maxBounds: [[4.57526, 43.45699], [13.96581, 47.98810]],
-            maxZoom: 15,  // Allow users to zoom further (the tiles will still be from zoom level 12)
+            maxZoom: 16,  // The user can zoom in further; level 12 tiles will be overscaled
             fitBoundsOptions: {
                 padding: 50,
                 maxZoom: 12,  // fitBounds will not zoom past level 12 unless you override this
