@@ -728,18 +728,27 @@
             const dynamicSourceId = dynamicLayerId + '-source';
             const dynamicLabelId = dynamicLayerId + '-labels';
         
+            // If the dynamic layer exists, toggle its visibility.
             if (map.getLayer(dynamicLayerId)) {
-                console.log("Removing dynamic layer:", dynamicLayerId);
-                if (map.getLayer(dynamicLayerId)) map.removeLayer(dynamicLayerId);
-                if (map.getLayer(dynamicLabelId)) map.removeLayer(dynamicLabelId);
-                if (map.getSource(dynamicSourceId)) map.removeSource(dynamicSourceId);
+                let currentVisibility = map.getLayoutProperty(dynamicLayerId, 'visibility');
+                if (!currentVisibility) {
+                    currentVisibility = 'visible';
+                }
+                const newVisibility = currentVisibility === 'visible' ? 'none' : 'visible';
+                map.setLayoutProperty(dynamicLayerId, 'visibility', newVisibility);
+                if (map.getLayer(dynamicLabelId)) {
+                    map.setLayoutProperty(dynamicLabelId, 'visibility', newVisibility);
+                }
+                console.log("Toggled visibility for dynamic layer:", dynamicLayerId, "to", newVisibility);
             } else {
                 console.log("Adding dynamic layer for:", filePath);
+                // Add the source only once; it is reused on subsequent toggles.
                 map.addSource(dynamicSourceId, {
                     type: 'geojson',
                     data: filePath
                 });
                 
+                // Add the line layer.
                 map.addLayer({
                     id: dynamicLayerId,
                     type: 'line',
@@ -751,6 +760,7 @@
                     }
                 });
                 
+                // Add the corresponding label layer.
                 map.addLayer({
                     id: dynamicLabelId,
                     type: 'symbol',
@@ -762,7 +772,7 @@
                         'symbol-placement': 'line',
                         'text-rotation-alignment': 'auto',
                         'text-keep-upright': true,
-                        'text-size': baseTextSize, // Dynamic labels use baseTextSize
+                        'text-size': baseTextSize,
                         'text-allow-overlap': false,
                         'text-ignore-placement': false,
                         'text-offset': [0, 0],
@@ -839,25 +849,21 @@
         });
         
         // --- GeoJSON Spinner Logic ---
-        // This Set will track geojson sources that are still loading.
+        // This Set will track only GeoJSON sources that are still loading.
         var loadingGeojsonSources = new Set();
 
         map.on('sourcedata', function(e) {
-            // Check that the event relates to a source (not an individual tile)
-            // and that the source exists and is a GeoJSON source
-            if (e.dataType === 'source' && e.source && e.source.type === 'geojson') {
-                if (!e.isSourceLoaded) {
-                    loadingGeojsonSources.add(e.sourceId);
-                } else {
-                    loadingGeojsonSources.delete(e.sourceId);
-                }
-                // If any GeoJSON sources are still loading, show the spinner.
-                if (loadingGeojsonSources.size > 0) {
-                    document.getElementById('spinner').style.display = 'block';
-                } else {
-                    document.getElementById('spinner').style.display = 'none';
-                }
+            // Only process events for sources (not individual tiles) and where the source type is "geojson"
+            if (e.dataType !== 'source' || !e.source || e.source.type !== 'geojson') {
+                return;
             }
+            if (!e.isSourceLoaded) {
+                loadingGeojsonSources.add(e.sourceId);
+            } else {
+                loadingGeojsonSources.delete(e.sourceId);
+            }
+            // If any GeoJSON sources are still loading, show the spinner; otherwise, hide it.
+            document.getElementById('spinner').style.display = loadingGeojsonSources.size > 0 ? 'block' : 'none';
         });
         
         // Attach layers and events once the map has fully loaded.
