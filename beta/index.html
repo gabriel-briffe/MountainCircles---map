@@ -721,34 +721,73 @@
                 console.warn("Clicked feature missing 'filename' property:", feature);
                 return;
             }
-            // Prepend the current config folder when building the file path.
+
+            // Build the file path and dynamic layer IDs.
             const filePath = currentConfig + "/" + feature.properties.filename;
-            // Build a dynamic id that includes the config for uniqueness.
             const dynamicLayerId = 'dynamic-lines-' + currentConfig + '-' + feature.properties.filename;
             const dynamicSourceId = dynamicLayerId + '-source';
             const dynamicLabelId = dynamicLayerId + '-labels';
-        
-            // If the dynamic layer exists, toggle its visibility.
+
+            // -- Hide any dynamic layers (and their corresponding labels) that are NOT the one for this point --
+            const currentLayers = map.getStyle().layers.slice();
+            currentLayers.forEach(layer => {
+                if (layer.id.startsWith('dynamic-lines-') && layer.id !== dynamicLayerId) {
+                    if (map.getLayer(layer.id)) {
+                        map.setLayoutProperty(layer.id, 'visibility', 'none');
+                    }
+                    // Assume that label layers have the suffix "-labels" attached to the dynamic layer ID.
+                    const otherLabelId = layer.id + '-labels';
+                    if (map.getLayer(otherLabelId)) {
+                        map.setLayoutProperty(otherLabelId, 'visibility', 'none');
+                    }
+                }
+            });
+
+            // -- If the dynamic layer for this point exists, toggle its visibility. --
             if (map.getLayer(dynamicLayerId)) {
-                let currentVisibility = map.getLayoutProperty(dynamicLayerId, 'visibility');
-                if (!currentVisibility) {
-                    currentVisibility = 'visible';
+                let currentVisibility = map.getLayoutProperty(dynamicLayerId, 'visibility') || 'visible';
+                if (currentVisibility === 'visible') {
+                    // If clicking the same point again: hide the dynamic layer and restore the main linestring layer.
+                    map.setLayoutProperty(dynamicLayerId, 'visibility', 'none');
+                    if (map.getLayer(dynamicLabelId)) {
+                        map.setLayoutProperty(dynamicLabelId, 'visibility', 'none');
+                    }
+                    if (map.getLayer('linestrings-layer')) {
+                        map.setLayoutProperty('linestrings-layer', 'visibility', 'visible');
+                    }
+                    if (map.getLayer('linestrings-labels')) {
+                        map.setLayoutProperty('linestrings-labels', 'visibility', 'visible');
+                    }
+                } else {
+                    // If the dynamic layer exists but is hidden, show it and hide the main linestring layer.
+                    map.setLayoutProperty(dynamicLayerId, 'visibility', 'visible');
+                    if (map.getLayer(dynamicLabelId)) {
+                        map.setLayoutProperty(dynamicLabelId, 'visibility', 'visible');
+                    }
+                    if (map.getLayer('linestrings-layer')) {
+                        map.setLayoutProperty('linestrings-layer', 'visibility', 'none');
+                    }
+                    if (map.getLayer('linestrings-labels')) {
+                        map.setLayoutProperty('linestrings-labels', 'visibility', 'none');
+                    }
                 }
-                const newVisibility = currentVisibility === 'visible' ? 'none' : 'visible';
-                map.setLayoutProperty(dynamicLayerId, 'visibility', newVisibility);
-                if (map.getLayer(dynamicLabelId)) {
-                    map.setLayoutProperty(dynamicLabelId, 'visibility', newVisibility);
-                }
-                console.log("Toggled visibility for dynamic layer:", dynamicLayerId, "to", newVisibility);
             } else {
+                // -- Dynamic layer not yet created --
+                // Hide the main linestring layer when showing a dynamic one.
+                if (map.getLayer('linestrings-layer')) {
+                    map.setLayoutProperty('linestrings-layer', 'visibility', 'none');
+                }
+                if (map.getLayer('linestrings-labels')) {
+                    map.setLayoutProperty('linestrings-labels', 'visibility', 'none');
+                }
                 console.log("Adding dynamic layer for:", filePath);
-                // Add the source only once; it is reused on subsequent toggles.
+                // Add the dynamic source.
                 map.addSource(dynamicSourceId, {
                     type: 'geojson',
                     data: filePath
                 });
-                
-                // Add the line layer.
+
+                // Add the dynamic line layer.
                 map.addLayer({
                     id: dynamicLayerId,
                     type: 'line',
@@ -759,8 +798,8 @@
                         'line-width': ['step', ['zoom'], 1, 10, 2]
                     }
                 });
-                
-                // Add the corresponding label layer.
+
+                // Add the corresponding dynamic label layer.
                 map.addLayer({
                     id: dynamicLabelId,
                     type: 'symbol',
