@@ -1,12 +1,13 @@
 // Service Worker File: sw.js
 
 const CACHE_NAME = 'mountain-circles-cache-v1';
+// Global counter for the number of network fetches served (i.e., when there's no cached response)
+let networkFetchCount = 0;
 
-// Remove any HTML files from files to pre-cache.
-// Optionally, pre-cache other non-HTML assets if needed.
-const FILES_TO_CACHE = [
-  // e.g., '/styles/main.css', '/scripts/app.js'
-];
+// Files to pre-cache (we're not caching HTML files)
+/* We leave this empty (or only include non-HTML assets) since you mentioned
+   you don't want to cache any HTML pages because they will evolve. */
+const FILES_TO_CACHE = [];
 
 // Install event: Pre-cache essential files.
 self.addEventListener('install', (event) => {
@@ -14,9 +15,7 @@ self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
       console.log('[Service Worker] Pre-caching assets:', FILES_TO_CACHE);
-      // Since we do not want to cache any HTML files, FILES_TO_CACHE is empty.
       return cache.addAll(FILES_TO_CACHE).catch((error) => {
-        // Log any errors during the pre-cache phase.
         console.error('[Service Worker] Pre-caching failed:', error);
       });
     })
@@ -46,47 +45,34 @@ self.addEventListener('activate', (event) => {
 
 // Fetch event: Cache every GET request.
 self.addEventListener('fetch', (event) => {
-  // Only handle GET requests.
+  // Only process GET requests.
   if (event.request.method !== 'GET') return;
 
-  // Check if this request is for an HTML document.
-  // If so, do a network fetch without caching.
+  // Check if the request is for HTML based on the "Accept" header.
+  // We do not cache HTML pages because they are expected to evolve.
   const acceptHeader = event.request.headers.get('accept');
   if (acceptHeader && acceptHeader.includes('text/html')) {
-    // Do not cache HTML files, as they may change over time.
+    // Let the browser fetch HTML from the network (and do not count these).
     return;
   }
 
-  // For all other GET requests (e.g. tiles, GeoJSON, scripts, fonts, icons),
-  // attempt a cache-first strategy.
   event.respondWith(
     caches.match(event.request).then((cachedResponse) => {
       if (cachedResponse) {
         console.log(`[Service Worker] Serving from cache: ${event.request.url}`);
-        // Update the cache in the background:
-        fetch(event.request)
-          .then((networkResponse) => {
-            // Clone the network response immediately before any further use.
-            const responseClone = networkResponse.clone();
-            if (networkResponse && networkResponse.status === 200) {
-              console.log(`[Service Worker] Refreshing cache for: ${event.request.url}`);
-              caches.open(CACHE_NAME).then((cache) => {
-                cache.put(event.request, responseClone);
-              });
-            }
-          })
-          .catch((error) => {
-            console.error(`[Service Worker] Background fetch failed for: ${event.request.url}`, error);
-          });
+        // Return the cached response immediately, with no refresh.
         return cachedResponse;
       }
 
-      // When no cached response exists, fetch from the network and cache it.
+      // No cached response -- fetch the resource from the network.
       return fetch(event.request)
         .then((networkResponse) => {
-          // Clone the response immediately.
-          const responseClone = networkResponse.clone();
+          // Increment our counter for every network fetch.
+          networkFetchCount++;
+          console.log(`[Service Worker] Network fetch count: ${networkFetchCount}`);
           if (networkResponse && networkResponse.status === 200) {
+            // Clone the response for caching.
+            const responseClone = networkResponse.clone();
             caches.open(CACHE_NAME).then((cache) => {
               console.log(`[Service Worker] Fetched and caching: ${event.request.url}`);
               cache.put(event.request, responseClone);
