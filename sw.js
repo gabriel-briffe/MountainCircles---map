@@ -2,10 +2,10 @@
 
 const CACHE_NAME = 'mountain-circles-cache-v1';
 
-// List files to pre-cache. Adjust this to match the core files of your site.
+// Remove any HTML files from files to pre-cache.
+// Optionally, pre-cache other non-HTML assets if needed.
 const FILES_TO_CACHE = [
-  '/',             // your site's root
-  '/index.html'    // adjust the path if your entry point is different (e.g., '/beta/index.html')
+  // e.g., '/styles/main.css', '/scripts/app.js'
 ];
 
 // Install event: Pre-cache essential files.
@@ -13,8 +13,11 @@ self.addEventListener('install', (event) => {
   console.log('[Service Worker] Install event');
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
-      console.log('[Service Worker] Pre-caching offline assets');
-      return cache.addAll(FILES_TO_CACHE);
+      console.log('[Service Worker] Pre-caching assets:', FILES_TO_CACHE);
+      return cache.addAll(FILES_TO_CACHE).catch((error) => {
+        // Log any errors during the pre-cache phase.
+        console.error('[Service Worker] Pre-caching failed:', error);
+      });
     })
   );
   // Activate this SW immediately
@@ -43,17 +46,23 @@ self.addEventListener('activate', (event) => {
 // Fetch event: Cache every GET request.
 self.addEventListener('fetch', (event) => {
   // Only handle GET requests.
-  if (event.request.method !== 'GET') {
+  if (event.request.method !== 'GET') return;
+
+  // Check if this request is for an HTML document.
+  // If so, do a network fetch without caching.
+  const acceptHeader = event.request.headers.get('accept');
+  if (acceptHeader && acceptHeader.includes('text/html')) {
+    // Do not cache HTML files, as they may change over time.
     return;
   }
-  
+
+  // For all other GET requests (e.g. tiles, GeoJSON, scripts, fonts, icons),
+  // attempt a cache-first strategy.
   event.respondWith(
     caches.match(event.request).then((cachedResponse) => {
-      // Serve from cache if present.
       if (cachedResponse) {
         console.log(`[Service Worker] Serving from cache: ${event.request.url}`);
-        
-        // Optionally, asynchronously update the cache in the background.
+        // Optionally, update the cache in the background.
         fetch(event.request)
           .then((networkResponse) => {
             if (networkResponse && networkResponse.status === 200) {
@@ -66,17 +75,15 @@ self.addEventListener('fetch', (event) => {
           .catch((error) => {
             console.error(`[Service Worker] Background fetch failed for: ${event.request.url}`, error);
           });
-        
         return cachedResponse;
       }
 
-      // Else, fetch from the network.
+      // Otherwise fetch from the network and dynamically cache the response.
       return fetch(event.request)
         .then((networkResponse) => {
           if (networkResponse && networkResponse.status === 200) {
-            console.log(`[Service Worker] Fetched from network: ${event.request.url}`);
-            // Open the cache and store the clone of the response.
             caches.open(CACHE_NAME).then((cache) => {
+              console.log(`[Service Worker] Fetched and caching: ${event.request.url}`);
               cache.put(event.request, networkResponse.clone());
             });
           }
@@ -84,7 +91,6 @@ self.addEventListener('fetch', (event) => {
         })
         .catch((error) => {
           console.error(`[Service Worker] Fetch failed for: ${event.request.url}`, error);
-          // Optionally: you might return a fallback page or image if offline.
           throw error;
         });
     })
