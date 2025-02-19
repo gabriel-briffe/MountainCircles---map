@@ -77,7 +77,7 @@
             display: flex;
             align-items: center;
             flex-direction: column;
-            max-height: 100vh;
+            max-height: 100%;
             flex-wrap: wrap-reverse;
             gap: 10px;
             z-index: 1100;
@@ -116,7 +116,7 @@
                 left: 0;
                 right: 0;
                 width: 100%;
-                padding: 0 10px; /* Optional: Add some horizontal spacing */
+                padding: 0 0; /* Optional: Add some horizontal spacing */
                 display: flex;
                 flex-direction: row;
                 flex-wrap: wrap;
@@ -228,6 +228,13 @@
             #polygonOpacitySlider::-ms-fill-lower,
             #polygonOpacitySlider::-ms-fill-upper {
                 background: #555;
+            }
+        }
+
+        @media (pointer: coarse) {
+            #zoomInBtn,
+            #zoomOutBtn {
+                display: none;
             }
         }
 
