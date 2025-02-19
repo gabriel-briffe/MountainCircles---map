@@ -14,6 +14,7 @@ self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
       console.log('[Service Worker] Pre-caching assets:', FILES_TO_CACHE);
+      // Since we do not want to cache any HTML files, FILES_TO_CACHE is empty.
       return cache.addAll(FILES_TO_CACHE).catch((error) => {
         // Log any errors during the pre-cache phase.
         console.error('[Service Worker] Pre-caching failed:', error);
@@ -62,13 +63,15 @@ self.addEventListener('fetch', (event) => {
     caches.match(event.request).then((cachedResponse) => {
       if (cachedResponse) {
         console.log(`[Service Worker] Serving from cache: ${event.request.url}`);
-        // Optionally, update the cache in the background.
+        // Update the cache in the background:
         fetch(event.request)
           .then((networkResponse) => {
+            // Clone the network response immediately before any further use.
+            const responseClone = networkResponse.clone();
             if (networkResponse && networkResponse.status === 200) {
               console.log(`[Service Worker] Refreshing cache for: ${event.request.url}`);
               caches.open(CACHE_NAME).then((cache) => {
-                cache.put(event.request, networkResponse.clone());
+                cache.put(event.request, responseClone);
               });
             }
           })
@@ -78,13 +81,15 @@ self.addEventListener('fetch', (event) => {
         return cachedResponse;
       }
 
-      // Otherwise fetch from the network and dynamically cache the response.
+      // When no cached response exists, fetch from the network and cache it.
       return fetch(event.request)
         .then((networkResponse) => {
+          // Clone the response immediately.
+          const responseClone = networkResponse.clone();
           if (networkResponse && networkResponse.status === 200) {
             caches.open(CACHE_NAME).then((cache) => {
               console.log(`[Service Worker] Fetched and caching: ${event.request.url}`);
-              cache.put(event.request, networkResponse.clone());
+              cache.put(event.request, responseClone);
             });
           }
           return networkResponse;
