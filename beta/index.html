@@ -867,6 +867,10 @@
                     }
                 });
             }
+
+            // Update the main linestring visibility icon based on current state.
+            const mainVisibility = map.getLayoutProperty('linestrings-layer', 'visibility') || 'visible';
+            document.getElementById('visibilityIcon').textContent = mainVisibility === 'visible' ? 'visibility' : 'visibility_off';
         }
         
         // Set up config buttons in the popup menu.
