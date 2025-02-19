@@ -464,7 +464,7 @@
                     "type": "raster",
                     "source": "custom-tiles",
                     "minzoom": 0,
-                    "maxzoom": 22
+                    "maxzoom": 12
                 }
             ]
         };
@@ -877,12 +877,15 @@
             container: 'map',
             style: currentStyle,
             bounds: [[4.9698169, 43.6088902], [13.696105, 47.5644488]],
+            maxBounds: [[4.9698169, 43.6088902], [13.696105, 47.5644488]],
+            maxZoom: 12,   // Limit the map's zoom level to 12
             fitBoundsOptions: {
                 padding: 50,
-                maxZoom: 14,
+                maxZoom: 12,  // Ensure fitBounds doesn't overshoot the max zoom
                 duration: 1000
             },
-            attributionControl: false
+            attributionControl: false,
+            renderWorldCopies: false  // Disable wrapping of the map world to prevent extra tile requests
         });
         
         // --- GeoJSON Spinner Logic with Debounce ---
