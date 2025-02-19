@@ -500,6 +500,7 @@
                         "./tiles/{z}/{x}/{y}.png"  // Relative path to your tiles folder on GitHub Pages
                     ],
                     "tileSize": 256,
+                    "maxzoom": 12,  // This ensures that even if you zoom past level 12, the map uses these tiles.
                     "attribution": "Map data © Your Attribution"
                 }
             },
@@ -897,40 +898,17 @@
         
         // Now that our helper functions and event listeners are set up,
         // initialize the map. (Ensure any variables like currentStyle are defined or adjust as needed.)
-        const currentStyle = customStyle || {
-            "version": 8,
-            "name": "Custom Map",
-            "glyphs": "https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf",
-            "sources": {
-                "custom-tiles": {
-                    "type": "raster",
-                    "tiles": [
-                        "./tiles/{z}/{x}/{y}.png"
-                    ],
-                    "tileSize": 256,
-                    "attribution": "Map data © Your Attribution"
-                }
-            },
-            "layers": [
-                {
-                    "id": "custom-tiles",
-                    "type": "raster",
-                    "source": "custom-tiles",
-                    "minzoom": 0,
-                    "maxzoom": 12
-                }
-            ]
-        };
+        const currentStyle = customStyle ;
         
         map = new maplibregl.Map({
             container: 'map',
             style: currentStyle,
             bounds: [[4.9698169, 43.6088902], [13.696105, 47.5644488]],
             maxBounds: [[4.57526, 43.45699], [13.96581, 47.98810]],
-            maxZoom: 12,   // Limit the map's zoom level to 12
+            maxZoom: 15,  // Allow users to zoom further (the tiles will still be from zoom level 12)
             fitBoundsOptions: {
                 padding: 50,
-                maxZoom: 12,
+                maxZoom: 12,  // fitBounds will not zoom past level 12 unless you override this
                 duration: 1000
             },
             attributionControl: false,
