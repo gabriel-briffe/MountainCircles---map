@@ -10,10 +10,10 @@ const FILES_TO_CACHE = [
 
 // Install event: Pre-cache essential files.
 self.addEventListener('install', (event) => {
-  console.log('[ServiceWorker] Install');
+  console.log('[Service Worker] Install event');
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
-      console.log('[ServiceWorker] Pre-caching offline assets');
+      console.log('[Service Worker] Pre-caching offline assets');
       return cache.addAll(FILES_TO_CACHE);
     })
   );
@@ -23,13 +23,13 @@ self.addEventListener('install', (event) => {
 
 // Activate event: Clean up any old caches.
 self.addEventListener('activate', (event) => {
-  console.log('[ServiceWorker] Activate');
+  console.log('[Service Worker] Activate event');
   event.waitUntil(
     caches.keys().then((cacheNames) => {
       return Promise.all(
         cacheNames.map((name) => {
           if (name !== CACHE_NAME) {
-            console.log('[ServiceWorker] Removing old cache:', name);
+            console.log('[Service Worker] Removing old cache:', name);
             return caches.delete(name);
           }
         })
@@ -51,27 +51,30 @@ self.addEventListener('fetch', (event) => {
     caches.match(event.request).then((cachedResponse) => {
       // Serve from cache if present.
       if (cachedResponse) {
-        // Optionally, update the cache in the background (stale-while-revalidate approach)
+        console.log(`[Service Worker] Serving from cache: ${event.request.url}`);
+        
+        // Optionally, asynchronously update the cache in the background.
         fetch(event.request)
           .then((networkResponse) => {
-            // Only cache valid responses (a response with a status of 200).
             if (networkResponse && networkResponse.status === 200) {
+              console.log(`[Service Worker] Refreshing cache for: ${event.request.url}`);
               caches.open(CACHE_NAME).then((cache) => {
                 cache.put(event.request, networkResponse.clone());
               });
             }
           })
-          .catch(() => {
-            // Network fetch failed; nothing to do.
+          .catch((error) => {
+            console.error(`[Service Worker] Background fetch failed for: ${event.request.url}`, error);
           });
+        
         return cachedResponse;
       }
 
       // Else, fetch from the network.
       return fetch(event.request)
         .then((networkResponse) => {
-          // Check for a valid response before caching.
           if (networkResponse && networkResponse.status === 200) {
+            console.log(`[Service Worker] Fetched from network: ${event.request.url}`);
             // Open the cache and store the clone of the response.
             caches.open(CACHE_NAME).then((cache) => {
               cache.put(event.request, networkResponse.clone());
@@ -80,9 +83,8 @@ self.addEventListener('fetch', (event) => {
           return networkResponse;
         })
         .catch((error) => {
+          console.error(`[Service Worker] Fetch failed for: ${event.request.url}`, error);
           // Optionally: you might return a fallback page or image if offline.
-          console.error('Fetch failed; returning offline page instead.', error);
-          // Example: return caches.match('/offline.html');
           throw error;
         });
     })
