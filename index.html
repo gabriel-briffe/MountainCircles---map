@@ -1036,7 +1036,7 @@
                 }
             });
 
-            // Add the circle layer with a high z-index
+            // Add the circle layer (removed invalid z-index property)
             map.addLayer({
                 id: 'location-marker-circle',
                 type: 'circle',
@@ -1046,10 +1046,6 @@
                     'circle-color': '#0066FF',
                     'circle-stroke-width': 2,
                     'circle-stroke-color': '#FFFFFF'
-                },
-                // Add this line to ensure it stays on top
-                layout: {
-                    'z-index': 999
                 }
             });
 
