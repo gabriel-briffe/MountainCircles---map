@@ -292,7 +292,7 @@
             border-radius: 12px;
             max-width: 400px;
             width: 90%;
-            max-height: 90vh; /* Limit the height to 90% of the viewport height */
+            max-height: 60%; /* Limit the height to 90% of the viewport height */
             overflow-y: auto; /* Add vertical scrolling if content overflows */
             position: relative;
             font-family: sans-serif;
@@ -423,6 +423,22 @@
                 background: rgba(20, 20, 20, 1);
             }
         }
+
+        .policy-section {
+            margin-bottom: 20px;
+        }
+        
+        .policy-section h3 {
+            margin-bottom: 10px;
+            text-align: center;
+        }
+        
+        /* Dark mode adjustments */
+        @media (prefers-color-scheme: dark) {
+            .policy-section h3 {
+                color: #fff;
+            }
+        }
     </style>
 </head>
 <body>
@@ -489,7 +505,7 @@
                 <span class="material-icons-round">close</span>
             </button>
             <h3>Select Glide ratio</h3>
-            <div id="configButtons"></div>
+            <div id="policyConfigs"></div>
             <!-- IGC File Control with Icon -->
             <button id="igcFileButton">
                 <span class="material-icons-round">folder_open</span>
@@ -498,19 +514,17 @@
             <h3>Warning</h3>
             <p>This is a new experimental tool. Problems will arise that have not been encountered before in the gliding community.</p>
             <p>I am not sure that 100m above ground is big enough a margin to be safe above the passes.</p>
-            <p>Airspace is not taken into account. Downdrafts are not taken into account.</p>
+            <p>Airspace is not taken into account. Downdrafts are not taken into account. Wind is not taken into account.</p>
             <p>The airfield list might not be accurate, some airfields might be unservicable or closed.</p>
             <p>Check on a real map that the indications make sense.</p>
-            <p>Speak with the owner of the glider (your club's instructors for example) about using this tool. They might foresee problems that you and the author has not anticipated and save your life.</p>
-            <p>The author of this tool is not liable for any damage or injury that might occur by using this tool.</p>
+            <p>Speak with the owner of the glider (your club's instructors for example) about using this tool. They might foresee problems that you and the author have not anticipated and save your life.</p>
+            <p>The author is not liable for any damage or injury that might occur by using this tool.</p>
             <!-- Hidden file input triggered by the IGC file button -->
             <input type="file" id="igcFileInput" accept="*/*" style="display: none;">
         </div>
     </div>
 
     <script>
-        // Global variable to hold the current config folder name.
-        var currentConfig = '20-100-250-4200';
 
         const customStyle = {
             "version": 8,
@@ -536,112 +550,98 @@
                 }
             ]
         };
+        const policies = {
+            'alps': [
+                '10-100-250-4200',
+                '20-100-250-4200',
+                '25-100-250-4200',
+                '30-100-250-4200',
+            ],
+            'West_alps_with_fields': [
+                '10-100-250-4200',
+                '20-100-250-4200',
+                '25-100-250-4200',
+                '30-100-250-4200',
+            ]
+        };
 
+
+        // Update the currentConfig to include policy
+        let currentPolicy = 'alps';  // Default policy
+        let currentConfig = currentPolicy + '/' + '20-100-250-4200';  // Default config with policy prefix
+
+        // Create policy sections and their config buttons
+        const policyConfigsContainer = document.getElementById('policyConfigs');
         
-        // Declare map in the global scope.
-        let map;
-        
-        // Helper to update the parameters box text based on the config folder.
-        function updateParametersBox(cfg) {
-            const parts = cfg.split('-'); // e.g. ["20", "100", "250", "4200"]
-            if (parts.length >= 3) {
-                const labelText = "L/D " + parts[0] + " - ground " + parts[1] + "m - circuit " + parts[2] + "m";
-                document.getElementById('parametersBox').textContent = labelText;
-            }
-        }
-        
-        // Call updateParametersBox at startup.
-        updateParametersBox(currentConfig);
-        
-        // Function to remove static GeoJSON layers and sources.
-        function removeGeoJSONLayers() {
-            const layersToRemove = [
-                'linestrings-layer',
-                'linestrings-labels',
-                'points-layer',
-                'points-labels',
-                'points-layer-clickable',
-                'polygons-layer'
-            ];
-            layersToRemove.forEach(id => {
-                if (map.getLayer(id)) {
-                    map.removeLayer(id);
-                }
-            });
-            const sourcesToRemove = ['geojson-data', 'polygons'];
-            sourcesToRemove.forEach(id => {
-                if (map.getSource(id)) {
-                    map.removeSource(id);
-                }
-            });
-        }
-        
-        // Function to remove dynamic layers added when clicking a point.
-        function removeDynamicLayers() {
-            // Remove dynamic layers (their id starts with "dynamic-lines-")
-            const currentLayers = map.getStyle().layers.slice();
-            currentLayers.forEach(layer => {
-                if(layer.id.startsWith('dynamic-lines-')) {
-                    if(map.getLayer(layer.id)) { 
-                        map.removeLayer(layer.id);
-                    }
-                }
+        Object.entries(policies).forEach(([policy, configs]) => {
+            // Create section for this policy
+            const policySection = document.createElement('div');
+            policySection.className = 'policy-section';
+            
+            // Add policy header
+            const policyHeader = document.createElement('h3');
+            policyHeader.textContent = policy;
+            policySection.appendChild(policyHeader);
+            
+            // Create container for this policy's config buttons
+            const configButtonsContainer = document.createElement('div');
+            configButtonsContainer.className = 'config-buttons';
+            configButtonsContainer.style.display = 'flex';
+            configButtonsContainer.style.flexWrap = 'wrap';
+            configButtonsContainer.style.justifyContent = 'center';
+            configButtonsContainer.style.gap = '5px';
+            configButtonsContainer.style.marginBottom = '15px';
+            
+            // Add config buttons for this policy
+            configs.forEach(cfg => {
+                const btn = document.createElement('button');
+                btn.textContent = cfg.split('-')[0];  // Use first part as button label
+                btn.className = 'config-button';
+                btn.addEventListener('click', () => {
+                    const newConfig = policy + '/' + cfg;
+                    switchConfig(newConfig);
+                    document.getElementById('popupMenu').style.display = "none";
+                    console.log("Switched to configuration: " + newConfig);
+                });
+                configButtonsContainer.appendChild(btn);
             });
             
-            // Remove the dynamic sources; we iterate over all source names.
-            const sourceIds = Object.keys(map.style.sourceCaches);
-            sourceIds.forEach(sourceId => {
-                if(sourceId.startsWith('dynamic-lines-')) {
-                    if(map.getSource(sourceId)) { 
-                        map.removeSource(sourceId);
-                    }
-                }
-            });
-        }
-        
-        // Global variable for the base text size that all labels will use.
-        let baseTextSize = 14; // Default value; adjust as desired
+            policySection.appendChild(configButtonsContainer);
+            policyConfigsContainer.appendChild(policySection);
+        });
 
-        // Function that iterates over the map's layers and updates the 'text-size' of any symbol layer
-        // If the layer ID is "points-labels", we add 5 to baseTextSize.
-        function updateAllLabelSizes() {
-            // Iterate over all layers in the current map style.
-            map.getStyle().layers.forEach(layer => {
-                if (layer.type === 'symbol' && layer.layout && layer.layout["text-size"] !== undefined) {
-                    // For the points labels, use baseTextSize + 5.
-                    if (layer.id === 'points-labels') {
-                        map.setLayoutProperty(layer.id, 'text-size', baseTextSize + 5);
-                    } else {
-                        // For all other symbol layers (lines labels, dynamic labels, altitude labels, etc.), use baseTextSize.
-                        map.setLayoutProperty(layer.id, 'text-size', baseTextSize);
-                    }
-                }
-            });
+        // Update the switchConfig function to handle policy prefixes
+        function switchConfig(cfg) {
+            removeDynamicLayers();
+            removeGeoJSONLayers();
+            updateParametersBox(cfg.split('/')[1]);  // Pass only the config part, not the policy
+            currentConfig = cfg;
+            currentPolicy = cfg.split('/')[0];
+            addGeoJSONLayers();
         }
 
-        // Function to add (or update) GeoJSON layers using the current configuration folder.
+        // Update addGeoJSONLayers to use the policy name in file paths
         function addGeoJSONLayers() {
-            // Rebuild the config prefix from the current config
-            const configPrefix = currentConfig.split('-').slice(0, 3).join('-');
+            const configParts = currentConfig.split('/');
+            const configPrefix = configParts[1].split('-').slice(0, 3).join('-');
+            const policyName = configParts[0]; // Convert policy name to lowercase for filenames
 
-            // Add or update the main GeoJSON source.
             if (!map.getSource('geojson-data')) {
                 map.addSource('geojson-data', {
                     type: 'geojson',
-                    data: currentConfig + '/aa_alps_' + configPrefix + '.geojson'
+                    data: currentConfig + '/aa_' + policyName + '_' + configPrefix + '.geojson'
                 });
             } else {
-                map.getSource('geojson-data').setData(currentConfig + '/aa_alps_' + configPrefix + '.geojson');
+                map.getSource('geojson-data').setData(currentConfig + '/aa_' + policyName + '_' + configPrefix + '.geojson');
             }
             
-            // Add or update the polygons source.
             if (!map.getSource('polygons')) {
                 map.addSource('polygons', {
                     type: 'geojson',
-                    data: currentConfig + '/aa_alps_' + configPrefix + '_sectors1.geojson'
+                    data: currentConfig + '/aa_' + policyName + '_' + configPrefix + '_sectors1.geojson'
                 });
             } else {
-                map.getSource('polygons').setData(currentConfig + '/aa_alps_' + configPrefix + '_sectors1.geojson');
+                map.getSource('polygons').setData(currentConfig + '/aa_' + policyName + '_' + configPrefix + '_sectors1.geojson');
             }
             
             // ---------------------------------------------------------------------
@@ -752,8 +752,11 @@
                         'text-field': '{name}',
                         'text-size': baseTextSize + 5,
                         'text-allow-overlap': false,
-                        'text-ignore-placement': true,
-                        'text-offset': [0.8, 0.8]
+                        'text-ignore-placement': false,
+                        'text-offset': [0.8, 0.8],
+                        'text-variable-anchor': ['top', 'bottom', 'left', 'right'],
+                        'text-radial-offset': 0.8,
+                        'symbol-spacing': 20
                     },
                     paint: {
                         'text-color': '#000',
@@ -764,19 +767,87 @@
             }
         }
         
-        // Function to switch the data configuration.
-        function switchConfig(cfg) {
-            // Remove any dynamic layers (e.g. from previous point clicks).
-            removeDynamicLayers();
-            // Remove the current static layers so they can be reloaded.
-            removeGeoJSONLayers();
-            // Update the parameters box based on the new config folder.
-            updateParametersBox(cfg);
-            // Update the global variable.
-            currentConfig = cfg;
-            addGeoJSONLayers();
+        // Declare map in the global scope.
+        let map;
+        
+        // Helper to update the parameters box text based on the config folder.
+        function updateParametersBox(cfg) {
+            const parts = cfg.split('-'); // e.g. ["20", "100", "250", "4200"]
+            if (parts.length >= 3) {
+                const labelText = "L/D " + parts[0] + "-ground " + parts[1] + "m-circuit " + parts[2] + "m";
+                document.getElementById('parametersBox').textContent = labelText;
+            }
         }
         
+        // Call updateParametersBox at startup.
+        updateParametersBox(currentConfig);
+        
+        // Function to remove static GeoJSON layers and sources.
+        function removeGeoJSONLayers() {
+            const layersToRemove = [
+                'linestrings-layer',
+                'linestrings-labels',
+                'points-layer',
+                'points-labels',
+                'points-layer-clickable',
+                'polygons-layer'
+            ];
+            layersToRemove.forEach(id => {
+                if (map.getLayer(id)) {
+                    map.removeLayer(id);
+                }
+            });
+            const sourcesToRemove = ['geojson-data', 'polygons'];
+            sourcesToRemove.forEach(id => {
+                if (map.getSource(id)) {
+                    map.removeSource(id);
+                }
+            });
+        }
+        
+        // Function to remove dynamic layers added when clicking a point.
+        function removeDynamicLayers() {
+            // Remove dynamic layers (their id starts with "dynamic-lines-")
+            const currentLayers = map.getStyle().layers.slice();
+            currentLayers.forEach(layer => {
+                if(layer.id.startsWith('dynamic-lines-')) {
+                    if(map.getLayer(layer.id)) { 
+                        map.removeLayer(layer.id);
+                    }
+                }
+            });
+            
+            // Remove the dynamic sources; we iterate over all source names.
+            const sourceIds = Object.keys(map.style.sourceCaches);
+            sourceIds.forEach(sourceId => {
+                if(sourceId.startsWith('dynamic-lines-')) {
+                    if(map.getSource(sourceId)) { 
+                        map.removeSource(sourceId);
+                    }
+                }
+            });
+        }
+        
+        // Global variable for the base text size that all labels will use.
+        let baseTextSize = 14; // Default value; adjust as desired
+
+        // Function that iterates over the map's layers and updates the 'text-size' of any symbol layer
+        // If the layer ID is "points-labels", we add 5 to baseTextSize.
+        function updateAllLabelSizes() {
+            // Iterate over all layers in the current map style.
+            map.getStyle().layers.forEach(layer => {
+                if (layer.type === 'symbol' && layer.layout && layer.layout["text-size"] !== undefined) {
+                    // For the points labels, use baseTextSize + 5.
+                    if (layer.id === 'points-labels') {
+                        map.setLayoutProperty(layer.id, 'text-size', baseTextSize + 5);
+                    } else {
+                        // For all other symbol layers (lines labels, dynamic labels, altitude labels, etc.), use baseTextSize.
+                        map.setLayoutProperty(layer.id, 'text-size', baseTextSize);
+                    }
+                }
+            });
+        }
+
         // Updated dynamic point click handler to use the current config folder.
         function handlePointClick(e) {
             console.log("Point clicked event:", e);
@@ -896,28 +967,6 @@
             document.getElementById('visibilityIcon').textContent = mainVisibility === 'visible' ? 'visibility' : 'visibility_off';
         }
         
-        // Set up config buttons in the popup menu.
-        // Available config folders.
-        const availableConfigs = [
-            '30-100-250-4200',
-            '25-100-250-4200',
-            '20-100-250-4200',
-            '10-100-250-4200'
-        ];
-        
-        const configButtonsContainer = document.getElementById('configButtons');
-        availableConfigs.forEach(cfg => {
-            const btn = document.createElement('button');
-            // Use only the first part of the folder name as the button label (e.g., "30", "25", "20", or "10").
-            btn.textContent = cfg.split('-')[0];
-            btn.addEventListener('click', () => {
-                switchConfig(cfg);
-                document.getElementById('popupMenu').style.display = "none";
-                console.log("Switched to configuration: " + cfg);
-            });
-            configButtonsContainer.appendChild(btn);
-        });
-        
         // Now that our helper functions and event listeners are set up,
         // initialize the map. (Ensure any variables like currentStyle are defined or adjust as needed.)
         const currentStyle = customStyle ;
@@ -972,11 +1021,54 @@
         // Attach layers and events once the map has fully loaded.
         map.on('load', () => {
             addGeoJSONLayers();
-            // Attach the click handler to the clickable layer.
+            
+            // Create the location marker source
+            map.addSource('location-marker', {
+                type: 'geojson',
+                data: {
+                    type: 'Feature',
+                    geometry: {
+                        type: 'Point',
+                        coordinates: [0, 0]
+                    }
+                }
+            });
+
+            // Add a simple circle layer
+            map.addLayer({
+                id: 'location-marker-circle',
+                type: 'circle',
+                source: 'location-marker',
+                paint: {
+                    'circle-radius': 8,
+                    'circle-color': '#0066FF',
+                    'circle-stroke-width': 2,
+                    'circle-stroke-color': '#FFFFFF'
+                }
+            });
+
+            // Start tracking location automatically
+            if ('geolocation' in navigator) {
+                const options = {
+                    enableHighAccuracy: true,
+                    maximumAge: 0,
+                    timeout: 5000
+                };
+                
+                navigator.geolocation.watchPosition(
+                    updateLocation,
+                    (error) => {
+                        console.error('Error getting location:', error);
+                    },
+                    options
+                );
+            } else {
+                console.warn('Geolocation is not supported by this browser.');
+            }
+
+            // Rest of the map.on('load') code...
             if (map.getLayer('points-layer-clickable')) {
                 map.on('click', 'points-layer-clickable', handlePointClick);
-            } else {
-                console.warn("points-layer-clickable not found on map load.");
             }
             if (navigator.onLine) {
                 map.once('idle', hideLoadingMessage);
@@ -1287,6 +1379,25 @@
                 .catch(function(error) {
                     console.error('Service Worker registration failed:', error);
                 });
+        }
+
+        // Function to update location
+        function updateLocation(position) {
+            if (!map.getSource('location-marker')) {
+                console.warn('Location marker source not found');
+                return;
+            }
+            
+            const coords = [position.coords.longitude, position.coords.latitude];
+            
+            // Update the marker position
+            map.getSource('location-marker').setData({
+                type: 'Feature',
+                geometry: {
+                    type: 'Point',
+                    coordinates: coords
+                }
+            });
         }
 
     </script>
