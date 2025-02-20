@@ -292,6 +292,8 @@
             border-radius: 12px;
             max-width: 400px;
             width: 90%;
+            max-height: 90vh; /* Limit the height to 90% of the viewport height */
+            overflow-y: auto; /* Add vertical scrolling if content overflows */
             position: relative;
             font-family: sans-serif;
             text-align: center;
@@ -493,6 +495,14 @@
                 <span class="material-icons-round">folder_open</span>
                 <span>Open IGC File</span>
             </button>
+            <h3>Warning</h3>
+            <p>This is a new experimental tool. Problems will arise that have not been encountered before in the gliding community.</p>
+            <p>I am not sure that 100m above ground is big enough a margin to be safe above the passes.</p>
+            <p>Airspace is not taken into account. Downdrafts are not taken into account.</p>
+            <p>The airfield list might not be accurate, some airfields might be unservicable or closed.</p>
+            <p>Check on a real map that the indications make sense.</p>
+            <p>Speak with the owner of the glider (your club's instructors for example) about using this tool. They might foresee problems that you and the author has not anticipated and save your life.</p>
+            <p>The author of this tool is not liable for any damage or injury that might occur by using this tool.</p>
             <!-- Hidden file input triggered by the IGC file button -->
             <input type="file" id="igcFileInput" accept="*/*" style="display: none;">
         </div>
