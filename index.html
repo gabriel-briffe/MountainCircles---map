@@ -1020,9 +1020,11 @@
         
         // Attach layers and events once the map has fully loaded.
         map.on('load', () => {
+            // First add your other layers
             addGeoJSONLayers();
             
-            // Create the location marker source
+            // Then add the location marker source and layer LAST
+            // This ensures it's on top of other layers
             map.addSource('location-marker', {
                 type: 'geojson',
                 data: {
@@ -1034,7 +1036,7 @@
                 }
             });
 
-            // Add a simple circle layer
+            // Add the circle layer with a high z-index
             map.addLayer({
                 id: 'location-marker-circle',
                 type: 'circle',
@@ -1044,6 +1046,10 @@
                     'circle-color': '#0066FF',
                     'circle-stroke-width': 2,
                     'circle-stroke-color': '#FFFFFF'
+                },
+                // Add this line to ensure it stays on top
+                layout: {
+                    'z-index': 999
                 }
             });
 
@@ -1309,6 +1315,11 @@
                         'text-halo-width': 2
                     }
                 });
+
+                // After adding all the new layers, move the location marker to the top
+                if (map.getLayer('location-marker-circle')) {
+                    map.moveLayer('location-marker-circle');
+                }
             };
             reader.readAsText(file);
         }
