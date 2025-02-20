@@ -618,6 +618,11 @@
             currentConfig = cfg;
             currentPolicy = cfg.split('/')[0];
             addGeoJSONLayers();
+            
+            // Move the location marker to the top after adding new layers
+            if (map.getLayer('location-marker-circle')) {
+                map.moveLayer('location-marker-circle');
+            }
         }
 
         // Update addGeoJSONLayers to use the policy name in file paths
@@ -960,6 +965,11 @@
                         'text-halo-width': 2
                     }
                 });
+            }
+
+            // Move the location marker to the top after adding or modifying layers
+            if (map.getLayer('location-marker-circle')) {
+                map.moveLayer('location-marker-circle');
             }
 
             // Update the main linestring visibility icon based on current state.
