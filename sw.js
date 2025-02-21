@@ -5,7 +5,7 @@ const TILE_CACHE_NAME = 'mountaincircles-tiles-v1';
 const GEOJSON_CACHE_NAME = 'mountaincircles-geojson-v1';
 const DYNAMIC_CACHE_NAME = 'mountaincircles-dynamic-v1';
 
-const BASE_PATH = '/MountainCircles---map';
+const BASE_PATH = '/MountainCircles-map-beta';
 
 // Global counter for the number of network fetches served (i.e., when there's no cached response)
 let networkFetchCount = 0;
@@ -292,5 +292,36 @@ self.addEventListener('message', async (event) => {
       type: 'cacheComplete',
       message: `Successfully cached ${completed} of ${total} files`
     });
+  }
+
+  if (event.data.type === 'cacheTiles') {
+    const cache = await caches.open('mountaincircles-tiles-v1');
+    const tiles = event.data.tiles;
+    const basePath = event.data.basePath;
+    const BATCH_SIZE = 50; // Process 50 tiles concurrently
+
+    // Process tiles in batches
+    for (let i = 0; i < tiles.length; i += BATCH_SIZE) {
+        const batch = tiles.slice(i, i + BATCH_SIZE);
+        await Promise.all(batch.map(async (tile) => {
+            try {
+                const url = `${basePath}/${tile.z}/${tile.x}/${tile.y}.png`;
+                const response = await fetch(url);
+                if (response.ok) {
+                    await cache.put(url, response);
+                }
+                // Always notify progress, even for 404s
+                event.source.postMessage({
+                    type: 'cacheTileComplete'
+                });
+            } catch (error) {
+                console.error('Error caching tile:', error);
+                // Continue with next tile even if one fails
+                event.source.postMessage({
+                    type: 'cacheTileComplete'
+                });
+            }
+        }));
+    }
   }
 }); 

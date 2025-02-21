@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <base href="/MountainCircles---map/">
+    <base href="/MountainCircles-map-beta/">
     <title>MountainCircles Map - Beta</title>
     <!-- Using jsDelivr instead of unpkg to avoid potential network errors on Windows -->
     <script src="https://cdn.jsdelivr.net/npm/maplibre-gl@latest/dist/maplibre-gl.js"></script>
@@ -590,6 +590,21 @@
                     </div>
                 </div>
             </div>
+
+            <!-- Add new section for caching background map -->
+            <div style="margin-top: 15px; display: none;">
+                <button id="cacheBackgroundMapBtn" class="config-button" style="display: flex; align-items: center; gap: 8px;">
+                    <span class="material-icons-round">map</span>
+                    <span>Cache Background Map for Offline Use</span>
+                </button>
+                <div id="mapCacheProgress" style="display: none; margin-top: 10px;">
+                    <div style="margin-bottom: 5px;">Caching tiles: <span id="mapCacheCount">0</span>/<span id="mapTotalTiles">0</span></div>
+                    <div style="width: 100%; height: 4px; background: #eee; border-radius: 2px;">
+                        <div id="mapProgressBar" style="width: 0%; height: 100%; background: #4CAF50; border-radius: 2px; transition: width 0.3s;"></div>
+                    </div>
+                </div>
+            </div>
+
             <h3>Warning</h3>
             <p>This is a new experimental tool. Problems will arise that have not been encountered before in the gliding community.</p>
             <p>I am not sure that 100m above ground is big enough a margin to be safe above the passes.</p>
@@ -611,7 +626,7 @@
     </div>
 
     <script>
-        const BASE_PATH = '/MountainCircles---map';
+        const BASE_PATH = '/MountainCircles-map-beta';
 
         const customStyle = {
             "version": 8,
@@ -1358,19 +1373,24 @@
 
             // Update the cache button visibility check
             const cacheButton = document.getElementById('cacheCurrentConfigBtn');
+            const mapCacheButton = document.getElementById('cacheBackgroundMapBtn');
             const cacheContainer = cacheButton.parentElement;
+            const mapCacheContainer = mapCacheButton.parentElement;
 
-            // Style the container consistently
-            cacheContainer.style.display = 'none';  // Default to hidden
-            cacheContainer.style.justifyContent = 'center';
-            cacheContainer.style.alignItems = 'center';
-            cacheContainer.style.gap = '5px';
-            cacheContainer.style.marginBottom = '15px';
-            cacheContainer.style.width = '100%';
+            // Style the containers consistently
+            [cacheContainer, mapCacheContainer].forEach(container => {
+                container.style.display = 'none';  // Default to hidden
+                container.style.justifyContent = 'center';
+                container.style.alignItems = 'center';
+                container.style.gap = '5px';
+                container.style.marginBottom = '15px';
+                container.style.width = '100%';
+            });
 
             // Only show cache controls for installed mobile app
             if (isRunningStandalone() && isMobileDevice()) {
                 cacheContainer.style.display = 'flex';  // Show with flex layout if conditions met
+                mapCacheContainer.style.display = 'flex';
             }
         });
         
@@ -1858,10 +1878,91 @@
                 } else {
                     // alert('Button has no config data!');  // Debug for missing data
                 }
+
             }
             // alert('Finished updating button styles');
         }
 
+        // Add this function after the cacheConfigurationFiles function
+        async function cacheTiles() {
+            // Show progress UI
+            document.getElementById('mapCacheProgress').style.display = 'block';
+            const progressBar = document.getElementById('mapProgressBar');
+            const cacheCount = document.getElementById('mapCacheCount');
+            const totalTiles = document.getElementById('mapTotalTiles');
+
+            // Initial bounds from the map configuration
+            const bounds = [[4.9698169, 43.6088902], [13.696105, 47.5644488]];
+            const minZoom = 1;
+            const maxZoom = 12;
+
+            // Calculate tile coordinates for each zoom level
+            const tiles = [];
+            for (let z = minZoom; z <= maxZoom; z++) {
+                // Convert bounds to tile coordinates
+                const northwest = latLngToTile(bounds[0][1], bounds[0][0], z);
+                const southeast = latLngToTile(bounds[1][1], bounds[1][0], z);
+
+                // Calculate tile ranges
+                const minX = Math.min(northwest.x, southeast.x);
+                const maxX = Math.max(northwest.x, southeast.x);
+                const minY = Math.min(northwest.y, southeast.y);
+                const maxY = Math.max(northwest.y, southeast.y);
+
+                // Add all tiles within the bounds at this zoom level
+                for (let x = minX; x <= maxX; x++) {
+                    for (let y = minY; y <= maxY; y++) {
+                        tiles.push({ x, y, z });
+                    }
+                }
+            }
+
+            // Update total tiles count
+            totalTiles.textContent = tiles.length;
+
+            // Create message handler
+            let completedTiles = 0;
+            const messageHandler = (event) => {
+                if (event.data.type === 'cacheTileComplete') {
+                    completedTiles++;
+                    cacheCount.textContent = completedTiles;
+                    const percentage = (completedTiles / tiles.length) * 100;
+                    progressBar.style.width = `${percentage}%`;
+
+                    if (completedTiles === tiles.length) {
+                        // All tiles cached
+                        navigator.serviceWorker.removeEventListener('message', messageHandler);
+                        document.getElementById('mapCacheProgress').style.display = 'none';
+                        progressBar.style.width = '0%';
+                    }
+                }
+            };
+
+            // Add the message listener
+            navigator.serviceWorker.addEventListener('message', messageHandler);
+
+            // Send tiles to service worker for caching
+            const registration = await navigator.serviceWorker.ready;
+            registration.active.postMessage({
+                type: 'cacheTiles',
+                tiles: tiles,
+                basePath: './tiles'
+            });
+        }
+
+        // Helper function to convert lat/lng to tile coordinates
+        function latLngToTile(lat, lng, zoom) {
+            const n = Math.pow(2, zoom);
+            const x = Math.floor((lng + 180) / 360 * n);
+            const latRad = lat * Math.PI / 180;
+            const y = Math.floor((1 - Math.log(Math.tan(latRad) + 1 / Math.cos(latRad)) / Math.PI) / 2 * n);
+            return { x, y };
+        }
+
+        // Add click handler for the cache background map button
+        document.getElementById('cacheBackgroundMapBtn').addEventListener('click', cacheTiles);
+
     </script>
 </body>
 </html>
+
