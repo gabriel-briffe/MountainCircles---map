@@ -5,7 +5,7 @@ const TILE_CACHE_NAME = 'mountaincircles-tiles-v1';
 const GEOJSON_CACHE_NAME = 'mountaincircles-geojson-v1';
 const DYNAMIC_CACHE_NAME = 'mountaincircles-dynamic-v1';
 
-const BASE_PATH = '/MountainCircles-map-beta';
+const BASE_PATH = '/MountainCircles---map';
 
 // Global counter for the number of network fetches served (i.e., when there's no cached response)
 let networkFetchCount = 0;
