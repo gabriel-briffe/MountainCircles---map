@@ -439,6 +439,30 @@
                 color: #fff;
             }
         }
+
+        /* Style for layer toggle buttons */
+        #peaksToggleBtn, #passesToggleBtn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 12px;
+        }
+
+        #peaksToggleBtn .material-icons-round,
+        #passesToggleBtn .material-icons-round {
+            font-size: 20px;
+        }
+
+        /* Dark mode adjustments */
+        @media (prefers-color-scheme: dark) {
+            #peaksToggleBtn, #passesToggleBtn {
+                background: rgba(20, 20, 20, 0.8);
+                color: #fff;
+            }
+            #peaksToggleBtn:hover, #passesToggleBtn:hover {
+                background: rgba(20, 20, 20, 1);
+            }
+        }
     </style>
 </head>
 <body>
@@ -506,6 +530,17 @@
             </button>
             <h3>Select Glide ratio</h3>
             <div id="policyConfigs"></div>
+            <h3>Layers</h3>
+            <div style="display: flex; justify-content: center; gap: 10px; margin-bottom: 15px;">
+                <button id="peaksToggleBtn" class="config-button">
+                    <span class="material-icons-round" id="peaksVisibilityIcon">terrain</span>
+                    Peaks
+                </button>
+                <button id="passesToggleBtn" class="config-button">
+                    <span class="material-icons-round" id="passesVisibilityIcon">route</span>
+                    Passes
+                </button>
+            </div>
             <!-- IGC File Control with Icon -->
             <button id="igcFileButton">
                 <span class="material-icons-round">folder_open</span>
@@ -610,16 +645,50 @@
             policyConfigsContainer.appendChild(policySection);
         });
 
-        // Update the switchConfig function to handle policy prefixes
+        // Initialize visibility state
+        let peaksVisible = true;
+        let passesVisible = true;
+
+        // Function to update layer visibility and icon
+        function updateLayerVisibility(layerId, visible, iconId) {
+            if (map.getLayer(layerId)) {
+                map.setLayoutProperty(layerId, 'visibility', visible ? 'visible' : 'none');
+                document.getElementById(iconId).style.opacity = visible ? '1' : '0.5';
+            }
+        }
+
+        // Peaks toggle button
+        document.getElementById('peaksToggleBtn').addEventListener('click', () => {
+            peaksVisible = !peaksVisible;
+            updateLayerVisibility('peaks-symbols', peaksVisible, 'peaksVisibilityIcon');
+        });
+
+        // Passes toggle button
+        document.getElementById('passesToggleBtn').addEventListener('click', () => {
+            passesVisible = !passesVisible;
+            updateLayerVisibility('passes-symbols', passesVisible, 'passesVisibilityIcon');
+        });
+
+        // Update the switchConfig function to maintain visibility state
         function switchConfig(cfg) {
             removeDynamicLayers();
             removeGeoJSONLayers();
-            updateParametersBox(cfg.split('/')[1]);  // Pass only the config part, not the policy
+            updateParametersBox(cfg.split('/')[1]);
             currentConfig = cfg;
             currentPolicy = cfg.split('/')[0];
             addGeoJSONLayers();
             
-            // Move the location marker to the top after adding new layers
+            // Restore visibility states after adding layers
+            updateLayerVisibility('peaks-symbols', peaksVisible, 'peaksVisibilityIcon');
+            updateLayerVisibility('passes-symbols', passesVisible, 'passesVisibilityIcon');
+            
+            // Move layers to top in correct order
+            if (map.getLayer('passes-symbols')) {
+                map.moveLayer('passes-symbols');
+            }
+            if (map.getLayer('peaks-symbols')) {
+                map.moveLayer('peaks-symbols');
+            }
             if (map.getLayer('location-marker-circle')) {
                 map.moveLayer('location-marker-circle');
             }
@@ -967,7 +1036,13 @@
                 });
             }
 
-            // Move the location marker to the top after adding or modifying layers
+            // Move peaks and location marker to the top after adding or modifying layers
+            if (map.getLayer('passes-symbols')) {
+                map.moveLayer('passes-symbols');
+            }
+            if (map.getLayer('peaks-symbols')) {
+                map.moveLayer('peaks-symbols');
+            }
             if (map.getLayer('location-marker-circle')) {
                 map.moveLayer('location-marker-circle');
             }
@@ -1030,11 +1105,159 @@
         
         // Attach layers and events once the map has fully loaded.
         map.on('load', () => {
-            // First add your other layers
+            console.log('Map load event triggered');
+            
+            // Add peaks and passes sources
+            map.addSource('peaks', {
+                type: 'geojson',
+                data: 'peaks.geojson'
+            });
+            map.addSource('passes', {
+                type: 'geojson',
+                data: 'passes.geojson'
+            });
+            console.log('Added peaks and passes sources');
+
+            // Create triangle images for peaks and passes
+            const size = 15;
+            const peakImage = new Image(size, size);
+            const passImage = new Image(size, size);
+            const peakCanvas = document.createElement('canvas');
+            const passCanvas = document.createElement('canvas');
+            peakCanvas.width = size;
+            peakCanvas.height = size;
+            passCanvas.width = size;
+            passCanvas.height = size;
+            const peakContext = peakCanvas.getContext('2d');
+            const passContext = passCanvas.getContext('2d');
+            
+            // Draw orange upward triangle for peaks
+            peakContext.beginPath();
+            peakContext.moveTo(size/2, 0);
+            peakContext.lineTo(size, size);
+            peakContext.lineTo(0, size);
+            peakContext.closePath();
+            peakContext.fillStyle = '#FF8C00';  // Dark orange color (instead of #8B4513)
+            peakContext.fill();
+            
+            // Draw green inverted triangle for passes
+            passContext.beginPath();
+            passContext.moveTo(0, 0);
+            passContext.lineTo(size, 0);
+            passContext.lineTo(size/2, size);
+            passContext.closePath();
+            passContext.fillStyle = '#006400';  // Dark green color
+            passContext.fill();
+            
+            peakImage.src = peakCanvas.toDataURL();
+            passImage.src = passCanvas.toDataURL();
+            
+            // Add image loading handlers
+            Promise.all([
+                new Promise(resolve => peakImage.onload = resolve),
+                new Promise(resolve => passImage.onload = resolve)
+            ]).then(() => {
+                console.log('Triangle images loaded');
+                map.addImage('peak-triangle', peakImage);
+                map.addImage('pass-triangle', passImage);
+                console.log('Added triangle images to map');
+
+                // Add the peaks symbol layer
+                map.addLayer({
+                    id: 'peaks-symbols',
+                    type: 'symbol',
+                    source: 'peaks',
+                    minzoom: 10,
+                    layout: {
+                        'icon-image': 'peak-triangle',
+                        'icon-size': 1,
+                        'icon-anchor': 'bottom',
+                        'text-field': ['get', 'namele'],
+                        'text-size': baseTextSize,
+                        'text-anchor': 'top',
+                        'text-offset': [0, 0.5],
+                        'icon-allow-overlap': false,
+                        'icon-ignore-placement': false,
+                        'icon-optional': true,
+                        'icon-padding': 2,
+                        'symbol-spacing': 250,
+                        'text-allow-overlap': false,
+                        'text-ignore-placement': false,
+                        'text-optional': true,
+                        'text-padding': 2,
+                        'text-field': [
+                            'step',
+                            ['zoom'],
+                            '',  // Default (no text)
+                            11, ['get', 'namele']  // At zoom 11 and above, show the name
+                        ]
+                    },
+                    paint: {
+                        'text-color': '#654321', 
+                        'text-halo-color': '#fff',
+                        'text-halo-width': 2
+                    }
+                });
+
+                // Add the passes symbol layer
+                map.addLayer({
+                    id: 'passes-symbols',
+                    type: 'symbol',
+                    source: 'passes',
+                    minzoom: 10,
+                    layout: {
+                        'icon-image': 'pass-triangle',
+                        'icon-size': 1,
+                        'icon-anchor': 'top',  // Inverted triangle, so anchor at top
+                        'text-field': ['get', 'name'],
+                        'text-size': baseTextSize,
+                        'text-anchor': 'bottom',  // Text below the triangle
+                        'text-offset': [0, -0.5],
+                        'icon-allow-overlap': false,
+                        'icon-ignore-placement': false,
+                        'icon-optional': true,
+                        'icon-padding': 2,
+                        'symbol-spacing': 250,
+                        'text-allow-overlap': false,
+                        'text-ignore-placement': false,
+                        'text-optional': true,
+                        'text-padding': 2,
+                        'text-field': [
+                            'step',
+                            ['zoom'],
+                            '',  // Default (no text)
+                            11, ['get', 'name']  // At zoom 11 and above, show the name
+                        ]
+                    },
+                    paint: {
+                        'text-color': '#006400',  // Dark green color for pass labels
+                        'text-halo-color': '#fff',
+                        'text-halo-width': 2
+                    }
+                });
+                console.log('Added peaks and passes symbol layers');
+            });
+
+            // Add error handling for both sources
+            map.on('sourcedata', (e) => {
+                if ((e.sourceId === 'peaks' || e.sourceId === 'passes') && e.isSourceLoaded) {
+                    const source = map.getSource(e.sourceId);
+                    if (source) {
+                        const data = source._data;
+                        console.log(`${e.sourceId} source data loaded:`, data);
+                        if (!data || !data.features || !data.features.length) {
+                            console.warn(`${e.sourceId} source loaded but contains no features`);
+                        } else {
+                            console.log(`Loaded ${data.features.length} ${e.sourceId} features`);
+                        }
+                    }
+                }
+            });
+
+            // Then add your other layers
             addGeoJSONLayers();
             
-            // Then add the location marker source and layer LAST
-            // This ensures it's on top of other layers
+            // Add location marker last
             map.addSource('location-marker', {
                 type: 'geojson',
                 data: {
@@ -1046,7 +1269,6 @@
                 }
             });
 
-            // Add the circle layer (removed invalid z-index property)
             map.addLayer({
                 id: 'location-marker-circle',
                 type: 'circle',
