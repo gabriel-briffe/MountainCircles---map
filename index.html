@@ -9,6 +9,12 @@
     <script src="https://cdn.jsdelivr.net/npm/maplibre-gl@latest/dist/maplibre-gl.js"></script>
     <link href="https://cdn.jsdelivr.net/npm/maplibre-gl@latest/dist/maplibre-gl.css" rel="stylesheet" />
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
+    <link rel="manifest" href="manifest.json">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <meta name="apple-mobile-web-app-title" content="MC Map">
+    <meta name="theme-color" content="#000000">
     <style>
         body { margin: 0; padding: 0; }
         #map { width: 100%; height: 100vh; }
@@ -280,7 +286,7 @@
             left: 0;
             width: 100vw;
             height: 100vh;
-            background: rgba(0, 0, 0, 0.5);
+            background: rgba(0, 0, 0, 0.2);
             display: none; /* Hidden by default */
             align-items: center;
             justify-content: center;
@@ -355,7 +361,7 @@
         /* Dark mode styling for the popup (like the dock) */
         @media (prefers-color-scheme: dark) {
             #popupMenu .popup-content {
-                background: rgba(20, 20, 20, 0.9);
+                background: rgba(20, 20, 20, 0.8);
                 color: #fff;
             }
             #popupMenu #configButtons button {
@@ -463,14 +469,39 @@
                 background: rgba(20, 20, 20, 1);
             }
         }
+
+        /* Update the CSS for the cache button */
+        #cacheCurrentConfigBtn {
+            transition: border 0.3s, box-shadow 0.3s;
+            border: none;
+            box-shadow: none;
+            padding: 8px 12px;
+            border-radius: 4px;
+            position: relative; /* Ensure border works correctly */
+            box-sizing: border-box; /* Include border in element size */
+        }
+
+        /* Style for cached configuration buttons */
+        .cached-config {
+            border: 2px solid #4CAF50; /* Green border */
+        }
+
+        /* Add to your existing CSS */
+        #cacheProgress {
+            display: none;
+            flex-direction: column;
+            width: 100%;
+            align-items: center;
+            margin-top: 10px;
+        }
+
+        .progress-bar-container {
+            width: 80%;
+            margin: 5px 0;
+        }
     </style>
 </head>
 <body>
-    <!-- Transparent Loading/Connection Message on Top of the Map -->
-    <div id="loadingMessage" style="position: absolute; top: 10px; left: 50%; transform: translateX(-50%); z-index: 1000; background: rgba(255,255,255,0.8); padding: 10px 20px; border-radius: 3px; font-family: sans-serif; display: none;">
-        Loading files, please wait...
-    </div>
-
     <!-- Spinner for GeoJSON loading -->
     <div id="spinner">
         <div class="spinner"></div>
@@ -546,6 +577,19 @@
                 <span class="material-icons-round">folder_open</span>
                 <span>Open IGC File</span>
             </button>
+            <!-- Add this after the IGC File button in the popup menu -->
+            <div style="margin-top: 15px; display: none;">
+                <button id="cacheCurrentConfigBtn" class="config-button" style="display: flex; align-items: center; gap: 8px;">
+                    <span class="material-icons-round">download</span>
+                    <span>Cache Current Config for Offline Use</span>
+                </button>
+                <div id="cacheProgress" style="display: none; margin-top: 10px;">
+                    <div style="margin-bottom: 5px;">Caching files: <span id="cacheCount">0</span>/<span id="totalFiles">0</span></div>
+                    <div style="width: 100%; height: 4px; background: #eee; border-radius: 2px;">
+                        <div id="progressBar" style="width: 0%; height: 100%; background: #4CAF50; border-radius: 2px; transition: width 0.3s;"></div>
+                    </div>
+                </div>
+            </div>
             <h3>Warning</h3>
             <p>This is a new experimental tool. Problems will arise that have not been encountered before in the gliding community.</p>
             <p>I am not sure that 100m above ground is big enough a margin to be safe above the passes.</p>
@@ -559,7 +603,15 @@
         </div>
     </div>
 
+    <!-- Add this right after the opening <body> tag -->
+    <div id="installPrompt" style="display: none; position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.8); color: white; padding: 15px; border-radius: 8px; z-index: 1000; text-align: center;">
+        <p style="margin: 0 0 10px 0;">Install MountainCircles Map for offline use?</p>
+        <button id="installButton" style="background: #4CAF50; border: none; color: white; padding: 8px 16px; border-radius: 4px; margin-right: 10px;">Install</button>
+        <button id="cancelInstall" style="background: #666; border: none; color: white; padding: 8px 16px; border-radius: 4px;">Not Now</button>
+    </div>
+
     <script>
+        const BASE_PATH = '/MountainCircles---map';
 
         const customStyle = {
             "version": 8,
@@ -632,12 +684,16 @@
                 const btn = document.createElement('button');
                 btn.textContent = cfg.split('-')[0];  // Use first part as button label
                 btn.className = 'config-button';
-                btn.addEventListener('click', () => {
-                    const newConfig = policy + '/' + cfg;
-                    switchConfig(newConfig);
+                const fullConfig = policy + '/' + cfg;  // Store the full config path
+                
+                // Set the data-config attribute explicitly
+                btn.setAttribute('data-config', fullConfig);
+                
+                btn.onclick = () => {
+                    switchConfig(fullConfig);
                     document.getElementById('popupMenu').style.display = "none";
-                    console.log("Switched to configuration: " + newConfig);
-                });
+                    console.log("Switched to configuration: " + fullConfig);
+                };
                 configButtonsContainer.appendChild(btn);
             });
             
@@ -691,6 +747,11 @@
             }
             if (map.getLayer('location-marker-circle')) {
                 map.moveLayer('location-marker-circle');
+            }
+
+            // Update cache button style when config changes
+            if (isRunningStandalone() && isMobileDevice()) {
+                updateCacheButtonStyle();
             }
         }
 
@@ -846,9 +907,15 @@
         
         // Helper to update the parameters box text based on the config folder.
         function updateParametersBox(cfg) {
-            const parts = cfg.split('-'); // e.g. ["20", "100", "250", "4200"]
+            console.log("updateParametersBox called with:", cfg);
+            // First split by '/' to remove the policy
+            const configOnly = cfg.split('/')[1] || cfg;  // Take second part after slash, or whole string if no slash
+            // Then split the config numbers
+            const parts = configOnly.split('-');
+            console.log("parts after split:", parts);
             if (parts.length >= 3) {
                 const labelText = "L/D " + parts[0] + "-ground " + parts[1] + "m-circuit " + parts[2] + "m";
+                console.log("setting label to:", labelText);
                 document.getElementById('parametersBox').textContent = labelText;
             }
         }
@@ -1238,22 +1305,6 @@
                 console.log('Added peaks and passes symbol layers');
             });
 
-            // Add error handling for both sources
-            map.on('sourcedata', (e) => {
-                if ((e.sourceId === 'peaks' || e.sourceId === 'passes') && e.isSourceLoaded) {
-                    const source = map.getSource(e.sourceId);
-                    if (source) {
-                        const data = source._data;
-                        console.log(`${e.sourceId} source data loaded:`, data);
-                        if (!data || !data.features || !data.features.length) {
-                            console.warn(`${e.sourceId} source loaded but contains no features`);
-                        } else {
-                            console.log(`Loaded ${data.features.length} ${e.sourceId} features`);
-                        }
-                    }
-                }
-            });
-
             // Then add your other layers
             addGeoJSONLayers();
             
@@ -1304,39 +1355,31 @@
             if (map.getLayer('points-layer-clickable')) {
                 map.on('click', 'points-layer-clickable', handlePointClick);
             }
-            if (navigator.onLine) {
-                map.once('idle', hideLoadingMessage);
+
+            // Update the cache button visibility check
+            const cacheButton = document.getElementById('cacheCurrentConfigBtn');
+            const cacheContainer = cacheButton.parentElement;
+
+            // Style the container consistently
+            cacheContainer.style.display = 'none';  // Default to hidden
+            cacheContainer.style.justifyContent = 'center';
+            cacheContainer.style.alignItems = 'center';
+            cacheContainer.style.gap = '5px';
+            cacheContainer.style.marginBottom = '15px';
+            cacheContainer.style.width = '100%';
+
+            // Only show cache controls for installed mobile app
+            if (isRunningStandalone() && isMobileDevice()) {
+                cacheContainer.style.display = 'flex';  // Show with flex layout if conditions met
             }
         });
         
-
-        // Function to show the loading message with a given text.
-        function showLoadingMessage(text) {
-            const messageDiv = document.getElementById('loadingMessage');
-            messageDiv.textContent = text;
-            messageDiv.style.display = "block";
+        // Helper function to check if running in standalone mode
+        function isRunningStandalone() {
+            return window.matchMedia('(display-mode: standalone)').matches ||
+                   window.navigator.standalone ||  // for iOS
+                   document.referrer.includes('android-app://');
         }
-
-        // Function to hide the loading message.
-        function hideLoadingMessage() {
-            document.getElementById('loadingMessage').style.display = "none";
-        }
-
-        // --- Connection Message Logic ---
-        function updateConnectionMessage() {
-            const messageDiv = document.getElementById('loadingMessage');
-            if (!navigator.onLine) {
-                messageDiv.textContent = "No internet connection. Please connect to the internet.";
-                messageDiv.style.display = "block";
-            } else {
-                messageDiv.style.display = "none";
-            }
-        }
-
-        updateConnectionMessage();
-
-        window.addEventListener('offline', updateConnectionMessage);
-        window.addEventListener('online', updateConnectionMessage);
 
         const polygonOpacitySlider = document.getElementById('polygonOpacitySlider');
         polygonOpacitySlider.addEventListener('input', function() {
@@ -1350,6 +1393,7 @@
         const popupMenu = document.getElementById('popupMenu');
         document.getElementById('moreOptionsBtn').addEventListener('click', () => {
             popupMenu.style.display = "flex";
+            updateConfigButtonStyles();
         });
         document.getElementById('closePopupBtn').addEventListener('click', () => {
             popupMenu.style.display = "none";
@@ -1610,14 +1654,54 @@
             document.getElementById('polygonVisibilityIcon').textContent = newVisibility === 'visible' ? 'layers' : 'layers_clear';
         });
 
+        // Add this near the top of your script
+        let deferredPrompt;
+
+        window.addEventListener('beforeinstallprompt', (e) => {
+            // Only show install prompt on mobile devices
+            if (isMobileDevice()) {
+                // Stash the event so it can be triggered later
+                deferredPrompt = e;
+                
+                // Show the install prompt
+                document.getElementById('installPrompt').style.display = 'block';
+            } else {
+                // Hide the prompt on non-mobile devices
+                document.getElementById('installPrompt').style.display = 'none';
+            }
+        });
+
+        // Installation prompt handlers
+        document.getElementById('installButton').addEventListener('click', async () => {
+            if (deferredPrompt) {
+                await deferredPrompt.prompt();
+                const { outcome } = await deferredPrompt.userChoice;
+                console.log(`User response to the install prompt: ${outcome}`);
+                deferredPrompt = null;
+                document.getElementById('installPrompt').style.display = 'none';
+            }
+        });
+
+        document.getElementById('cancelInstall').addEventListener('click', () => {
+            document.getElementById('installPrompt').style.display = 'none';
+        });
+
+        // Update your service worker registration
         if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('/MountainCircles---map/sw.js')
-                .then(function(registration) {
-                    console.log('Service Worker registered with scope:', registration.scope);
-                })
-                .catch(function(error) {
-                    console.error('Service Worker registration failed:', error);
-                });
+            navigator.serviceWorker.register(`${BASE_PATH}/sw.js`, {
+                scope: `${BASE_PATH}/`  // Add trailing slash
+            })
+            .then(async registration => {
+                console.log('Service Worker registered with scope:', registration.scope);
+                
+                // Force update
+                if (registration.active) {
+                    registration.update();
+                }
+            })
+            .catch(error => {
+                console.error('Service Worker registration failed:', error);
+            });
         }
 
         // Function to update location
@@ -1637,6 +1721,145 @@
                     coordinates: coords
                 }
             });
+        }
+
+        // Add this to your existing script section
+        async function cacheConfigurationFiles() {
+            const configParts = currentConfig.split('/');
+            const policy = configParts[0];
+            const config = configParts[1];
+            const configPrefix = config.split('-').slice(0, 3).join('-');
+            
+            // Show progress UI
+            document.getElementById('cacheProgress').style.display = 'block';
+            const progressBar = document.getElementById('progressBar');
+            const cacheCount = document.getElementById('cacheCount');
+            const totalFiles = document.getElementById('totalFiles');
+            
+            try {
+                // First, fetch the main GeoJSON to get the point features
+                const mainGeojsonUrl = `./${currentConfig}/aa_${policy}_${configPrefix}.geojson`;
+                const sectorsGeojsonUrl = `./${currentConfig}/aa_${policy}_${configPrefix}_sectors1.geojson`;
+                
+                const response = await fetch(mainGeojsonUrl);
+                const data = await response.json();
+                
+                // Filter for point features that have a filename property
+                const pointFeatures = data.features.filter(f => 
+                    f.geometry.type === 'Point' && f.properties.filename);
+                
+                // Create list of files to cache, including the main GeoJSON files
+                const files = [
+                    `${currentConfig}/aa_${policy}_${configPrefix}.geojson`,
+                    `${currentConfig}/aa_${policy}_${configPrefix}_sectors1.geojson`,
+                    ...pointFeatures.map(f => `${currentConfig}/${f.properties.filename}`)
+                ];
+                
+                // Update total files count (including main files)
+                const total = files.length;
+                totalFiles.textContent = total;
+                
+                // Create message handler before sending message
+                const messageHandler = (event) => {
+                    if (event.data.type === 'cacheStart') {
+                        // alert(event.data.message);
+                    }
+                    else if (event.data.type === 'cacheProgress') {
+                        // Update progress for every file
+                        cacheCount.textContent = event.data.completed;
+                        const percentage = (event.data.completed / event.data.total) * 100;
+                        progressBar.style.width = `${percentage}%`;
+                        
+                        // Show alert for the current operation
+                        if (event.data.message) {
+                            // alert(event.data.message);
+                        }
+                    }
+                    else if (event.data.type === 'cacheError') {
+                        // alert(event.data.message);
+                    }
+                    else if (event.data.type === 'cacheComplete') {
+                        // alert('Cache complete - updating button styles');
+                        updateConfigButtonStyles();
+                        navigator.serviceWorker.removeEventListener('message', messageHandler);
+                        document.getElementById('cacheProgress').style.display = 'none';
+                        progressBar.style.width = '0%';
+                    }
+                };
+                
+                // Add the message listener
+                navigator.serviceWorker.addEventListener('message', messageHandler);
+                
+                // Send message to service worker
+                const registration = await navigator.serviceWorker.ready;
+                
+                // alert('Sending cache request to Service Worker');
+                registration.active.postMessage({
+                    type: 'cacheFiles',
+                    files: files,
+                    config: currentConfig
+                });
+                
+            } catch (error) {
+                // alert(`Error: ${error.message}`);
+                console.error('Error caching configuration:', error);
+                document.getElementById('cacheProgress').style.display = 'none';
+            }
+        }
+
+        // Add click handler for the cache button
+        document.getElementById('cacheCurrentConfigBtn').addEventListener('click', cacheConfigurationFiles);
+
+        // Add these functions at the top of your script section
+        function isRunningStandalone() {
+            return window.matchMedia('(display-mode: standalone)').matches || 
+                   window.navigator.standalone || // for iOS
+                   document.referrer.includes('android-app://');
+        }
+
+        function isMobileDevice() {
+            return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        }
+
+        /* Update the function to check if a configuration is cached */
+        async function isConfigCached(config) {
+            // alert('Checking cache for config: ' + config);
+            const configParts = config.split('/');
+            const policy = configParts[0];
+            const configPrefix = configParts[1].split('-').slice(0, 3).join('-');
+            const mainGeojsonUrl = `${BASE_PATH}/${config}/aa_${policy}_${configPrefix}.geojson`;
+            // alert('Looking for URL in cache: ' + mainGeojsonUrl);
+            
+            try {
+                const cache = await caches.open('mountaincircles-dynamic-v1');
+                const response = await cache.match(mainGeojsonUrl);
+                const isCached = !!response;
+                // alert(`Cache result for ${mainGeojsonUrl}: ${isCached}`);
+                return isCached;
+            } catch (error) {
+                // alert('Error checking cache: ' + error);
+                return false;
+            }
+        }
+
+        /* Update the button style function to only target config buttons */
+        async function updateConfigButtonStyles() {
+            // alert('Starting to update button styles');
+            const buttons = document.querySelectorAll('.config-buttons .config-button');
+            // alert(`Found ${buttons.length} config buttons`);
+            
+            for (const button of buttons) {
+                const buttonConfig = button.getAttribute('data-config');
+                // alert(`Checking button with config: ${buttonConfig}`);  // More detailed debug
+                if (buttonConfig) {
+                    const isCached = await isConfigCached(buttonConfig);
+                    // alert(`Cache result for ${buttonConfig}: ${isCached}`);
+                    button.style.border = isCached ? '2px solid #4CAF50' : 'none';
+                } else {
+                    // alert('Button has no config data!');  // Debug for missing data
+                }
+            }
+            // alert('Finished updating button styles');
         }
 
     </script>
