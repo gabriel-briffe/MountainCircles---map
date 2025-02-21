@@ -149,11 +149,6 @@
                 transform: rotate(0deg) !important;
                 width: 100% !important;
             }
-            /* Hide zoom buttons that aren't needed in portrait */
-            #zoomInBtn,
-            #zoomOutBtn {
-                display: none;
-            }
         }
 
         /* Dark mode adjustments: use a grey background similar to the buttons */
@@ -237,12 +232,6 @@
             }
         }
 
-        @media (pointer: coarse) {
-            #zoomInBtn,
-            #zoomOutBtn {
-                display: none;
-            }
-        }
 
         /* Map Dock Buttons: Remove transition and hover effects */
         #mapDock button {
@@ -1391,7 +1380,10 @@
             if (isRunningStandalone() && isMobileDevice()) {
                 cacheContainer.style.display = 'flex';  // Show with flex layout if conditions met
                 mapCacheContainer.style.display = 'flex';
-            }
+                // Hide zoom buttons in standalone mode
+                document.getElementById('zoomInBtn').style.display = 'none';
+                document.getElementById('zoomOutBtn').style.display = 'none';
+            } 
         });
         
         // Helper function to check if running in standalone mode
