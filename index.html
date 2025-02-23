@@ -1954,6 +1954,26 @@
         // Add click handler for the cache background map button
         document.getElementById('cacheBackgroundMapBtn').addEventListener('click', cacheTiles);
 
+        // Detect iOS devices
+        function isIOS() {
+          return /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+        }
+
+        // Show custom instructions for iOS users
+        if (isIOS()) {
+          const installPrompt = document.getElementById('installPrompt');
+          installPrompt.innerHTML = `
+            <p>To install this app, tap the share button in Safari and then select "Add to Home Screen".</p>
+            <button id="closeInstallPrompt" style="background: #666; color: #fff; padding: 8px 16px; border: none; border-radius: 4px;">Close</button>
+          `;
+          installPrompt.style.display = 'block';
+
+          document.getElementById('closeInstallPrompt').addEventListener('click', function() {
+            installPrompt.style.display = 'none';
+          });
+        }
+
+
     </script>
 </body>
 </html>
