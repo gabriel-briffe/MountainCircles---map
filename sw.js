@@ -1,6 +1,6 @@
 // Service Worker File: sw.js
 
-const CACHE_NAME = 'mountaincircles-v1';
+const CACHE_NAME = 'mountaincircles-v2';
 const TILE_CACHE_NAME = 'mountaincircles-tiles-v1';
 const GEOJSON_CACHE_NAME = 'mountaincircles-geojson-v1';
 const DYNAMIC_CACHE_NAME = 'mountaincircles-dynamic-v1';
@@ -65,25 +65,6 @@ self.addEventListener('fetch', event => {
   // Skip non-GET requests and requests to other domains that aren't glyph requests
   if (event.request.method !== 'GET' || 
       (!url.pathname.startsWith(BASE_PATH) && !url.pathname.includes('/font/'))) {
-    return;
-  }
-
-  // Network-first strategy for index.html and sw.js
-  if (url.pathname.endsWith('index.html') || url.pathname.endsWith('/') || url.pathname.endsWith('sw.js')) {
-    event.respondWith(
-      fetch(event.request)
-        .then(response => {
-          // Clone the response before caching it
-          const responseToCache = response.clone();
-          caches.open(CACHE_NAME)
-            .then(cache => cache.put(event.request, responseToCache));
-          return response;
-        })
-        .catch(() => {
-          // If network fails, try the cache
-          return caches.match(event.request);
-        })
-    );
     return;
   }
 

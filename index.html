@@ -566,6 +566,12 @@
                 <span class="material-icons-round">folder_open</span>
                 <span>Open IGC File</span>
             </button>
+            <!-- New App Update section -->
+            <h3>App Update</h3>
+            <button id="appUpdateBtn" class="config-button">
+                <span class="material-icons-round">system_update</span>
+                Update App
+            </button>
             <!-- Add this after the IGC File button in the popup menu -->
             <div style="margin-top: 15px; display: none;">
                 <button id="cacheCurrentConfigBtn" class="config-button" style="display: flex; align-items: center; gap: 8px;">
@@ -1973,6 +1979,32 @@
           });
         }
 
+        // Function to update the app by fetching the latest index.html and sw.js
+        function updateApp() {
+            if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.getRegistration().then(registration => {
+                    if (registration) {
+                        registration.update().then(() => {
+                            // Force fetching of index.html and sw.js bypassing the cache
+                            Promise.all([
+                                fetch(`${BASE_PATH}/index.html`, { cache: 'reload' }),
+                                fetch(`${BASE_PATH}/sw.js`, { cache: 'reload' })
+                            ])
+                            .then(() => {
+                                alert('App update completed. Please reload the page to see the newest version.');
+                            })
+                            .catch(error => {
+                                console.error('Error updating app:', error);
+                                alert('App update failed.');
+                            });
+                        });
+                    }
+                });
+            }
+        }
+
+        // Add event listener to the "App Update" button
+        document.getElementById('appUpdateBtn').addEventListener('click', updateApp);
 
     </script>
 </body>
