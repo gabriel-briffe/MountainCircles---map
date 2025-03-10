@@ -276,7 +276,7 @@ self.addEventListener('message', async (event) => {
   }
 
   if (event.data.type === 'cacheTiles') {
-    const cache = await caches.open('mountaincircles-tiles-v1');
+    const cache = await caches.open(TILE_CACHE_NAME);
     const tiles = event.data.tiles;
     const basePath = event.data.basePath;
     const BATCH_SIZE = 50; // Process 50 tiles concurrently
@@ -287,20 +287,24 @@ self.addEventListener('message', async (event) => {
         await Promise.all(batch.map(async (tile) => {
             try {
                 const url = `${basePath}/${tile.z}/${tile.x}/${tile.y}.png`;
+                
+                // Check if URL is already in cache
+                const cachedResponse = await cache.match(url);
+                if (cachedResponse) {
+                    event.source.postMessage({ type: 'cacheTileComplete' });
+                    return; // Skip fetching if already cached
+                }
+                
                 const response = await fetch(url);
                 if (response.ok) {
-                    await cache.put(url, response);
+                    await cache.put(url, response.clone());
                 }
-                // Always notify progress, even for 404s
-                event.source.postMessage({
-                    type: 'cacheTileComplete'
-                });
+                // Always notify progress even for 404s.
+                event.source.postMessage({ type: 'cacheTileComplete' });
             } catch (error) {
                 console.error('Error caching tile:', error);
-                // Continue with next tile even if one fails
-                event.source.postMessage({
-                    type: 'cacheTileComplete'
-                });
+                // Notify progress and continue to the next tile.
+                event.source.postMessage({ type: 'cacheTileComplete' });
             }
         }));
     }
