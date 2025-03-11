@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <base href="/MountainCircles---map/">
-    <title>MountainCircles Map - Beta</title>
+    <title>MountainCircles</title>
     <!-- Using jsDelivr instead of unpkg to avoid potential network errors on Windows -->
     <script src="https://cdn.jsdelivr.net/npm/maplibre-gl@latest/dist/maplibre-gl.js"></script>
     <link href="https://cdn.jsdelivr.net/npm/maplibre-gl@latest/dist/maplibre-gl.css" rel="stylesheet" />
@@ -623,6 +623,41 @@
     <script>
         const BASE_PATH = '/MountainCircles---map';
 
+        // Register service worker immediately (moved to top for early activation)
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register(`${BASE_PATH}/sw.js`, { scope: `${BASE_PATH}/` })
+                    .then(registration => {
+                        console.log('Service Worker registered:', registration.scope);
+                        registration.update(); // Force immediate update
+                    })
+                    .catch(error => console.error('Service Worker registration failed:', error));
+            });
+
+            // Listen for service worker messages (e.g., load warnings/errors)
+            navigator.serviceWorker.addEventListener('message', (event) => {
+                if (event.data.type === 'loadWarning' || event.data.type === 'loadError') {
+                    alert(event.data.message); // Show alert for slow or failed loads
+                } else if (event.data.type === 'cacheStart') {
+                    // Handle cache start (optional: could show UI instead of alert)
+                } else if (event.data.type === 'cacheProgress') {
+                    const { completed, total } = event.data;
+                    document.getElementById('cacheCount').textContent = completed;
+                    document.getElementById('totalFiles').textContent = total;
+                    const percentage = (completed / total) * 100;
+                    document.getElementById('progressBar').style.width = `${percentage}%`;
+                } else if (event.data.type === 'cacheComplete') {
+                    updateConfigButtonStyles();
+                    document.getElementById('cacheProgress').style.display = 'none';
+                    document.getElementById('progressBar').style.width = '0%';
+                } else if (event.data.type === 'cacheTileComplete') {
+                    // Handled in cacheTiles function
+                } else if (event.data.type === 'cacheError') {
+                    console.error(event.data.message);
+                }
+            });
+        }
+
         const customStyle = {
             "version": 8,
             "name": "Custom Map",
@@ -662,7 +697,6 @@
             ]
         };
 
-
         // Update the currentConfig to include policy
         let currentPolicy = 'alps';  // Default policy
         let currentConfig = currentPolicy + '/' + '20-100-250-4200';  // Default config with policy prefix
@@ -671,16 +705,13 @@
         const policyConfigsContainer = document.getElementById('policyConfigs');
         
         Object.entries(policies).forEach(([policy, configs]) => {
-            // Create section for this policy
             const policySection = document.createElement('div');
             policySection.className = 'policy-section';
             
-            // Add policy header
             const policyHeader = document.createElement('h3');
             policyHeader.textContent = policy;
             policySection.appendChild(policyHeader);
             
-            // Create container for this policy's config buttons
             const configButtonsContainer = document.createElement('div');
             configButtonsContainer.className = 'config-buttons';
             configButtonsContainer.style.display = 'flex';
@@ -689,14 +720,12 @@
             configButtonsContainer.style.gap = '5px';
             configButtonsContainer.style.marginBottom = '15px';
             
-            // Add config buttons for this policy
             configs.forEach(cfg => {
                 const btn = document.createElement('button');
                 btn.textContent = cfg.split('-')[0];  // Use first part as button label
                 btn.className = 'config-button';
                 const fullConfig = policy + '/' + cfg;  // Store the full config path
                 
-                // Set the data-config attribute explicitly
                 btn.setAttribute('data-config', fullConfig);
                 
                 btn.onclick = () => {
@@ -744,11 +773,9 @@
             currentPolicy = cfg.split('/')[0];
             addGeoJSONLayers();
             
-            // Restore visibility states after adding layers
             updateLayerVisibility('peaks-symbols', peaksVisible, 'peaksVisibilityIcon');
             updateLayerVisibility('passes-symbols', passesVisible, 'passesVisibilityIcon');
             
-            // Move layers to top in correct order
             if (map.getLayer('passes-symbols')) {
                 map.moveLayer('passes-symbols');
             }
@@ -759,9 +786,8 @@
                 map.moveLayer('location-marker-circle');
             }
 
-            // Update cache button style when config changes
             if (isRunningStandalone() && isMobileDevice()) {
-                updateCacheButtonStyle();
+                updateCacheButtonStyles();
             }
         }
 
@@ -769,7 +795,7 @@
         function addGeoJSONLayers() {
             const configParts = currentConfig.split('/');
             const configPrefix = configParts[1].split('-').slice(0, 3).join('-');
-            const policyName = configParts[0]; // Convert policy name to lowercase for filenames
+            const policyName = configParts[0];
 
             if (!map.getSource('geojson-data')) {
                 map.addSource('geojson-data', {
@@ -789,8 +815,6 @@
                 map.getSource('polygons').setData(currentConfig + '/aa_' + policyName + '_' + configPrefix + '_sectors1.geojson');
             }
             
-            // ---------------------------------------------------------------------
-            // First load the polygon layer so that it renders underneath subsequent layers.
             if (!map.getLayer('polygons-layer')) {
                 map.addLayer({
                     id: 'polygons-layer',
@@ -814,8 +838,6 @@
                 });
             }
             
-            // ---------------------------------------------------------------------
-            // Add non-label layers (features) next.
             if (!map.getLayer('linestrings-layer')) {
                 map.addLayer({
                     id: 'linestrings-layer',
@@ -858,8 +880,6 @@
                 });
             }
             
-            // ---------------------------------------------------------------------
-            // Now add the label layers so they always render on top.
             if (!map.getLayer('linestrings-labels')) {
                 map.addLayer({
                     id: 'linestrings-labels',
@@ -912,15 +932,11 @@
             }
         }
         
-        // Declare map in the global scope.
         let map;
         
-        // Helper to update the parameters box text based on the config folder.
         function updateParametersBox(cfg) {
             console.log("updateParametersBox called with:", cfg);
-            // First split by '/' to remove the policy
-            const configOnly = cfg.split('/')[1] || cfg;  // Take second part after slash, or whole string if no slash
-            // Then split the config numbers
+            const configOnly = cfg.split('/')[1] || cfg;
             const parts = configOnly.split('-');
             console.log("parts after split:", parts);
             if (parts.length >= 3) {
@@ -930,10 +946,8 @@
             }
         }
         
-        // Call updateParametersBox at startup.
         updateParametersBox(currentConfig);
         
-        // Function to remove static GeoJSON layers and sources.
         function removeGeoJSONLayers() {
             const layersToRemove = [
                 'linestrings-layer',
@@ -956,9 +970,7 @@
             });
         }
         
-        // Function to remove dynamic layers added when clicking a point.
         function removeDynamicLayers() {
-            // Remove dynamic layers (their id starts with "dynamic-lines-")
             const currentLayers = map.getStyle().layers.slice();
             currentLayers.forEach(layer => {
                 if(layer.id.startsWith('dynamic-lines-')) {
@@ -968,7 +980,6 @@
                 }
             });
             
-            // Remove the dynamic sources; we iterate over all source names.
             const sourceIds = Object.keys(map.style.sourceCaches);
             sourceIds.forEach(sourceId => {
                 if(sourceId.startsWith('dynamic-lines-')) {
@@ -979,27 +990,20 @@
             });
         }
         
-        // Global variable for the base text size that all labels will use.
-        let baseTextSize = 14; // Default value; adjust as desired
+        let baseTextSize = 14;
 
-        // Function that iterates over the map's layers and updates the 'text-size' of any symbol layer
-        // If the layer ID is "points-labels", we add 5 to baseTextSize.
         function updateAllLabelSizes() {
-            // Iterate over all layers in the current map style.
             map.getStyle().layers.forEach(layer => {
                 if (layer.type === 'symbol' && layer.layout && layer.layout["text-size"] !== undefined) {
-                    // For the points labels, use baseTextSize + 5.
                     if (layer.id === 'points-labels') {
                         map.setLayoutProperty(layer.id, 'text-size', baseTextSize + 5);
                     } else {
-                        // For all other symbol layers (lines labels, dynamic labels, altitude labels, etc.), use baseTextSize.
                         map.setLayoutProperty(layer.id, 'text-size', baseTextSize);
                     }
                 }
             });
         }
 
-        // Updated dynamic point click handler to use the current config folder.
         function handlePointClick(e) {
             console.log("Point clicked event:", e);
             if (!e.features || !e.features.length) return;
@@ -1010,20 +1014,17 @@
                 return;
             }
 
-            // Build the file path and dynamic layer IDs.
             const filePath = currentConfig + "/" + feature.properties.filename;
             const dynamicLayerId = 'dynamic-lines-' + currentConfig + '-' + feature.properties.filename;
             const dynamicSourceId = dynamicLayerId + '-source';
             const dynamicLabelId = dynamicLayerId + '-labels';
 
-            // -- Hide any dynamic layers (and their corresponding labels) that are NOT the one for this point --
             const currentLayers = map.getStyle().layers.slice();
             currentLayers.forEach(layer => {
                 if (layer.id.startsWith('dynamic-lines-') && layer.id !== dynamicLayerId) {
                     if (map.getLayer(layer.id)) {
                         map.setLayoutProperty(layer.id, 'visibility', 'none');
                     }
-                    // Assume that label layers have the suffix "-labels" attached to the dynamic layer ID.
                     const otherLabelId = layer.id + '-labels';
                     if (map.getLayer(otherLabelId)) {
                         map.setLayoutProperty(otherLabelId, 'visibility', 'none');
@@ -1031,11 +1032,9 @@
                 }
             });
 
-            // -- If the dynamic layer for this point exists, toggle its visibility. --
             if (map.getLayer(dynamicLayerId)) {
                 let currentVisibility = map.getLayoutProperty(dynamicLayerId, 'visibility') || 'visible';
                 if (currentVisibility === 'visible') {
-                    // If clicking the same point again: hide the dynamic layer and restore the main linestring layer.
                     map.setLayoutProperty(dynamicLayerId, 'visibility', 'none');
                     if (map.getLayer(dynamicLabelId)) {
                         map.setLayoutProperty(dynamicLabelId, 'visibility', 'none');
@@ -1047,7 +1046,6 @@
                         map.setLayoutProperty('linestrings-labels', 'visibility', 'visible');
                     }
                 } else {
-                    // If the dynamic layer exists but is hidden, show it and hide the main linestring layer.
                     map.setLayoutProperty(dynamicLayerId, 'visibility', 'visible');
                     if (map.getLayer(dynamicLabelId)) {
                         map.setLayoutProperty(dynamicLabelId, 'visibility', 'visible');
@@ -1060,8 +1058,6 @@
                     }
                 }
             } else {
-                // -- Dynamic layer not yet created --
-                // Hide the main linestring layer when showing a dynamic one.
                 if (map.getLayer('linestrings-layer')) {
                     map.setLayoutProperty('linestrings-layer', 'visibility', 'none');
                 }
@@ -1069,13 +1065,11 @@
                     map.setLayoutProperty('linestrings-labels', 'visibility', 'none');
                 }
                 console.log("Adding dynamic layer for:", filePath);
-                // Add the dynamic source.
                 map.addSource(dynamicSourceId, {
                     type: 'geojson',
                     data: filePath
                 });
 
-                // Add the dynamic line layer.
                 map.addLayer({
                     id: dynamicLayerId,
                     type: 'line',
@@ -1087,7 +1081,6 @@
                     }
                 });
 
-                // Add the corresponding dynamic label layer.
                 map.addLayer({
                     id: dynamicLabelId,
                     type: 'symbol',
@@ -1113,7 +1106,6 @@
                 });
             }
 
-            // Move peaks and location marker to the top after adding or modifying layers
             if (map.getLayer('passes-symbols')) {
                 map.moveLayer('passes-symbols');
             }
@@ -1124,38 +1116,31 @@
                 map.moveLayer('location-marker-circle');
             }
 
-            // Update the main linestring visibility icon based on current state.
             const mainVisibility = map.getLayoutProperty('linestrings-layer', 'visibility') || 'visible';
             document.getElementById('visibilityIcon').textContent = mainVisibility === 'visible' ? 'visibility' : 'visibility_off';
         }
         
-        // Now that our helper functions and event listeners are set up,
-        // initialize the map. (Ensure any variables like currentStyle are defined or adjust as needed.)
-        const currentStyle = customStyle ;
+        const currentStyle = customStyle;
         
         map = new maplibregl.Map({
             container: 'map',
             style: currentStyle,
             bounds: [[4.9698169, 43.6088902], [13.696105, 47.5644488]],
             maxBounds: [[4.57526, 43.45699], [13.96581, 47.98810]],
-            maxZoom: 16,  // The user can zoom in further; level 12 tiles will be overscaled
+            maxZoom: 16,
             fitBoundsOptions: {
                 padding: 50,
-                maxZoom: 12,  // fitBounds will not zoom past level 12 unless you override this
+                maxZoom: 12,
                 duration: 1000
             },
             attributionControl: false,
             renderWorldCopies: false
         });
         
-        // --- GeoJSON Spinner Logic with Debounce ---
-        // This Set will track only GeoJSON sources that are still loading.
         var loadingGeojsonSources = new Set();
-        // Timer to debounce spinner display
         var spinnerTimeout = null;
 
         map.on('sourcedata', function(e) {
-            // Only process events for sources (not individual tiles) and where the source type is "geojson".
             if (e.dataType !== 'source' || !e.source || e.source.type !== 'geojson') {
                 return;
             }
@@ -1165,7 +1150,6 @@
                 loadingGeojsonSources.delete(e.sourceId);
             }
             
-            // If any GeoJSON sources are still loading, set a timer to show the spinner
             if (loadingGeojsonSources.size > 0) {
                 if (!spinnerTimeout) {
                     spinnerTimeout = setTimeout(() => {
@@ -1173,18 +1157,15 @@
                     }, 200);
                 }
             } else {
-                // All GeoJSON sources are loaded: clear the timer and hide the spinner
                 clearTimeout(spinnerTimeout);
                 spinnerTimeout = null;
                 document.getElementById('spinner').style.display = 'none';
             }
         });
         
-        // Attach layers and events once the map has fully loaded.
         map.on('load', () => {
             console.log('Map load event triggered');
             
-            // Add peaks and passes sources
             map.addSource('peaks', {
                 type: 'geojson',
                 data: 'peaks.geojson'
@@ -1195,7 +1176,6 @@
             });
             console.log('Added peaks and passes sources');
 
-            // Create triangle images for peaks and passes
             const size = 15;
             const peakImage = new Image(size, size);
             const passImage = new Image(size, size);
@@ -1208,28 +1188,25 @@
             const peakContext = peakCanvas.getContext('2d');
             const passContext = passCanvas.getContext('2d');
             
-            // Draw orange upward triangle for peaks
             peakContext.beginPath();
             peakContext.moveTo(size/2, 0);
             peakContext.lineTo(size, size);
             peakContext.lineTo(0, size);
             peakContext.closePath();
-            peakContext.fillStyle = '#FF8C00';  // Dark orange color (instead of #8B4513)
+            peakContext.fillStyle = '#FF8C00';
             peakContext.fill();
             
-            // Draw green inverted triangle for passes
             passContext.beginPath();
             passContext.moveTo(0, 0);
             passContext.lineTo(size, 0);
             passContext.lineTo(size/2, size);
             passContext.closePath();
-            passContext.fillStyle = '#006400';  // Dark green color
+            passContext.fillStyle = '#006400';
             passContext.fill();
             
             peakImage.src = peakCanvas.toDataURL();
             passImage.src = passCanvas.toDataURL();
             
-            // Add image loading handlers
             Promise.all([
                 new Promise(resolve => peakImage.onload = resolve),
                 new Promise(resolve => passImage.onload = resolve)
@@ -1239,7 +1216,6 @@
                 map.addImage('pass-triangle', passImage);
                 console.log('Added triangle images to map');
 
-                // Add the peaks symbol layer
                 map.addLayer({
                     id: 'peaks-symbols',
                     type: 'symbol',
@@ -1265,8 +1241,8 @@
                         'text-field': [
                             'step',
                             ['zoom'],
-                            '',  // Default (no text)
-                            11, ['get', 'namele']  // At zoom 11 and above, show the name
+                            '',
+                            11, ['get', 'namele']
                         ]
                     },
                     paint: {
@@ -1276,7 +1252,6 @@
                     }
                 });
 
-                // Add the passes symbol layer
                 map.addLayer({
                     id: 'passes-symbols',
                     type: 'symbol',
@@ -1285,10 +1260,10 @@
                     layout: {
                         'icon-image': 'pass-triangle',
                         'icon-size': 1,
-                        'icon-anchor': 'top',  // Inverted triangle, so anchor at top
+                        'icon-anchor': 'top',
                         'text-field': ['get', 'name'],
                         'text-size': baseTextSize,
-                        'text-anchor': 'bottom',  // Text below the triangle
+                        'text-anchor': 'bottom',
                         'text-offset': [0, -0.5],
                         'icon-allow-overlap': false,
                         'icon-ignore-placement': false,
@@ -1302,12 +1277,12 @@
                         'text-field': [
                             'step',
                             ['zoom'],
-                            '',  // Default (no text)
-                            11, ['get', 'name']  // At zoom 11 and above, show the name
+                            '',
+                            11, ['get', 'name']
                         ]
                     },
                     paint: {
-                        'text-color': '#006400',  // Dark green color for pass labels
+                        'text-color': '#006400',
                         'text-halo-color': '#fff',
                         'text-halo-width': 2
                     }
@@ -1315,10 +1290,8 @@
                 console.log('Added peaks and passes symbol layers');
             });
 
-            // Then add your other layers
             addGeoJSONLayers();
             
-            // Add location marker last
             map.addSource('location-marker', {
                 type: 'geojson',
                 data: {
@@ -1342,7 +1315,6 @@
                 }
             });
 
-            // Start tracking location automatically
             if ('geolocation' in navigator) {
                 const options = {
                     enableHighAccuracy: true,
@@ -1361,20 +1333,17 @@
                 console.warn('Geolocation is not supported by this browser.');
             }
 
-            // Rest of the map.on('load') code...
             if (map.getLayer('points-layer-clickable')) {
                 map.on('click', 'points-layer-clickable', handlePointClick);
             }
 
-            // Update the cache button visibility check
             const cacheButton = document.getElementById('cacheCurrentConfigBtn');
             const mapCacheButton = document.getElementById('cacheBackgroundMapBtn');
             const cacheContainer = cacheButton.parentElement;
             const mapCacheContainer = mapCacheButton.parentElement;
 
-            // Style the containers consistently
             [cacheContainer, mapCacheContainer].forEach(container => {
-                container.style.display = 'none';  // Default to hidden
+                container.style.display = 'none';
                 container.style.justifyContent = 'center';
                 container.style.alignItems = 'center';
                 container.style.gap = '5px';
@@ -1382,20 +1351,17 @@
                 container.style.width = '100%';
             });
 
-            // Only show cache controls for installed mobile app
             if (isRunningStandalone() && isMobileDevice()) {
-                cacheContainer.style.display = 'flex';  // Show with flex layout if conditions met
+                cacheContainer.style.display = 'flex';
                 mapCacheContainer.style.display = 'flex';
-                // Hide zoom buttons in standalone mode
                 document.getElementById('zoomInBtn').style.display = 'none';
                 document.getElementById('zoomOutBtn').style.display = 'none';
             } 
         });
         
-        // Helper function to check if running in standalone mode
         function isRunningStandalone() {
             return window.matchMedia('(display-mode: standalone)').matches ||
-                   window.navigator.standalone ||  // for iOS
+                   window.navigator.standalone ||
                    document.referrer.includes('android-app://');
         }
 
@@ -1407,7 +1373,6 @@
             }
         });
 
-        // Toggle the popup menu
         const popupMenu = document.getElementById('popupMenu');
         document.getElementById('moreOptionsBtn').addEventListener('click', () => {
             popupMenu.style.display = "flex";
@@ -1417,51 +1382,38 @@
             popupMenu.style.display = "none";
         });
 
-        // Close popup when clicking outside the popup content
         popupMenu.addEventListener('click', (e) => {
             if(e.target === popupMenu) {
                 popupMenu.style.display = "none";
             }
         });
 
-        // --- IGC File Functionality (ported from production) ---
-
-        // Function to parse IGC file and convert to GeoJSON
         function igcToGeoJSON(igcContent) {
-            // Parse IGC file content
             const lines = igcContent.split('\n');
             const coordinates = [];
             let metadata = {};
 
             for (const line of lines) {
-                // Handle B records (position fixes)
                 if (line.startsWith('B')) {
                     try {
-                        // Extract time (HHMMSS)
                         const time = line.substring(1, 7);
-                        // Extract latitude (DDMMmmmN/S)
                         const latRaw = line.substring(7, 15);
                         const latDeg = parseInt(latRaw.substring(0, 2));
                         const latMin = parseFloat(latRaw.substring(2, 7)) / 1000;
                         const latDir = latRaw.substring(7, 8);
-                        // Extract longitude (DDDMMmmmE/W)
                         const lonRaw = line.substring(15, 24);
                         const lonDeg = parseInt(lonRaw.substring(0, 3));
                         const lonMin = parseFloat(lonRaw.substring(3, 8)) / 1000;
                         const lonDir = lonRaw.substring(8, 9);
-                        // Extract altitude (AAAAA)
                         const altPressure = parseInt(line.substring(25, 30));
                         const altGNSS = parseInt(line.substring(30, 35));
 
-                        // Convert latitude to decimal
                         let latitude = latDeg + (latMin / 60);
                         if (latDir === 'S') latitude = -latitude;
 
-                        // Convert longitude to decimal
                         let longitude = lonDeg + (lonMin / 60);
                         if (lonDir === 'W') longitude = -longitude;
 
-                        // Use GNSS altitude if available, otherwise use pressure altitude
                         const altitude = altPressure > 0 ? altPressure : altGNSS;
 
                         coordinates.push([longitude, latitude, altitude]);
@@ -1469,7 +1421,6 @@
                         console.warn('Error parsing B record:', line, error);
                     }
                 }
-                // Handle H records (header/metadata)
                 else if (line.startsWith('H')) {
                     try {
                         const headerType = line.substring(1, 5);
@@ -1485,7 +1436,6 @@
                 }
             }
 
-            // Create GeoJSON object
             const geojson = {
                 type: 'FeatureCollection',
                 features: [{
@@ -1507,14 +1457,10 @@
             return geojson;
         }
 
-        // Replace your current handleFileSelect with the following enhanced version.
-        // It reads the IGC file, converts it to GeoJSON, adds a new line layer (with blue color),
-        // computes its bounding box, recenters the map, and adds altitude labels.
         function handleFileSelect(event) {
             const file = event.target.files[0];
             if (!file) return;
 
-            // Close the popup menu after a file has been selected.
             document.getElementById('popupMenu').style.display = "none";
             
             const reader = new FileReader();
@@ -1523,16 +1469,13 @@
                 const geojsonData = igcToGeoJSON(igcContent);
                 console.log('Converted IGC to GeoJSON:', geojsonData);
                 
-                // Generate a dynamic layer ID from the file name (strip non-alphanumeric characters)
                 const baseLayerId = 'igc-layer-' + file.name.replace(/\W/g, '');
                 let layerId = baseLayerId;
-                // If a layer with the same ID exists, append a timestamp
                 if (map.getLayer(layerId)) {
                     layerId = baseLayerId + '-' + Date.now();
                 }
                 const sourceId = layerId + '-source';
                 
-                // Add a new source and corresponding line layer to the map for the IGC flight track
                 map.addSource(sourceId, {
                     type: 'geojson',
                     data: geojsonData
@@ -1547,7 +1490,6 @@
                     }
                 });
                 
-                // Compute the bounding box of the IGC track based on its coordinates
                 const coords = geojsonData.features[0].geometry.coordinates;
                 let minLng = Infinity, minLat = Infinity, maxLng = -Infinity, maxLat = -Infinity;
                 coords.forEach(coord => {
@@ -1559,14 +1501,12 @@
                 });
                 const bounds = [[minLng, minLat], [maxLng, maxLat]];
                 
-                // Recenter the map so that the IGC track fits within the view
                 map.fitBounds(bounds, {
                     padding: 50,
                     maxZoom: 14,
                     duration: 1000
                 });
                 
-                // Create altitude point features based on each vertex of the IGC LineString.
                 const altPoints = {
                     type: 'FeatureCollection',
                     features: coords.map(coord => ({
@@ -1581,14 +1521,12 @@
                     }))
                 };
 
-                // Add a new source for the altitude labels
                 const altSourceId = layerId + '-altitudes-source';
                 map.addSource(altSourceId, {
                     type: 'geojson',
                     data: altPoints
                 });
 
-                // Add a symbol layer to display the altitude at each point (visible for zoom > 9)
                 map.addLayer({
                     id: layerId + '-altitudes',
                     type: 'symbol',
@@ -1596,7 +1534,7 @@
                     minzoom: 9,
                     layout: {
                         'text-field': '{altitude}',
-                        'text-size': baseTextSize, // Use the base text size for altitude labels
+                        'text-size': baseTextSize,
                         'text-offset': [0, -0.5]
                     },
                     paint: {
@@ -1606,7 +1544,6 @@
                     }
                 });
 
-                // After adding all the new layers, move the location marker to the top
                 if (map.getLayer('location-marker-circle')) {
                     map.moveLayer('location-marker-circle');
                 }
@@ -1614,33 +1551,27 @@
             reader.readAsText(file);
         }
 
-        // Wire up the IGC file button (in your popup menu) and file input
         document.getElementById('igcFileButton').addEventListener('click', function() {
             document.getElementById('igcFileInput').click();
-            this.blur(); // Remove focus so the button doesn't stay highlighted.
+            this.blur();
         });
         document.getElementById('igcFileInput').addEventListener('change', handleFileSelect);
 
-        // Toggle layer visibility for main linestrings layers and their labels
         document.getElementById('toggleLayerButton').addEventListener('click', () => {
-            // Only include linestrings layers and labels in the toggle action.
             const layerIds = ['linestrings-layer', 'linestrings-labels'];
-            // Determine the new visibility based on the current state of the "linestrings-layer".
             let newVisibility = 'visible';
             if (map.getLayer('linestrings-layer')) {
                 const currentVisibility = map.getLayoutProperty('linestrings-layer', 'visibility') || 'visible';
                 newVisibility = currentVisibility === 'visible' ? 'none' : 'visible';
             }
-            // Toggle the visibility of the specified layers.
             layerIds.forEach(id => {
                 if (map.getLayer(id)) {
                     map.setLayoutProperty(id, 'visibility', newVisibility);
                 }
             });
-            // Update the icon text accordingly.
             document.getElementById('visibilityIcon').textContent = newVisibility === 'visible' ? 'visibility' : 'visibility_off';
         });
-        // Zoom Button Event Listeners (newly added)
+
         document.getElementById('zoomInBtn').addEventListener('click', () => {
             map.zoomIn();
         });
@@ -1648,48 +1579,35 @@
             map.zoomOut();
         });
 
-        // Text Size Control Event Listeners (moved to the popup)
         document.getElementById('textDecreaseBtn').addEventListener('click', () => {
             baseTextSize = Math.max(1, baseTextSize - 1);
             updateAllLabelSizes();
         });
 
-        // Increase Text Size Button event listener
         document.getElementById('textIncreaseBtn').addEventListener('click', () => {
             baseTextSize += 1;
             updateAllLabelSizes();
         });
 
-        // Toggle the polygon layer visibility
         document.getElementById('togglePolygonButton').addEventListener('click', () => {
             const polygonLayerId = 'polygons-layer';
-            // Get current visibility, assume "visible" if not explicitly set.
             let currentVisibility = map.getLayoutProperty(polygonLayerId, 'visibility') || 'visible';
-            // Toggle visibility.
             let newVisibility = currentVisibility === 'visible' ? 'none' : 'visible';
             map.setLayoutProperty(polygonLayerId, 'visibility', newVisibility);
-            // Update the icon accordingly (using "layers" for visible and "layers_clear" for hidden).
             document.getElementById('polygonVisibilityIcon').textContent = newVisibility === 'visible' ? 'layers' : 'layers_clear';
         });
 
-        // Add this near the top of your script
         let deferredPrompt;
 
         window.addEventListener('beforeinstallprompt', (e) => {
-            // Only show install prompt on mobile devices
             if (isMobileDevice()) {
-                // Stash the event so it can be triggered later
                 deferredPrompt = e;
-                
-                // Show the install prompt
                 document.getElementById('installPrompt').style.display = 'block';
             } else {
-                // Hide the prompt on non-mobile devices
                 document.getElementById('installPrompt').style.display = 'none';
             }
         });
 
-        // Installation prompt handlers
         document.getElementById('installButton').addEventListener('click', async () => {
             if (deferredPrompt) {
                 await deferredPrompt.prompt();
@@ -1704,25 +1622,6 @@
             document.getElementById('installPrompt').style.display = 'none';
         });
 
-        // Update your service worker registration
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register(`${BASE_PATH}/sw.js`, {
-                scope: `${BASE_PATH}/`  // Add trailing slash
-            })
-            .then(async registration => {
-                console.log('Service Worker registered with scope:', registration.scope);
-                
-                // Force update
-                if (registration.active) {
-                    registration.update();
-                }
-            })
-            .catch(error => {
-                console.error('Service Worker registration failed:', error);
-            });
-        }
-
-        // Function to update location
         function updateLocation(position) {
             if (!map.getSource('location-marker')) {
                 console.warn('Location marker source not found');
@@ -1731,7 +1630,6 @@
             
             const coords = [position.coords.longitude, position.coords.latitude];
             
-            // Update the marker position
             map.getSource('location-marker').setData({
                 type: 'Feature',
                 geometry: {
@@ -1741,77 +1639,37 @@
             });
         }
 
-        // Add this to your existing script section
         async function cacheConfigurationFiles() {
             const configParts = currentConfig.split('/');
             const policy = configParts[0];
             const config = configParts[1];
             const configPrefix = config.split('-').slice(0, 3).join('-');
             
-            // Show progress UI
             document.getElementById('cacheProgress').style.display = 'block';
             const progressBar = document.getElementById('progressBar');
             const cacheCount = document.getElementById('cacheCount');
             const totalFiles = document.getElementById('totalFiles');
             
             try {
-                // First, fetch the main GeoJSON to get the point features
                 const mainGeojsonUrl = `./${currentConfig}/aa_${policy}_${configPrefix}.geojson`;
                 const sectorsGeojsonUrl = `./${currentConfig}/aa_${policy}_${configPrefix}_sectors1.geojson`;
                 
                 const response = await fetch(mainGeojsonUrl);
                 const data = await response.json();
                 
-                // Filter for point features that have a filename property
                 const pointFeatures = data.features.filter(f => 
                     f.geometry.type === 'Point' && f.properties.filename);
                 
-                // Create list of files to cache, including the main GeoJSON files
                 const files = [
                     `${currentConfig}/aa_${policy}_${configPrefix}.geojson`,
                     `${currentConfig}/aa_${policy}_${configPrefix}_sectors1.geojson`,
                     ...pointFeatures.map(f => `${currentConfig}/${f.properties.filename}`)
                 ];
                 
-                // Update total files count (including main files)
                 const total = files.length;
                 totalFiles.textContent = total;
                 
-                // Create message handler before sending message
-                const messageHandler = (event) => {
-                    if (event.data.type === 'cacheStart') {
-                        // alert(event.data.message);
-                    }
-                    else if (event.data.type === 'cacheProgress') {
-                        // Update progress for every file
-                        cacheCount.textContent = event.data.completed;
-                        const percentage = (event.data.completed / event.data.total) * 100;
-                        progressBar.style.width = `${percentage}%`;
-                        
-                        // Show alert for the current operation
-                        if (event.data.message) {
-                            // alert(event.data.message);
-                        }
-                    }
-                    else if (event.data.type === 'cacheError') {
-                        // alert(event.data.message);
-                    }
-                    else if (event.data.type === 'cacheComplete') {
-                        // alert('Cache complete - updating button styles');
-                        updateConfigButtonStyles();
-                        navigator.serviceWorker.removeEventListener('message', messageHandler);
-                        document.getElementById('cacheProgress').style.display = 'none';
-                        progressBar.style.width = '0%';
-                    }
-                };
-                
-                // Add the message listener
-                navigator.serviceWorker.addEventListener('message', messageHandler);
-                
-                // Send message to service worker
                 const registration = await navigator.serviceWorker.ready;
-                
-                // alert('Sending cache request to Service Worker');
                 registration.active.postMessage({
                     type: 'cacheFiles',
                     files: files,
@@ -1819,95 +1677,64 @@
                 });
                 
             } catch (error) {
-                // alert(`Error: ${error.message}`);
                 console.error('Error caching configuration:', error);
                 document.getElementById('cacheProgress').style.display = 'none';
             }
         }
 
-        // Add click handler for the cache button
         document.getElementById('cacheCurrentConfigBtn').addEventListener('click', cacheConfigurationFiles);
-
-        // Add these functions at the top of your script section
-        function isRunningStandalone() {
-            return window.matchMedia('(display-mode: standalone)').matches || 
-                   window.navigator.standalone || // for iOS
-                   document.referrer.includes('android-app://');
-        }
 
         function isMobileDevice() {
             return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
         }
 
-        /* Update the function to check if a configuration is cached */
         async function isConfigCached(config) {
-            // alert('Checking cache for config: ' + config);
             const configParts = config.split('/');
             const policy = configParts[0];
             const configPrefix = configParts[1].split('-').slice(0, 3).join('-');
             const mainGeojsonUrl = `${BASE_PATH}/${config}/aa_${policy}_${configPrefix}.geojson`;
-            // alert('Looking for URL in cache: ' + mainGeojsonUrl);
             
             try {
                 const cache = await caches.open('mountaincircles-dynamic-v1');
                 const response = await cache.match(mainGeojsonUrl);
-                const isCached = !!response;
-                // alert(`Cache result for ${mainGeojsonUrl}: ${isCached}`);
-                return isCached;
+                return !!response;
             } catch (error) {
-                // alert('Error checking cache: ' + error);
                 return false;
             }
         }
 
-        /* Update the button style function to only target config buttons */
         async function updateConfigButtonStyles() {
-            // alert('Starting to update button styles');
             const buttons = document.querySelectorAll('.config-buttons .config-button');
-            // alert(`Found ${buttons.length} config buttons`);
             
             for (const button of buttons) {
                 const buttonConfig = button.getAttribute('data-config');
-                // alert(`Checking button with config: ${buttonConfig}`);  // More detailed debug
                 if (buttonConfig) {
                     const isCached = await isConfigCached(buttonConfig);
-                    // alert(`Cache result for ${buttonConfig}: ${isCached}`);
                     button.style.border = isCached ? '2px solid #4CAF50' : 'none';
-                } else {
-                    // alert('Button has no config data!');  // Debug for missing data
                 }
-
             }
-            // alert('Finished updating button styles');
         }
 
-        // Add this function after the cacheConfigurationFiles function
         async function cacheTiles() {
-            // Show progress UI
             document.getElementById('mapCacheProgress').style.display = 'block';
             const progressBar = document.getElementById('mapProgressBar');
             const cacheCount = document.getElementById('mapCacheCount');
             const totalTiles = document.getElementById('mapTotalTiles');
 
-            // Initial bounds from the map configuration
             const bounds = [[4.9698169, 43.6088902], [13.696105, 47.5644488]];
             const minZoom = 1;
             const maxZoom = 12;
 
-            // Calculate tile coordinates for each zoom level
             const tiles = [];
             for (let z = minZoom; z <= maxZoom; z++) {
-                // Convert bounds to tile coordinates
                 const northwest = latLngToTile(bounds[0][1], bounds[0][0], z);
                 const southeast = latLngToTile(bounds[1][1], bounds[1][0], z);
 
-                // Calculate tile ranges
                 const minX = Math.min(northwest.x, southeast.x);
                 const maxX = Math.max(northwest.x, southeast.x);
                 const minY = Math.min(northwest.y, southeast.y);
                 const maxY = Math.max(northwest.y, southeast.y);
 
-                // Add all tiles within the bounds at this zoom level
                 for (let x = minX; x <= maxX; x++) {
                     for (let y = minY; y <= maxY; y++) {
                         tiles.push({ x, y, z });
@@ -1915,10 +1742,8 @@
                 }
             }
 
-            // Update total tiles count
             totalTiles.textContent = tiles.length;
 
-            // Create message handler
             let completedTiles = 0;
             const messageHandler = (event) => {
                 if (event.data.type === 'cacheTileComplete') {
@@ -1928,7 +1753,6 @@
                     progressBar.style.width = `${percentage}%`;
 
                     if (completedTiles === tiles.length) {
-                        // All tiles cached
                         navigator.serviceWorker.removeEventListener('message', messageHandler);
                         document.getElementById('mapCacheProgress').style.display = 'none';
                         progressBar.style.width = '0%';
@@ -1936,10 +1760,8 @@
                 }
             };
 
-            // Add the message listener
             navigator.serviceWorker.addEventListener('message', messageHandler);
 
-            // Send tiles to service worker for caching
             const registration = await navigator.serviceWorker.ready;
             registration.active.postMessage({
                 type: 'cacheTiles',
@@ -1948,7 +1770,6 @@
             });
         }
 
-        // Helper function to convert lat/lng to tile coordinates
         function latLngToTile(lat, lng, zoom) {
             const n = Math.pow(2, zoom);
             const x = Math.floor((lng + 180) / 360 * n);
@@ -1957,15 +1778,12 @@
             return { x, y };
         }
 
-        // Add click handler for the cache background map button
         document.getElementById('cacheBackgroundMapBtn').addEventListener('click', cacheTiles);
 
-        // Detect iOS devices
         function isIOS() {
           return /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
         }
 
-        // Show custom instructions for iOS users
         if (isIOS()) {
           const installPrompt = document.getElementById('installPrompt');
           installPrompt.innerHTML = `
@@ -1979,13 +1797,11 @@
           });
         }
 
-        // Function to update the app by fetching the latest index.html and sw.js
         function updateApp() {
             if ('serviceWorker' in navigator) {
                 navigator.serviceWorker.getRegistration().then(registration => {
                     if (registration) {
                         registration.update().then(() => {
-                            // Force fetching of index.html and sw.js bypassing the cache
                             Promise.all([
                                 fetch(`${BASE_PATH}/index.html`, { cache: 'reload' }),
                                 fetch(`${BASE_PATH}/sw.js`, { cache: 'reload' })
@@ -2003,10 +1819,8 @@
             }
         }
 
-        // Add event listener to the "App Update" button
         document.getElementById('appUpdateBtn').addEventListener('click', updateApp);
 
     </script>
 </body>
 </html>
-

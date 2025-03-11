@@ -20,7 +20,9 @@ const INITIAL_CACHE_URLS = [
   `${BASE_PATH}/icons/icon-192.png`,
   'https://cdn.jsdelivr.net/npm/maplibre-gl@latest/dist/maplibre-gl.js',
   'https://cdn.jsdelivr.net/npm/maplibre-gl@latest/dist/maplibre-gl.css',
-  'https://fonts.googleapis.com/icon?family=Material+Icons+Round'
+  'https://fonts.googleapis.com/icon?family=Material+Icons+Round',
+  'https://demotiles.maplibre.org/font/Open Sans Regular/0-255.pbf',
+  'https://demotiles.maplibre.org/font/Open Sans Regular/256-511.pbf'
 ];
 
 // Cache GeoJSON files for each policy and configuration
@@ -34,6 +36,7 @@ self.addEventListener('install', event => {
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then(cache => cache.addAll(INITIAL_CACHE_URLS))
+      .catch(error => console.error('Install cache failed:', error))
   );
   self.skipWaiting();
 });
@@ -53,60 +56,99 @@ self.addEventListener('activate', event => {
   self.clients.claim();
 });
 
-// Helper function to normalize URLs
+// Helper function to normalize URLs (unchanged)
 function normalizeUrl(url) {
   return url.pathname.startsWith(BASE_PATH) ? url.pathname : `${BASE_PATH}${url.pathname}`;
 }
 
-// Fetch event - serve from network first for index.html and sw.js, cache first for everything else
+// Helper to send messages to clients
+function sendMessageToClients(message) {
+  self.clients.matchAll().then(clients => {
+    clients.forEach(client => client.postMessage(message));
+  });
+}
+
+// Fetch event - intercept ALL relevant GET requests with timeout alerts
 self.addEventListener('fetch', event => {
   const url = new URL(event.request.url);
-  
-  // Skip non-GET requests and requests to other domains that aren't glyph requests
-  if (event.request.method !== 'GET' || 
-      (!url.pathname.startsWith(BASE_PATH) && !url.pathname.includes('/font/'))) {
+
+  // Only handle GET requests
+  if (event.request.method !== 'GET') {
     return;
   }
 
-  // Handle tile requests
-  if (url.pathname.includes('/tiles/')) {
-    event.respondWith(handleTileRequest(event.request));
-    return;
+  // Define domains/paths to intercept
+  const shouldIntercept = (
+    url.pathname.startsWith(BASE_PATH) || // Local assets
+    url.hostname === 'cdn.jsdelivr.net' || // Maplibre assets
+    url.hostname === 'demotiles.maplibre.org' || // Glyphs
+    url.hostname === 'fonts.googleapis.com' || // Material Icons stylesheet
+    url.hostname === 'fonts.gstatic.com' // Material Icons font files
+  );
+
+  if (!shouldIntercept) {
+    return; // Let browser handle irrelevant requests
   }
 
-  // Handle GeoJSON requests
-  if (url.pathname.endsWith('.geojson')) {
-    event.respondWith(handleGeoJSONRequest(event.request));
-    return;
-  }
-
-  // Handle glyph requests from maplibre
-  if (url.hostname === 'demotiles.maplibre.org' && url.pathname.includes('/font/')) {
-    event.respondWith(handleGlyphRequest(event.request));
-    return;
-  }
-
-  // Cache-first strategy for all other requests
   event.respondWith(
-    caches.match(event.request)
-      .then(response => {
-        if (response) {
+    (async () => {
+      const cacheKey = event.request;
+      const timeoutId = setTimeout(() => {
+        sendMessageToClients({
+          type: 'loadWarning',
+          url: url.href,
+          message: `Warning: "${url.href}" is taking too long to load. It may not be cached or network is slow.`
+        });
+      }, 5000); // 5-second timeout
+
+      try {
+        // Handle specific resource types
+        if (url.pathname.includes('/tiles/')) {
+          const response = await handleTileRequest(event.request);
+          clearTimeout(timeoutId);
+          return response;
+        } else if (url.pathname.endsWith('.geojson')) {
+          const response = await handleGeoJSONRequest(event.request);
+          clearTimeout(timeoutId);
+          return response;
+        } else if (url.hostname === 'demotiles.maplibre.org' && url.pathname.includes('/font/')) {
+          const response = await handleGlyphRequest(event.request);
+          clearTimeout(timeoutId);
+          return response;
+        } else {
+          // General cache-first strategy for all other intercepted requests (e.g., icons, Maplibre, fonts)
+          const cache = await caches.open(CACHE_NAME);
+          let response = await cache.match(cacheKey);
+          if (response) {
+            clearTimeout(timeoutId);
+            return response;
+          }
+
+          response = await fetch(event.request);
+          clearTimeout(timeoutId);
+          networkFetchCount++; // Increment network fetch counter
+          if (response.ok) {
+            await cache.put(cacheKey, response.clone());
+          }
           return response;
         }
-        return fetch(event.request)
-          .then(response => {
-            if (response.ok) {
-              const responseToCache = response.clone();
-              caches.open(CACHE_NAME)
-                .then(cache => cache.put(event.request, responseToCache));
-            }
-            return response;
-          })
-          .catch(error => {
-            console.error('Fetch failed:', error);
-            return new Response('Network error', { status: 503 });
+      } catch (error) {
+        clearTimeout(timeoutId);
+        sendMessageToClients({
+          type: 'loadError',
+          url: url.href,
+          message: `Error: Failed to load "${url.href}" - ${error.message}`
+        });
+        if (url.pathname.endsWith('.geojson')) {
+          // Fallback for GeoJSON to prevent spinner hang
+          return new Response(JSON.stringify({ type: 'FeatureCollection', features: [] }), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' }
           });
-      })
+        }
+        return new Response('Resource not available offline', { status: 404 });
+      }
+    })()
   );
 });
 
@@ -150,7 +192,6 @@ async function handleGeoJSONRequest(request) {
     // If not in cache, fetch from network
     response = await fetch(request);
     if (response.ok) {
-      // Store in regular GeoJSON cache
       await cache.put(request, response.clone());
     }
     return response;
@@ -160,7 +201,7 @@ async function handleGeoJSONRequest(request) {
   }
 }
 
-// Add a function to handle glyph range requests
+// Handle glyph requests from Maplibre
 async function handleGlyphRequest(request) {
   const cache = await caches.open(CACHE_NAME);
   let response = await cache.match(request);
@@ -171,6 +212,7 @@ async function handleGlyphRequest(request) {
       const ranges = [
         '0-255',
         '256-511',
+        // Uncomment additional ranges if needed
         // '512-767',
         // '768-1023',
         // '1024-1279',
@@ -190,11 +232,9 @@ async function handleGlyphRequest(request) {
       // The fontstack we're using
       const fontstacks = ['Open Sans Regular'];
 
-      // If this is a glyph request, cache all ranges for this fontstack
+      // Cache all ranges for this fontstack on first glyph request
       if (request.url.includes('/font/')) {
-        const fontstack = fontstacks[0]; // Use the first fontstack
-        
-        // Cache all ranges for this fontstack
+        const fontstack = fontstacks[0];
         for (const range of ranges) {
           const glyphUrl = `https://demotiles.maplibre.org/font/${fontstack}/${range}.pbf`;
           const glyphResponse = await fetch(glyphUrl);
@@ -214,7 +254,7 @@ async function handleGlyphRequest(request) {
     }
   }
   
-  return response;
+  return response || new Response('Glyph not available offline', { status: 404 });
 }
 
 // Handle messages from the client
@@ -224,18 +264,15 @@ self.addEventListener('message', async (event) => {
     let completed = 0;
     const total = event.data.files.length;
     
-    // Send initial message to confirm receipt
-    event.source.postMessage({
+    sendMessageToClients({
       type: 'cacheStart',
       message: `Starting to cache ${total} files`
     });
     
-    // Process files one at a time to ensure reliable progress updates
     for (const file of event.data.files) {
       try {
-        // Construct the full URL with BASE_PATH
         const url = new URL(`${BASE_PATH}/${file}`, self.location.origin).href;
-        event.source.postMessage({
+        sendMessageToClients({
           type: 'cacheProgress',
           message: `Attempting to fetch: ${url}`,
           completed: completed,
@@ -247,7 +284,7 @@ self.addEventListener('message', async (event) => {
         if (response.ok) {
           await cache.put(url, response);
           completed++;
-          event.source.postMessage({
+          sendMessageToClients({
             type: 'cacheProgress',
             message: `Successfully cached: ${file}`,
             completed: completed,
@@ -255,21 +292,20 @@ self.addEventListener('message', async (event) => {
             currentFile: file
           });
         } else {
-          event.source.postMessage({
+          sendMessageToClients({
             type: 'cacheError',
             message: `Failed to fetch ${file}: ${response.status} ${response.statusText}`
           });
         }
       } catch (error) {
-        event.source.postMessage({
+        sendMessageToClients({
           type: 'cacheError',
           message: `Failed to cache ${file}: ${error.message}`
         });
       }
     }
     
-    // Send completion message
-    event.source.postMessage({
+    sendMessageToClients({
       type: 'cacheComplete',
       message: `Successfully cached ${completed} of ${total} files`
     });
@@ -279,34 +315,29 @@ self.addEventListener('message', async (event) => {
     const cache = await caches.open(TILE_CACHE_NAME);
     const tiles = event.data.tiles;
     const basePath = event.data.basePath;
-    const BATCH_SIZE = 50; // Process 50 tiles concurrently
+    const BATCH_SIZE = 50;
 
-    // Process tiles in batches
     for (let i = 0; i < tiles.length; i += BATCH_SIZE) {
-        const batch = tiles.slice(i, i + BATCH_SIZE);
-        await Promise.all(batch.map(async (tile) => {
-            try {
-                const url = `${basePath}/${tile.z}/${tile.x}/${tile.y}.png`;
-                
-                // Check if URL is already in cache
-                const cachedResponse = await cache.match(url);
-                if (cachedResponse) {
-                    event.source.postMessage({ type: 'cacheTileComplete' });
-                    return; // Skip fetching if already cached
-                }
-                
-                const response = await fetch(url);
-                if (response.ok) {
-                    await cache.put(url, response.clone());
-                }
-                // Always notify progress even for 404s.
-                event.source.postMessage({ type: 'cacheTileComplete' });
-            } catch (error) {
-                console.error('Error caching tile:', error);
-                // Notify progress and continue to the next tile.
-                event.source.postMessage({ type: 'cacheTileComplete' });
-            }
-        }));
+      const batch = tiles.slice(i, i + BATCH_SIZE);
+      await Promise.all(batch.map(async (tile) => {
+        try {
+          const url = `${basePath}/${tile.z}/${tile.x}/${tile.y}.png`;
+          const cachedResponse = await cache.match(url);
+          if (cachedResponse) {
+            event.source.postMessage({ type: 'cacheTileComplete' });
+            return;
+          }
+          
+          const response = await fetch(url);
+          if (response.ok) {
+            await cache.put(url, response.clone());
+          }
+          event.source.postMessage({ type: 'cacheTileComplete' });
+        } catch (error) {
+          console.error('Error caching tile:', error);
+          event.source.postMessage({ type: 'cacheTileComplete' });
+        }
+      }));
     }
   }
-}); 
+});
