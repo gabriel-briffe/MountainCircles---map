@@ -10,6 +10,9 @@ const BASE_PATH = '/MountainCircles---map';
 // Global counter for the number of network fetches served (i.e., when there's no cached response)
 let networkFetchCount = 0;
 
+// Global counter to track ongoing GeoJSON network fetches
+let activeFetches = 0;
+
 // Resources to cache immediately on install
 const INITIAL_CACHE_URLS = [
   `${BASE_PATH}/`,
@@ -77,22 +80,31 @@ self.addEventListener('fetch', event => {
     return;
   }
 
-  // Define domains/paths to intercept
   const shouldIntercept = (
-    url.pathname.startsWith(BASE_PATH) || // Local assets
-    url.hostname === 'cdn.jsdelivr.net' || // Maplibre assets
-    url.hostname === 'demotiles.maplibre.org' || // Glyphs
-    url.hostname === 'fonts.googleapis.com' || // Material Icons stylesheet
-    url.hostname === 'fonts.gstatic.com' // Material Icons font files
+    url.pathname.startsWith(BASE_PATH) ||
+    url.hostname === 'cdn.jsdelivr.net' ||
+    url.hostname === 'demotiles.maplibre.org' ||
+    url.hostname === 'fonts.googleapis.com' ||
+    url.hostname === 'fonts.gstatic.com'
   );
 
   if (!shouldIntercept) {
-    return; // Let browser handle irrelevant requests
+    return;
   }
 
   event.respondWith(
     (async () => {
       const cacheKey = event.request;
+      // Only trigger spinner for requests loading GeoJSON files.
+      const isGeoJSON = url.pathname.endsWith('.geojson');
+      if (isGeoJSON) {
+        activeFetches++;
+        sendMessageToClients({
+          type: 'fetchStart',
+          url: url.href
+        });
+      }
+
       const timeoutId = setTimeout(() => {
         sendMessageToClients({
           type: 'loadWarning',
@@ -102,31 +114,34 @@ self.addEventListener('fetch', event => {
       }, 5000); // 5-second timeout
 
       try {
-        // Handle specific resource types
+        // Do not trigger spinner for tile requests
         if (url.pathname.includes('/tiles/')) {
           const response = await handleTileRequest(event.request);
           clearTimeout(timeoutId);
           return response;
-        } else if (url.pathname.endsWith('.geojson')) {
+        } else if (isGeoJSON) {
           const response = await handleGeoJSONRequest(event.request);
           clearTimeout(timeoutId);
+          activeFetches--;
+          sendMessageToClients({ type: 'fetchComplete', url: url.href });
           return response;
         } else if (url.hostname === 'demotiles.maplibre.org' && url.pathname.includes('/font/')) {
           const response = await handleGlyphRequest(event.request);
           clearTimeout(timeoutId);
           return response;
         } else {
-          // General cache-first strategy for all other intercepted requests (e.g., icons, Maplibre, fonts)
           const cache = await caches.open(CACHE_NAME);
           let response = await cache.match(cacheKey);
           if (response) {
             clearTimeout(timeoutId);
             return response;
           }
-
           response = await fetch(event.request);
           clearTimeout(timeoutId);
-          networkFetchCount++; // Increment network fetch counter
+          if (isGeoJSON) {
+            activeFetches--;
+            sendMessageToClients({ type: 'fetchComplete', url: url.href });
+          }
           if (response.ok) {
             await cache.put(cacheKey, response.clone());
           }
@@ -134,13 +149,16 @@ self.addEventListener('fetch', event => {
         }
       } catch (error) {
         clearTimeout(timeoutId);
+        if (isGeoJSON) {
+          activeFetches--;
+          sendMessageToClients({ type: 'fetchComplete', url: url.href });
+        }
         sendMessageToClients({
           type: 'loadError',
           url: url.href,
           message: `Error: Failed to load "${url.href}" - ${error.message}`
         });
-        if (url.pathname.endsWith('.geojson')) {
-          // Fallback for GeoJSON to prevent spinner hang
+        if (isGeoJSON) {
           return new Response(JSON.stringify({ type: 'FeatureCollection', features: [] }), {
             status: 200,
             headers: { 'Content-Type': 'application/json' }

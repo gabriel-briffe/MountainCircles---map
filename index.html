@@ -629,17 +629,36 @@
                 navigator.serviceWorker.register(`${BASE_PATH}/sw.js`, { scope: `${BASE_PATH}/` })
                     .then(registration => {
                         console.log('Service Worker registered:', registration.scope);
-                        registration.update(); // Force immediate update
+                        registration.update();
                     })
                     .catch(error => console.error('Service Worker registration failed:', error));
             });
 
-            // Listen for service worker messages (e.g., load warnings/errors)
+            // Remove the previous sourcedata-based spinner handler.
+            // Instead, use these spinner control variables and message listener:
+            let activeFetches = 0;
+            let spinnerTimeout = null;
+
             navigator.serviceWorker.addEventListener('message', (event) => {
-                if (event.data.type === 'loadWarning' || event.data.type === 'loadError') {
-                    alert(event.data.message); // Show alert for slow or failed loads
+                if (event.data.type === 'fetchStart') {
+                    activeFetches++;
+                    // Debounce showing the spinner for 200ms
+                    if (!spinnerTimeout) {
+                        spinnerTimeout = setTimeout(() => {
+                            document.getElementById('spinner').style.display = 'block';
+                        }, 200);
+                    }
+                } else if (event.data.type === 'fetchComplete') {
+                    activeFetches = Math.max(0, activeFetches - 1);
+                    if (activeFetches === 0) {
+                        clearTimeout(spinnerTimeout);
+                        spinnerTimeout = null;
+                        document.getElementById('spinner').style.display = 'none';
+                    }
+                } else if (event.data.type === 'loadWarning' || event.data.type === 'loadError') {
+                    alert(event.data.message);
                 } else if (event.data.type === 'cacheStart') {
-                    // Handle cache start (optional: could show UI instead of alert)
+                    // Optional: handle caching start message if desired.
                 } else if (event.data.type === 'cacheProgress') {
                     const { completed, total } = event.data;
                     document.getElementById('cacheCount').textContent = completed;
@@ -651,7 +670,7 @@
                     document.getElementById('cacheProgress').style.display = 'none';
                     document.getElementById('progressBar').style.width = '0%';
                 } else if (event.data.type === 'cacheTileComplete') {
-                    // Handled in cacheTiles function
+                    // Handled in cacheTiles
                 } else if (event.data.type === 'cacheError') {
                     console.error(event.data.message);
                 }
@@ -1135,32 +1154,6 @@
             },
             attributionControl: false,
             renderWorldCopies: false
-        });
-        
-        var loadingGeojsonSources = new Set();
-        var spinnerTimeout = null;
-
-        map.on('sourcedata', function(e) {
-            if (e.dataType !== 'source' || !e.source || e.source.type !== 'geojson') {
-                return;
-            }
-            if (!e.isSourceLoaded) {
-                loadingGeojsonSources.add(e.sourceId);
-            } else {
-                loadingGeojsonSources.delete(e.sourceId);
-            }
-            
-            if (loadingGeojsonSources.size > 0) {
-                if (!spinnerTimeout) {
-                    spinnerTimeout = setTimeout(() => {
-                        document.getElementById('spinner').style.display = 'block';
-                    }, 200);
-                }
-            } else {
-                clearTimeout(spinnerTimeout);
-                spinnerTimeout = null;
-                document.getElementById('spinner').style.display = 'none';
-            }
         });
         
         map.on('load', () => {
