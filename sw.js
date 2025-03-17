@@ -1,11 +1,52 @@
 // Service Worker File: sw.js
 
+/**
+ * MountainCircles Map Service Worker
+ * Caching Strategy:
+ * - Files are cached indefinitely with no expiration
+ * - Users must manually trigger updates via the "Update App" button
+ * - Different cache stores are used for different types of resources
+ * - Old caches are cleaned up only when service worker version changes
+ */
+
 const CACHE_NAME = 'mountaincircles-v2';
 const TILE_CACHE_NAME = 'mountaincircles-tiles-v1';
 const GEOJSON_CACHE_NAME = 'mountaincircles-geojson-v1';
 const DYNAMIC_CACHE_NAME = 'mountaincircles-dynamic-v1';
+const AIRSPACE_CACHE_NAME = 'mountaincircles-airspace-v1';
 
-const BASE_PATH = '/MountainCircles---map';
+// Automatically determine base path from service worker scope
+function getBasePath() {
+    try {
+        console.log('SW - Location:', {
+            origin: self.location.origin,
+            hostname: self.location.hostname, 
+            pathname: self.location.pathname
+        });
+        
+        // Check if on GitHub Pages site
+        if (self.location.hostname === 'gabriel-briffe.github.io') {
+            console.log('SW - Detected GitHub Pages site');
+            return '/MountainCircles---map';
+        }
+        
+        // Check if pathname contains the repo name
+        if (self.location.pathname.includes('/MountainCircles---map/')) {
+            console.log('SW - Detected repository path in URL');
+            return '/MountainCircles---map';
+        }
+        
+        // Default for local development
+        console.log('SW - Using local development path');
+        return '.';
+    } catch (e) {
+        console.error('SW - Error in getBasePath:', e);
+        return '.';
+    }
+}
+
+const BASE_PATH = getBasePath();
+console.log('SW - Final BASE_PATH:', BASE_PATH);
 
 // Global counter for the number of network fetches served (i.e., when there's no cached response)
 let networkFetchCount = 0;
@@ -20,6 +61,8 @@ const INITIAL_CACHE_URLS = [
   `${BASE_PATH}/manifest.json`,
   `${BASE_PATH}/peaks.geojson`,
   `${BASE_PATH}/passes.geojson`,
+  `${BASE_PATH}/airspace.geojson`,
+  `${BASE_PATH}/mappings.js`,
   `${BASE_PATH}/icons/icon-192.png`,
   'https://cdn.jsdelivr.net/npm/maplibre-gl@latest/dist/maplibre-gl.js',
   'https://cdn.jsdelivr.net/npm/maplibre-gl@latest/dist/maplibre-gl.css',
@@ -51,7 +94,7 @@ self.addEventListener('activate', event => {
       return Promise.all(
         cacheNames
           .filter(name => name.startsWith('mountaincircles-'))
-          .filter(name => ![CACHE_NAME, TILE_CACHE_NAME, GEOJSON_CACHE_NAME, DYNAMIC_CACHE_NAME].includes(name))
+          .filter(name => ![CACHE_NAME, TILE_CACHE_NAME, GEOJSON_CACHE_NAME, DYNAMIC_CACHE_NAME, AIRSPACE_CACHE_NAME].includes(name))
           .map(name => caches.delete(name))
       );
     })
@@ -193,6 +236,25 @@ async function handleTileRequest(request) {
 // Handle GeoJSON requests
 async function handleGeoJSONRequest(request) {
   try {
+    const url = new URL(request.url);
+    
+    // Special handling for airspace.geojson
+    if (url.pathname.endsWith('airspace.geojson')) {
+      const airspaceCache = await caches.open(AIRSPACE_CACHE_NAME);
+      let response = await airspaceCache.match(request);
+      if (response) {
+        return response;
+      }
+      
+      // If not in cache, fetch from network
+      response = await fetch(request);
+      if (response.ok) {
+        await airspaceCache.put(request, response.clone());
+      }
+      return response;
+    }
+    
+    // For other GeoJSON files, use the existing caching logic
     // Check dynamic cache first
     const dynamicCache = await caches.open(DYNAMIC_CACHE_NAME);
     let response = await dynamicCache.match(request);

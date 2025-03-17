@@ -1,0 +1,1024 @@
+/* Main styles for MountainCircles Map */ 
+:root {
+    /* Light mode colors */
+    --bg-light: rgba(255, 255, 255, 0.8);
+    --bg-light-solid: #fff;
+    --bg-button-light: #eee;
+    --bg-button-hover-light: #ddd;
+    --text-light: #000;
+    --text-heading-light: #2c3e50;
+    --border-light: #ccc;
+    --border-subtle-light: rgba(0, 0, 0, 0.1);
+    --slider-track-light: #ccc;
+    --hover-bg-light: rgba(0, 0, 0, 0.05);
+    --shadow-light: rgba(0, 0, 0, 0.2);
+    --shadow-subtle-light: rgba(0, 0, 0, 0.1);
+    
+    /* Dark mode colors */
+    --bg-dark: rgba(20, 20, 20, 0.8);
+    --bg-dark-solid: #222;
+    --bg-button-dark: #333;
+    --bg-button-hover-dark: #444;
+    --text-dark: #fff;
+    --text-heading-dark: #ecf0f1;
+    --border-dark: #555;
+    --border-subtle-dark: rgba(255, 255, 255, 0.1);
+    --slider-track-dark: #555;
+    --hover-bg-dark: rgba(255, 255, 255, 0.1);
+    
+    /* Accent colors */
+    --accent-blue: #4285F4;
+    --accent-green: #4CAF50;
+    --accent-turquoise: rgba(64, 224, 208, 0.5);
+    --accent-orange: #FF8C00;
+    
+    /* Airspace styling */
+    --popup-highlight: rgba(64, 224, 208, 0.5);
+    --altitude-line: #666;
+    
+    /* Common sizes */
+    --border-radius-standard: 4px;
+    --border-radius-large: 8px;
+    
+    /* Typography */
+    --font-family: 'Helvetica Neue', Arial, sans-serif;
+    --font-size-base: 16px;
+    --font-size-small: 14px;
+    --font-size-large: 18px;
+    --font-weight-normal: 400;
+    --font-weight-bold: 700;
+}
+
+/* Global font settings */
+html, body {
+    margin: 0; 
+    padding: 0;
+    font-family: var(--font-family);
+    font-size: var(--font-size-base);
+    /* Prevent scrolling and bounce effects */
+    position: fixed;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    overscroll-behavior: none; /* Prevent pull-to-refresh and bounce */
+    -webkit-overflow-scrolling: auto; /* Disable iOS momentum scrolling */
+    touch-action: none; /* Disable browser handling of touch gestures */
+}
+
+/* Standard headings */
+h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-family);
+    font-weight: var(--font-weight-bold);
+    margin-top: 0;
+}
+
+h2 {
+    font-size: var(--font-size-large);
+}
+
+h3 {
+    font-size: var(--font-size-base);
+}
+
+#map { width: 100%; height: 100vh; }
+
+/* Simple style for the basemap switcher */
+#styleSwitcher {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    z-index: 1;
+    background: var(--bg-light-solid);
+    padding: 5px;
+    border-radius: 3px;
+    box-shadow: 0 1px 4px var(--shadow-light);
+}
+/* Container uses flex, aligning items in the center vertically */
+#polygonOpacityControl {
+    position: absolute;
+    top: 50px;
+    right: 10px;
+    z-index: 1;
+    background: var(--bg-light-solid);
+    padding: 5px;
+    border-radius: 3px;
+    box-shadow: 0 1px 4px var(--shadow-light);
+    display: flex;
+    align-items: center;
+}
+/* Make the button a flex container so its content centers */
+#polygonOpacityControl button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    margin-right: 5px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    min-height: 24px; /* ensures the button is at least 24px tall */
+}
+/* Force the Material Icons font with !important */
+.material-icons-round {
+    font-family: 'Material Icons Round' !important;
+    font-size: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+    color: var(--text-light);
+}
+/* Dark mode adjustments */
+@media (prefers-color-scheme: dark) {
+    .material-icons-round {
+        color: var(--text-dark);
+    }
+}
+
+/* --------------- MAP DOCK (apple-dock style) --------------- */
+#mapDock {
+    position: fixed;
+    left: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    display: flex;
+    align-items: center;
+    flex-direction: column;
+    max-height: 100%;
+    flex-wrap: wrap;
+    gap: 10px;
+    z-index: 1100;
+}
+
+/* -------------------------- */
+/* Slider Container (Dock Box) */
+/* -------------------------- */
+.dock-slider {
+    width: 48px;       /* Same as other button width */
+    height: 150px;     /* Give enough room for the rotated slider */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg-light);
+    border-radius: var(--border-radius-large);
+    padding: 8px;
+    box-sizing: border-box;
+}
+
+/* Slider styling remains the same in landscape mode */
+#polygonOpacitySlider {
+    width: 150px;  /* Length of the slider track */
+    -webkit-transform: rotate(-90deg);
+    -ms-transform: rotate(-90deg);
+    transform: rotate(-90deg);
+    -webkit-appearance: none; /* Remove default styling */
+    background: transparent;  /* Needed for custom pseudo-elements */
+}
+
+/* Portrait mode: dock is horizontal, so the slider must be horizontal */
+@media (orientation: portrait) {
+    #mapDock {
+        position: fixed;
+        top: 10px;
+        left: 0;
+        right: 0;
+        width: 100%;
+        padding: 0 0; /* Optional: Add some horizontal spacing */
+        display: flex;
+        flex-direction: row;
+        flex-wrap: wrap;
+        justify-content: center; /* Center items in each row */
+        gap: 10px;
+        transform: translateY(0);
+    }
+    .dock-slider {
+        /* Adjust container to have the same height as other buttons */
+        width: 150px;
+        height: 48px;
+        background: var(--bg-light);
+        border-radius: var(--border-radius-large);
+        padding: 8px;
+        box-sizing: border-box;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    /* Force the slider to be horizontal by resetting its rotation */
+    .dock-slider #polygonOpacitySlider {
+        -webkit-transform: rotate(0deg) !important;
+        -ms-transform: rotate(0deg) !important;
+        transform: rotate(0deg) !important;
+        width: 100% !important;
+    }
+}
+
+/* Dark mode adjustments: use a grey background similar to the buttons */
+@media (prefers-color-scheme: dark) {
+    .dock-slider {
+        background: var(--bg-dark);
+    }
+}
+
+/* ===================== */
+/* Custom Slider Styling */
+/* ===================== */
+
+/* For Webkit Browsers (Chrome, Safari, Opera) */
+#polygonOpacitySlider::-webkit-slider-runnable-track {
+    width: 100%;
+    height: 6px;
+    background: var(--slider-track-light);
+    border-radius: 3px;
+}
+#polygonOpacitySlider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    height: 20px;
+    width: 20px;
+    border-radius: 50%;
+    background: var(--bg-light-solid);
+    margin-top: -7px; /* Center the thumb on the track */
+    cursor: pointer;
+}
+
+/* For Firefox */
+#polygonOpacitySlider::-moz-range-track {
+    width: 100%;
+    height: 6px;
+    background: var(--slider-track-light);
+    border-radius: 3px;
+}
+#polygonOpacitySlider::-moz-range-thumb {
+    height: 20px;
+    width: 20px;
+    border-radius: 50%;
+    background: var(--bg-light-solid);
+    cursor: pointer;
+}
+
+/* For IE */
+#polygonOpacitySlider::-ms-track {
+    width: 100%;
+    height: 6px;
+    background: transparent;
+    border-color: transparent;
+    color: transparent;
+}
+#polygonOpacitySlider::-ms-fill-lower {
+    background: var(--slider-track-light);
+    border-radius: 3px;
+}
+#polygonOpacitySlider::-ms-fill-upper {
+    background: var(--slider-track-light);
+    border-radius: 3px;
+}
+#polygonOpacitySlider::-ms-thumb {
+    height: 20px;
+    width: 20px;
+    border-radius: 50%;
+    background: var(--bg-light-solid);
+    cursor: pointer;
+}
+
+/* Dark mode adjustments: use a darker grey for the slider track */
+@media (prefers-color-scheme: dark) {
+    #polygonOpacitySlider::-webkit-slider-runnable-track {
+        background: var(--slider-track-dark);
+    }
+    #polygonOpacitySlider::-moz-range-track {
+        background: var(--slider-track-dark);
+    }
+    #polygonOpacitySlider::-ms-fill-lower,
+    #polygonOpacitySlider::-ms-fill-upper {
+        background: var(--slider-track-dark);
+    }
+}
+
+
+/* Map Dock Buttons: Remove transition and hover effects */
+#mapDock button {
+    background: var(--bg-light);
+    border: none;
+    outline: none;
+    border-radius: var(--border-radius-large);
+    padding: 8px;
+    cursor: pointer;
+    transition: none;  /* Disabled transition for scaling and background changes */
+    width: 48px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+#mapDock button:hover {
+    transform: none;   /* Disable zooming (scaling) */
+    background: var(--bg-light);  /* Keep same background */
+}
+
+/* Dark mode adjustments */
+@media (prefers-color-scheme: dark) {
+    #mapDock button {
+        background: var(--bg-dark);
+    }
+    #mapDock button:hover {
+        transform: none;   /* Disable zooming in dark mode as well */
+        background: var(--bg-dark);
+    }
+    #mapDock .material-icons-round {
+        color: var(--text-dark);
+    }
+}
+
+/* --------------- POPUP STYLES (consolidated) --------------- */
+/* Popup Menu (centered on screen) */
+#popupMenu {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0, 0, 0, 0.2);
+    display: none; /* Hidden by default */
+    align-items: center;
+    justify-content: center;
+    z-index: 1200;
+}
+
+#popupMenu .popup-content {
+    background: var(--bg-light-solid);
+    padding: 20px;
+    border-radius: 12px;
+    max-width: 400px;
+    width: 90%;
+    max-height: 60%; /* Limit the height to 60% of the viewport height */
+    overflow-y: auto; /* Add vertical scrolling if content overflows */
+    position: relative;
+    text-align: center;
+    color: var(--text-light);
+}
+
+/* Config buttons container: centers buttons and adds gap with extra bottom margin */
+#popupMenu #configButtons {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 5px;  /* 5px gap between config buttons */
+    margin-bottom: 15px;
+}
+
+/* Style for configuration buttons inside the popup menu */
+#popupMenu #configButtons button {
+    margin: 5px;
+}
+
+/* Style for the IGC file button */
+#popupMenu button#igcFileButton {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 15px;
+}
+
+/* Style for the close button in the popup menu using a Material Icon */
+#popupMenu .popup-content .close {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: transparent;
+    border: none;
+    font-size: 24px;
+    cursor: pointer;
+    color: var(--text-light);
+}
+
+/* Airspace Popup Menu (for airspace inspection) */
+.popup-menu {
+    position: absolute;
+    background: var(--bg-light-solid); /* Light background */
+    border: 1px solid var(--border-light);
+    box-shadow: 0 2px 6px var(--shadow-light);
+    padding: 0px;
+    z-index: 1200; /* Higher than the map dock's z-index (1100) */
+    overflow-y: auto;
+    overflow-x: hidden;
+    display: inline-flex;
+    color: var(--text-light); /* Dark text */
+}
+
+.popup-content {
+    flex: 1;
+    padding-left: 10px;
+    overflow-y: auto;
+}
+
+.popup-section {
+    font-size: var(--font-size-small);
+    border-bottom: 1px solid var(--border-light);
+    padding: 8px;
+    cursor: pointer;
+    user-select: none;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+}
+
+.popup-section:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+}
+
+.popup-section.highlighted {
+    background-color: var(--popup-highlight);
+}
+
+.limits-type-container {
+    display: flex;
+    align-items: center;
+}
+
+.limits-div {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+}
+
+.upper-limit {
+    line-height: 1;
+    border-bottom: 1px solid var(--altitude-line);
+}
+
+.lower-limit {
+    line-height: 1;
+}
+
+.colorBand {
+    position: absolute;
+    left: -10px;
+    top: 0;
+    width: 10px;
+    height: 100%;
+    opacity: 0.7;
+}
+
+.colorBand-highlighted {
+    opacity: 1 !important;
+}
+
+.cross-section {
+    border-right: 4px solid var(--border-light);
+    padding: 0;
+    background: #f0f0f0; /* Light background */
+    position: relative;
+}
+
+.airspace-bar {
+    position: absolute;
+    opacity: 0.7;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border-radius: 10px;
+}
+
+.airspace-bar.highlighted-bar {
+    border: 2px solid rgba(64, 224, 208, 1);
+    margin-left: -2px;
+    margin-bottom: -2px;
+    opacity: 1 !important;
+}
+
+.altitude-label {
+    font-size: var(--font-size-small);
+    line-height: 1;
+    font-weight: var(--font-weight-bold);
+    padding: 0;
+    white-space: auto;
+    text-align: center;
+    background-color: rgba(255, 255, 255, 0.5);
+    color: var(--text-light); /* Dark text */
+    border-radius: 10px;
+    padding-left: 2px;
+    padding-right: 2px;
+    user-select: none;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    pointer-events: none;
+}
+
+.altitude-line {
+    position: absolute;
+    height: 1px;
+    background: var(--altitude-line); /* Dark lines */
+    left: 0;
+}
+
+/* Add to consolidated dark mode section */
+@media (prefers-color-scheme: dark) {
+    /* Main Popup Menu */
+    #popupMenu .popup-content {
+        background: var(--bg-dark);
+        color: var(--text-dark);
+    }
+    
+    #popupMenu #configButtons button {
+        background: var(--bg-dark);
+        color: var(--text-dark);
+    }
+    
+    #popupMenu #configButtons button:hover {
+        background: var(--bg-dark-solid);
+    }
+    
+    #popupMenu button#igcFileButton {
+        background: var(--bg-dark);
+        color: var(--text-dark);
+    }
+    
+    #popupMenu button#igcFileButton:hover {
+        background: var(--bg-dark-solid);
+    }
+    
+    #popupMenu .popup-content .close {
+        color: var(--text-dark);
+    }
+    
+    /* Airspace Popup - Force Light Theme (even in dark mode) */
+    .popup-menu {
+        background: var(--bg-light-solid) !important;
+        color: var(--text-light) !important;
+        border-color: var(--border-light) !important;
+    }
+    
+    .popup-section {
+        border-bottom-color: var(--border-light) !important;
+        color: var(--text-light) !important;
+    }
+    
+    .cross-section {
+        background: #f0f0f0 !important;
+        border-right-color: var(--border-light) !important;
+    }
+    
+    .altitude-label {
+        background-color: rgba(255, 255, 255, 0.5) !important;
+        color: var(--text-light) !important;
+    }
+    
+    .altitude-line {
+        background: var(--altitude-line) !important;
+    }
+}
+
+/* ===== Spinner Styling ===== */
+#spinner {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 2000;
+    display: none; /* Hidden by default */
+}
+.spinner {
+    border: 8px solid #f3f3f3; /* Light grey */
+    border-top: 8px solid #3498db; /* Blue */
+    border-radius: 50%;
+    width: 60px;
+    height: 60px;
+    animation: spin 1s linear infinite;
+}
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Common style for configuration buttons */
+.config-button {
+    margin: 5px;
+}
+
+/* Style for layer toggle buttons */
+#peaksToggleBtn, #passesToggleBtn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+#peaksToggleBtn .material-icons-round,
+#passesToggleBtn .material-icons-round {
+    font-size: 20px;
+}
+
+/* Dark mode adjustments */
+@media (prefers-color-scheme: dark) {
+    #peaksToggleBtn, #passesToggleBtn {
+        background: rgba(20, 20, 20, 0.8);
+        color: #fff;
+    }
+    #peaksToggleBtn:hover, #passesToggleBtn:hover {
+        background: rgba(20, 20, 20, 1);
+    }
+}
+
+/* Update the CSS for the cache button */
+#cacheCurrentConfigBtn {
+    transition: border 0.3s, box-shadow 0.3s;
+    border: none;
+    box-shadow: none;
+    position: relative; /* Ensure border works correctly */
+    box-sizing: border-box; /* Include border in element size */
+}
+
+/* Style for cached configuration buttons */
+.cached-config {
+    border: 2px solid #4CAF50; /* Green border */
+}
+
+/* Add to your existing CSS */
+#cacheProgress {
+    display: none;
+    flex-direction: column;
+    width: 100%;
+    align-items: center;
+    margin-top: 10px;
+}
+
+.progress-bar-container {
+    width: 80%;
+    margin: 5px 0;
+}
+
+/* --------------- AIRSPACE STYLES --------------- */
+/* Airspace sidebar for type toggles */
+#airspace-sidebar {
+    position: absolute;
+    background-color: var(--bg-light);
+    padding: 15px;
+    border-radius: var(--border-radius-large);
+    box-shadow: 0 2px 10px var(--shadow-light);
+    overflow-y: auto;
+    display: none;
+    z-index: 1300; /* Increased to be above popup-menu (1200) */
+    max-width: 250px;
+    font-weight: var(--font-weight-normal);
+    color: var(--text-light);
+}
+
+/* Override font weight for specific elements that need to be bold */
+#airspace-sidebar h3,
+.sidebar-policy-title,
+.sidebar-section-title {
+    /* font-weight already bold in parent */
+}
+
+/* Portrait mode positioning (width < height) */
+@media (orientation: portrait) {
+    #airspace-sidebar {
+        top: 70px;
+        left: 0; /* No margin in portrait mode */
+        bottom: 0px; /* Keep a small margin at the bottom */
+        height: auto; /* Allow height to be determined by top and bottom */
+        max-height: none; /* Remove max-height constraint */
+    }
+}
+
+/* Landscape mode positioning (width >= height) */
+@media (orientation: landscape) {
+    #airspace-sidebar {
+        top: 0px; /* Small margin from the top */
+        bottom: 0px; /* Small margin from the bottom */
+        left: 70px; /* 70px from left to provide space for the dock */
+        height: auto; /* Allow height to be determined by top and bottom */
+        max-height: none; /* Remove max-height constraint */
+        transform: none; /* Remove transform since we're using explicit positioning */
+    }
+}
+
+#airspace-sidebar h3 {
+    margin-top: 0;
+    color: var(--text-light);
+    font-size: var(--font-size-base);
+    font-weight: var(--font-weight-bold);
+    text-align: center;
+}
+
+#airspace-sidebar label {
+    display: block;
+    margin-bottom: 8px;
+    cursor: pointer;
+    padding: 3px 0;
+    color: var(--text-light);
+}
+
+#airspace-sidebar label:hover {
+    background-color: var(--hover-bg-light);
+}
+
+#airspace-sidebar input[type="checkbox"] {
+    margin-right: 8px;
+    vertical-align: middle;
+}
+
+/* Sidebar toggle buttons for peaks and passes */
+.sidebar-toggle-btn {
+    background-color: transparent;
+}
+
+.sidebar-toggle-btn:hover {
+    background-color: var(--hover-bg-light);
+}
+
+/* Sidebar config buttons */
+.sidebar-config-btn {
+    flex: 1;
+    min-width: 0;
+    max-width: none;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    background-color: var(--bg-button-light);
+    border: none;
+    border-radius: var(--border-radius-standard);
+    cursor: pointer;
+    font-weight: var(--font-weight-bold);
+    color: var(--text-light);
+    padding: 8px 12px;
+    transition: background-color 0.2s;
+}
+
+.sidebar-config-btn:hover {
+    background-color: var(--bg-button-hover-light);
+}
+
+.sidebar-config-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    justify-content: space-between;
+    width: 100%;
+    margin-bottom: 15px;
+}
+
+/* Mac-style toggle switch */
+.toggle-switch {
+    position: relative;
+    width: 40px;
+    height: 20px;
+    background-color: var(--slider-track-light);
+    border-radius: 10px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+    border: none;
+    outline: none;
+}
+
+.toggle-switch.active {
+    background-color: var(--accent-blue);
+}
+
+.toggle-slider {
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 16px;
+    height: 16px;
+    background-color: var(--bg-light-solid);
+    border-radius: 50%;
+    transition: transform 0.3s;
+    box-shadow: 0 1px 3px var(--shadow-light);
+}
+
+.toggle-switch.active .toggle-slider {
+    transform: translateX(20px);
+}
+
+/* Sidebar policy title */
+.sidebar-policy-title {
+    width: 100%;
+    text-align: center;
+    font-weight: var(--font-weight-bold);
+    margin: 5px 0;
+    font-size: var(--font-size-base);
+}
+
+/* Sidebar divider */
+.sidebar-divider {
+    margin: 15px 0;
+    border: none;
+    border-top: 1px solid var(--border-subtle-light);
+}
+
+/* Sidebar section title */
+.sidebar-section-title {
+    width: 100%;
+    text-align: center;
+    font-weight: var(--font-weight-bold);
+    margin: 5px 0 10px 0;
+    font-size: var(--font-size-base);
+}
+
+/* Sidebar header container */
+.sidebar-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--border-subtle-light);
+}
+
+/* Sidebar header title */
+.sidebar-header h2 {
+    margin: 0;
+    color: var(--text-heading-light);
+    font-size: var(--font-size-large);
+    font-weight: var(--font-weight-bold);
+}
+
+/* CONSOLIDATED DARK MODE STYLES */
+@media (prefers-color-scheme: dark) {
+    /* Airspace sidebar */
+    #airspace-sidebar {
+        background: var(--bg-dark);
+        color: var(--text-dark);
+    }
+    
+    #airspace-sidebar h3 {
+        color: var(--text-dark);
+    }
+    
+    #airspace-sidebar label {
+        color: var(--text-dark);
+    }
+    
+    #airspace-sidebar label:hover {
+        background-color: var(--hover-bg-dark);
+    }
+    
+    /* Toggle switch */
+    .toggle-switch {
+        background-color: var(--slider-track-dark);
+    }
+    
+    .toggle-switch.active {
+        background-color: var(--accent-blue);
+    }
+    
+    /* Dividers and borders */
+    .sidebar-divider {
+        border-top-color: var(--border-subtle-dark);
+    }
+    
+    .sidebar-header {
+        border-bottom: 1px solid var(--border-subtle-dark);
+    }
+    
+    .sidebar-header h2 {
+        color: var(--text-heading-dark);
+    }
+    
+    /* Interactive elements */
+    .airspace-option:hover {
+        background-color: var(--hover-bg-dark);
+    }
+    
+    .sidebar-config-btn {
+        background-color: var(--bg-button-dark);
+        color: var(--text-dark);
+    }
+    
+    .sidebar-config-btn:hover {
+        background-color: var(--bg-button-hover-dark);
+    }
+    
+    .sidebar-toggle-btn:hover {
+        background-color: var(--hover-bg-dark);
+    }
+}
+
+/* Policy buttons container */
+.policy-buttons-container {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 15px;
+    width: 100%;
+}
+
+/* Row container for policy buttons */
+.policy-row-container {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    width: 100%;
+    margin-bottom: 10px;
+}
+
+/* Policy button */
+.policy-button {
+    flex: 1;
+    min-width: 40px;
+    max-width: none;
+    height: auto;
+    padding: 8px 12px;
+    margin: 0;
+    font-size: var(--font-size-base);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Text size container */
+.text-size-container {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 15px;
+    width: 100%;
+}
+
+/* Text size button */
+.text-size-button {
+    flex: 1;
+    font-size: var(--font-size-base);
+}
+
+/* Apply common button styles to specific button types */
+.config-button,
+.sidebar-config-btn,
+.policy-button,
+.text-size-button,
+#popupMenu #configButtons button,
+#popupMenu button#igcFileButton,
+#peaksToggleBtn, 
+#passesToggleBtn,
+#cacheCurrentConfigBtn,
+.sidebar-toggle-btn {
+    /* Common button properties */
+    border: none;
+    border-radius: var(--border-radius-standard);
+    cursor: pointer;
+    font-family: var(--font-family);
+    font-size: var(--font-size-base);
+    transition: background-color 0.2s;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    
+    /* Visual styles */
+    display: inline-block;
+    padding: 8px 12px;
+    background: var(--bg-button-light);
+    color: var(--text-light);
+}
+
+/* Button hover states */
+.config-button:hover,
+.sidebar-config-btn:hover,
+#popupMenu #configButtons button:hover,
+#popupMenu button#igcFileButton:hover,
+#peaksToggleBtn:hover, 
+#passesToggleBtn:hover,
+#cacheCurrentConfigBtn:hover,
+.sidebar-toggle-btn:hover {
+    background: var(--bg-button-hover-light);
+}
+
+@media (prefers-color-scheme: dark) {
+    .config-button,
+    .sidebar-config-btn,
+    .policy-button,
+    .text-size-button,
+    #popupMenu #configButtons button,
+    #popupMenu button#igcFileButton,
+    #peaksToggleBtn, 
+    #passesToggleBtn,
+    #cacheCurrentConfigBtn,
+    .sidebar-toggle-btn {
+        background: var(--bg-button-dark);
+        color: var(--text-dark);
+    }
+    
+    .config-button:hover,
+    .sidebar-config-btn:hover,
+    #popupMenu #configButtons button:hover,
+    #popupMenu button#igcFileButton:hover,
+    #peaksToggleBtn:hover, 
+    #passesToggleBtn:hover,
+    #cacheCurrentConfigBtn:hover,
+    .sidebar-toggle-btn:hover {
+        background: var(--bg-button-hover-dark);
+    }
+}
+
+/* Allow scrolling on specific elements only */
+#airspace-sidebar, 
+.popup-content, 
+#popupMenu .popup-content {
+    overflow-y: auto;
+    overscroll-behavior: contain; /* Prevent scroll chaining */
+    -webkit-overflow-scrolling: touch; /* Enable smooth scrolling in iOS */
+}
