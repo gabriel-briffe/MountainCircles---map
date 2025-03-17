@@ -79,7 +79,7 @@ export const POLICIES = {
 
 // Default policy and configuration
 export const DEFAULT_POLICY = 'alps';
-export const DEFAULT_CONFIG = DEFAULT_POLICY + '/' + '10-100-250-4200';
+export const DEFAULT_CONFIG = DEFAULT_POLICY + '/' + '20-100-250-4200';
 
 // Cache settings
 export const CACHE_NAME = 'mountaincircles-dynamic-v1';
