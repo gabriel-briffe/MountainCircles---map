@@ -31,7 +31,8 @@ import {
     setEnabledAirspaceTypes,
     saveStateToLocalStorage,
     getAirspaceVisible,
-    setAirspaceVisible
+    setAirspaceVisible,
+    getLayersToggleState
 } from "./state.js";
 
 // Import from airspace module
@@ -509,14 +510,32 @@ export function updateAllLabelSizes() {
  * @param {string} cfg - The configuration to switch to
  */
 export function switchConfig(cfg) {
+    // Clear any existing dynamic layers first
     removeDynamicLayers();
     removeGeoJSONLayers();
+    
+    // Update the parameters box with new config
     updateParametersBox(cfg.split('/')[1]);
+    
+    // Update the state with new config values
     setCurrentConfig(cfg);
     setCurrentPolicy(cfg.split('/')[0]);
+    
+    // Save state to persist the configuration change
+    saveStateToLocalStorage().catch(err => console.error('Error saving config state:', err));
+    
+    // Add the new GeoJSON layers
     addGeoJSONLayers();
     
-    // Apply layer visibilities from state
+    // Get current toggle states for applying visibility
+    const linestringsToggleState = getLayersToggleState();
+    console.log(`Config switch - applying linestring toggle state: ${linestringsToggleState ? 'visible' : 'hidden'}`);
+    
+    // Apply linestring layer visibility based on toggle state
+    getLayerManager().setVisibility('linestrings-layer', linestringsToggleState);
+    getLayerManager().setVisibility('linestrings-labels', linestringsToggleState);
+    
+    // Apply other layer visibilities from state
     getLayerManager().setVisibility('peaks-symbols', getPeaksVisible());
     getLayerManager().setVisibility('passes-symbols', getPassesVisible());
     
@@ -634,6 +653,13 @@ export function addLineStringLayers() {
     
     // Add linestrings labels layer if it doesn't exist
     getLayerManager().addLayerIfNotExists('linestrings-labels', labelsStyle);
+    
+    // Set initial visibility based on toggle state
+    // NOTE: This is handled in switchConfig, but we include it here for cases
+    // where addLineStringLayers is called directly without going through switchConfig
+    const linestringsToggleState = getLayersToggleState();
+    getLayerManager().setVisibility('linestrings-layer', linestringsToggleState);
+    getLayerManager().setVisibility('linestrings-labels', linestringsToggleState);
 }
 
 /**
