@@ -47,6 +47,11 @@
     --font-size-large: 18px;
     --font-weight-normal: 400;
     --font-weight-bold: 700;
+    
+    /* Airspace Popup Typography */
+    --airspace-popup-header: 18px;
+    --airspace-popup-content: 16px;
+    --airspace-popup-label: 14px;
 }
 
 /* Global font settings */
@@ -400,10 +405,11 @@ h3 {
     box-shadow: 0 2px 6px var(--shadow-light);
     padding: 0px;
     z-index: 1200; /* Higher than the map dock's z-index (1100) */
-    overflow-y: auto;
+    overflow-y: hidden;
     overflow-x: hidden;
     display: inline-flex;
     color: var(--text-light); /* Dark text */
+    font-size: var(--airspace-popup-content);
 }
 
 .popup-content {
@@ -413,7 +419,7 @@ h3 {
 }
 
 .popup-section {
-    font-size: var(--font-size-small);
+    font-size: var(--airspace-popup-content);
     border-bottom: 1px solid var(--border-light);
     padding: 8px;
     cursor: pointer;
@@ -446,10 +452,12 @@ h3 {
 .upper-limit {
     line-height: 1;
     border-bottom: 1px solid var(--altitude-line);
+    font-size: var(--airspace-popup-content);
 }
 
 .lower-limit {
     line-height: 1;
+    font-size: var(--airspace-popup-content);
 }
 
 .colorBand {
@@ -488,7 +496,7 @@ h3 {
 }
 
 .altitude-label {
-    font-size: var(--font-size-small);
+    font-size: var(--airspace-popup-label);
     line-height: 1;
     font-weight: var(--font-weight-bold);
     padding: 0;
@@ -1021,4 +1029,10 @@ h3 {
     overflow-y: auto;
     overscroll-behavior: contain; /* Prevent scroll chaining */
     -webkit-overflow-scrolling: touch; /* Enable smooth scrolling in iOS */
+}
+
+.popup-section strong {
+    font-size: var(--airspace-popup-header);
+    display: block;
+    margin-bottom: 5px;
 }

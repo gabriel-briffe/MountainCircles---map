@@ -42,6 +42,9 @@ const style = {
             "id": "airspace-outline",
             "type": "line",
             "source": "airspace",
+            "layout": {
+                "line-sort-key": ["get", "upperLimitMeters"]
+            },
             paint: {
                 "line-color": [
                     "match",

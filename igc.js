@@ -112,7 +112,8 @@ export async function handleFileSelect(event) {
         const altPointsStyle = IGC_STYLES.createAltitudePointsStyle(altSourceId, layerId + '-altitude-points');
         getLayerManager().addLayerIfNotExists(layerId + '-altitude-points', altPointsStyle);
 
-        getLayerManager().moveLayerToTop('location-marker-circle');
+        // Ensure proper layer order
+        getLayerManager().redrawLayersInOrder();
         
         return { success: true, trackId: layerId };
     } catch (error) {

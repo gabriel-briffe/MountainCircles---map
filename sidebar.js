@@ -5,7 +5,6 @@
 
 // Import from config
 import {
-    COLOR_MAPPING,
     AIRSPACE_TYPE_ORDER,
     POLICIES,
     CACHE_NAME,
@@ -19,15 +18,13 @@ import {
     getBaseTextSize,
     getPeaksVisible,
     getPassesVisible,
-    getPopupMarker,
     getCurrentConfig,
-    getPopup,
     setPeaksVisible,
     setPassesVisible,
     setBaseTextSize,
     setCurrentConfig,
     setCurrentPolicy,
-    clearPopup
+    clearPopup,
 } from "./state.js";
 
 // Import from airspace module
@@ -35,6 +32,11 @@ import {
     clearHighlight,
     triggerPopupRefresh
 } from "./airspace.js";
+
+// Import from map module
+import {
+    clearMarker
+} from "./map.js";
 
 // Import layer styles
 import { 
@@ -46,12 +48,6 @@ import {
     pointLabelsLayerStyle
 } from "./layerStyles.js";
 
-// Import necessary functions from mapInitializer
-import {
-    createDynamicLayer,
-    createDynamicLineWithLabels,
-    ensureAirspaceLayersOnTop
-} from "./mapInitializer.js";
 
 /**
  * Creates a checkbox option with label for the sidebar
@@ -184,10 +180,11 @@ export function toggleAirspaceVisibility(isVisible) {
         cb.disabled = !isVisible;
     });
     
-    // If hiding airspace, clear any popup
+    // If hiding airspace, clear any popup and marker
     if (!isVisible) {
         clearPopup();
         clearHighlight();
+        clearMarker();
     }
 }
 
@@ -486,9 +483,8 @@ export function switchConfig(cfg) {
     getLayerManager().setVisibility('peaks-symbols', getPeaksVisible());
     getLayerManager().setVisibility('passes-symbols', getPassesVisible());
     
-    getLayerManager().moveLayerToTop('passes-symbols');
-    getLayerManager().moveLayerToTop('peaks-symbols');
-    getLayerManager().moveLayerToTop('location-marker-circle');
+    // Ensure proper drawing order
+    getLayerManager().redrawLayersInOrder();
     
     // Update cache indicators for sidebar config buttons
     updateSidebarConfigButtonStyles();
@@ -555,9 +551,6 @@ export function addGeoJSONLayers() {
     addPolygonLayer();
     addLineStringLayers();
     addPointLayers();
-    
-    // Ensure airspace layers are on top of all other layers
-    ensureAirspaceLayersOnTop();
 }
 
 /**

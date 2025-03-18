@@ -10,7 +10,6 @@ import {
 } from "./state.js";
 
 import {
-    filterMapFeatures,
     fetchAirspaceData,
     createAirspacePopup,
     clearHighlight
@@ -19,7 +18,7 @@ import {
 /**
  * Removes the popup marker if it exists
  */
-function clearMarker() {
+export function clearMarker() {
     const marker = getPopupMarker();
     if (marker) {
         marker.remove();

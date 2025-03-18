@@ -22,6 +22,13 @@ export class LayerManager {
     setVisibility(layerId, visible) {
         if (this.hasLayer(layerId)) {
             this.map.setLayoutProperty(layerId, 'visibility', visible ? 'visible' : 'none');
+            
+            // If making a layer visible, ensure proper z-order
+            // But skip redrawing for airspace layers since they're always on top
+            if (visible && !layerId.includes('airspace')) {
+                this.redrawLayersInOrder();
+            }
+            
             return true;
         }
         return false;
@@ -48,6 +55,10 @@ export class LayerManager {
     addLayerIfNotExists(layerId, layerOptions) {
         if (!this.hasLayer(layerId)) {
             this.map.addLayer(layerOptions);
+            
+            // After adding a layer, ensure proper z-order
+            this.redrawLayersInOrder();
+            
             return true;
         }
         return false;
@@ -129,5 +140,82 @@ export class LayerManager {
             return true;
         }
         return false;
+    }
+    
+    /**
+     * Redraws all layers in the proper z-order to ensure consistent stacking
+     * This should be called whenever a new layer is added or when layer visibility changes
+     */
+    redrawLayersInOrder() {
+        // Define the layer order from bottom to top
+        // The last items in this array will be drawn on top
+        const layerOrder = [
+            // Base map layers - always at the bottom
+            'custom-tiles',
+            
+            // Polygon layers
+            'polygons-layer',
+            
+            // Line layers
+            'linestrings-layer',
+            'linestrings-labels',
+            
+            // Dynamic layers - these could be further refined if needed
+            // We need to identify them by prefix
+            // ... any layer that starts with 'dynamic-'
+            
+            // Points layers
+            'points-layer',
+            'points-layer-clickable',
+            
+            // Dynamic layers will be inserted here programmatically
+            
+            // IGC track layers will be inserted here programmatically
+            
+            // Peaks and passes - above most layers but below airspace
+            'passes-symbols',
+            'peaks-symbols',
+            
+            // Airspace layers - always at the top
+            'airspace-fill',
+            'airspace-outline',
+            'highlight-airspace',
+            'points-labels',
+            
+            // Location marker - always at the very top
+            'location-marker-circle'
+        ];
+        
+        // Get all current layers in the map
+        const currentLayers = this.map.getStyle().layers.slice().map(layer => layer.id);
+        
+        // Process dynamic layers (they're not in our predefined order)
+        const dynamicLayers = currentLayers.filter(id => id.startsWith('dynamic-'));
+        
+        // Process IGC track layers (they're also not in our predefined order)
+        const igcLayers = currentLayers.filter(id => id.startsWith('igc-layer-'));
+        
+        // Add dynamic layers before the peaks and passes in our order
+        const peaksIndex = layerOrder.indexOf('passes-symbols');
+        if (peaksIndex > -1) {
+            // Add IGC layers after dynamic layers but before peaks/passes
+            layerOrder.splice(peaksIndex, 0, ...igcLayers);
+            // Add dynamic layers before IGC layers
+            layerOrder.splice(peaksIndex, 0, ...dynamicLayers);
+        }
+        
+        // Start from the top of the order and move each layer to the top
+        // This effectively reverses the drawing process, ensuring the last layers
+        // in our array end up on top
+        for (let i = 0; i < layerOrder.length; i++) {
+            const layerId = layerOrder[i];
+            
+            // Handle exact layer IDs
+            if (currentLayers.includes(layerId)) {
+                this.moveLayerToTop(layerId);
+            }
+        }
+        
+        console.log('Reordered layers according to defined z-order');
     }
 } 

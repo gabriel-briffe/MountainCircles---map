@@ -41,9 +41,6 @@ export function handlePointClick(e) {
         createNewDynamicLayer(filePath, dynamicLayerId, dynamicSourceId, dynamicLabelId);
     }
 
-    // Ensure important layers are on top
-    ensureLayersOnTop();
-
     // Update visibility icon
     updateVisibilityIcon();
 }
@@ -123,15 +120,6 @@ function createNewDynamicLayer(filePath, dynamicLayerId, dynamicSourceId, dynami
     // Add layers
     getLayerManager().addLayerIfNotExists(dynamicLayerId, lineStyle);
     getLayerManager().addLayerIfNotExists(dynamicLabelId, labelStyle);
-}
-
-/**
- * Ensures important layers are displayed on top of other layers
- */
-function ensureLayersOnTop() {
-    getLayerManager().moveLayerToTop('passes-symbols');
-    getLayerManager().moveLayerToTop('peaks-symbols');
-    getLayerManager().moveLayerToTop('location-marker-circle');
 }
 
 /**

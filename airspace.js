@@ -574,10 +574,25 @@ export function addAltitudeLabels(width) {
     altitudes.forEach(([altitudeMeters, displayValue]) => {
         const yPos = (altitudeMeters / maxUpperLimit) * 100;
         
+        // Clean up the display value to remove redundant text
+        let cleanDisplayValue = displayValue;
+        if (cleanDisplayValue) {
+            // Remove "MSL" for labels with the pattern like "3000FT MSL"
+            cleanDisplayValue = cleanDisplayValue.replace(/(\d+FT)\s+MSL/i, '$1');
+            
+            // Remove "GND" for labels with the pattern like "1500FT GND"
+            cleanDisplayValue = cleanDisplayValue.replace(/(\d+FT)\s+GND/i, '$1');
+            
+            // Special case for GND itself, we'll keep it
+            if (cleanDisplayValue === "GND") {
+                cleanDisplayValue = "GND";
+            }
+        }
+        
         // Add label
         const label = document.createElement('div');
         label.className = 'altitude-label';
-        label.textContent = displayValue;
+        label.textContent = cleanDisplayValue;
         label.style.bottom = `calc(${yPos}% - 12px)`;
         crossSectionContainer.appendChild(label);
 
