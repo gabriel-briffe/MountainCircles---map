@@ -7,7 +7,10 @@
 import { latLngToTile } from "./utils.js";
 
 // Import from state management
-import { getCurrentConfig } from "./state.js";
+import { 
+    getCurrentConfig, 
+    clearSavedState 
+} from "./state.js";
 
 // Import from config
 import {
@@ -397,7 +400,7 @@ export async function updateApp() {
 }
 
 /**
- * Sets up event listeners for menu functionality
+ * Sets up all menu event listeners
  */
 export function setupMenuEventListeners() {
     // Popup menu
@@ -422,4 +425,27 @@ export function setupMenuEventListeners() {
     
     // App update button
     document.getElementById('appUpdateBtn').addEventListener('click', updateApp);
+
+    // Add a hidden emergency reset function
+    // This can be triggered by clicking a specific sequence or from the console
+    window.resetMountainCirclesState = async function() {
+        if (confirm('WARNING: This will reset all your saved settings to defaults. This is meant for emergency situations where the app might be displaying incorrect data. Continue?')) {
+            try {
+                const success = await clearSavedState();
+                if (success) {
+                    alert('Settings have been reset to defaults. The page will now reload.');
+                    window.location.reload();
+                } else {
+                    alert('Failed to reset settings. Please try clearing your browser cache manually.');
+                }
+            } catch (error) {
+                console.error('Error during reset:', error);
+                alert('An error occurred while trying to reset settings: ' + error.message);
+            }
+        }
+    };
+
+    // You can add a UI element for this if needed, or keep it as a console-only function
+    // For safety-critical applications, having an emergency reset is important
+    console.log('Emergency reset function available via window.resetMountainCirclesState()');
 }

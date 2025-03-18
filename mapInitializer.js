@@ -31,8 +31,12 @@ import {
     initState,
     getMap,
     getLayerManager,
-    getBaseTextSize
+    getBaseTextSize,
+    setLayersToggleState
 } from "./state.js";
+
+// Default settings
+const DEFAULT_LAYERS_TOGGLE_STATE = true;
 
 /**
  * Initializes the map and sets up basic layers
@@ -59,15 +63,12 @@ export function initializeMap(containerId, onMapReady) {
         // Initialize the layer manager
         const layerManagerInstance = new LayerManager(mapInstance);
         
-        // Initialize the state
+        // Initialize the state with only map-related objects
+        // Note: We don't set config here anymore - it's either loaded from localStorage
+        // or already initialized with defaults in state.js
         initState({
             map: mapInstance,
-            layerManager: layerManagerInstance,
-            baseTextSize: DEFAULT_TEXT_SIZE,
-            peaksVisible: DEFAULT_PEAKS_VISIBLE,
-            passesVisible: DEFAULT_PASSES_VISIBLE,
-            currentPolicy: DEFAULT_POLICY,
-            currentConfig: DEFAULT_CONFIG
+            layerManager: layerManagerInstance
         });
         
         console.log('Map load event triggered');
@@ -86,6 +87,11 @@ export function initializeMap(containerId, onMapReady) {
         // Ensure airspace layers are always on top after all callbacks and layers are added
         mapInstance.once('idle', () => {
             getLayerManager().redrawLayersInOrder();
+            
+            // Update the visibility icon to match the current state
+            import('./dock.js').then(module => {
+                module.updateVisibilityIcon();
+            });
         });
     });
 

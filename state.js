@@ -5,9 +5,21 @@
 
 import { DEFAULT_TEXT_SIZE, DEFAULT_PEAKS_VISIBLE, DEFAULT_PASSES_VISIBLE, DEFAULT_POLICY, DEFAULT_CONFIG } from './config.js';
 
+// Define which state properties should be persisted
+const PERSISTED_STATE_KEYS = [
+    'baseTextSize',
+    'peaksVisible',
+    'passesVisible',
+    'polygonOpacity',
+    'layersToggleState',
+    'currentPolicy',
+    'currentConfig',
+    'airspaceVisible'
+];
+
 // Private state object
 const _state = {
-    // Map related
+    // Map related - these will be set during initialization
     map: null,
     layerManager: null,
     
@@ -17,6 +29,10 @@ const _state = {
     // Layer visibility
     peaksVisible: DEFAULT_PEAKS_VISIBLE,
     passesVisible: DEFAULT_PASSES_VISIBLE,
+    airspaceVisible: true, // Default to visible
+    
+    // Opacity settings
+    polygonOpacity: 0.1,
     
     // Popup state
     lastPopupLngLat: null,
@@ -28,7 +44,7 @@ const _state = {
     // Airspace data
     airspaceData: null,
     
-    // Configuration
+    // Configuration - critical for aviation safety
     currentPolicy: DEFAULT_POLICY,
     currentConfig: DEFAULT_CONFIG,
     
@@ -47,6 +63,12 @@ const _state = {
     // Calculated visualization data
     columns: [],
     altitudeSet: new Set(),
+
+    // Toggle state
+    layersToggleState: true,
+    
+    // Airspace type visibility
+    enabledAirspaceTypes: null,
 };
 
 // State getters
@@ -141,4 +163,171 @@ export const initState = (initialState = {}) => {
 };
 
 // Get complete state (for debugging)
-export const getState = () => ({ ..._state }); 
+export const getState = () => ({ ..._state });
+
+/**
+ * Gets the current layers toggle state
+ * @returns {boolean} The current toggle state (true = on, false = off)
+ */
+export function getLayersToggleState() {
+    return _state.layersToggleState;
+}
+
+/**
+ * Sets the layers toggle state
+ * @param {boolean} state - The new toggle state
+ */
+export function setLayersToggleState(state) {
+    _state.layersToggleState = state;
+}
+
+/**
+ * Gets the current polygon opacity setting
+ * @returns {number} The current polygon opacity
+ */
+export function getPolygonOpacity() {
+    return _state.polygonOpacity;
+}
+
+/**
+ * Sets the polygon opacity
+ * @param {number} opacity - The opacity value between 0 and 1
+ */
+export function setPolygonOpacity(opacity) {
+    _state.polygonOpacity = opacity;
+}
+
+/**
+ * Saves persistable state to Cache API
+ */
+export async function saveStateToLocalStorage() {
+    try {
+        const persistedState = {};
+        
+        // Copy properties that should be persisted
+        PERSISTED_STATE_KEYS.forEach(key => {
+            if (key in _state) {
+                persistedState[key] = _state[key];
+            }
+        });
+
+        // Handle special case for airspace types
+        if (_state.enabledAirspaceTypes) {
+            persistedState.enabledAirspaceTypes = Array.from(_state.enabledAirspaceTypes);
+        }
+        
+        // Convert state object to JSON string, then to Blob for caching
+        const stateBlob = new Blob([JSON.stringify(persistedState)], {
+            type: 'application/json'
+        });
+        
+        // Create a response object from the blob
+        const response = new Response(stateBlob);
+        
+        // Open the cache and store the state
+        const cache = await caches.open('mountaincircles-state-v1');
+        await cache.put('/app-state', response);
+        
+        console.log('State saved to Cache API');
+    } catch (error) {
+        console.error('Failed to save state to Cache API:', error);
+    }
+}
+
+/**
+ * Loads state from Cache API
+ * @returns {Promise<boolean>} Whether state was successfully loaded
+ */
+export async function loadStateFromLocalStorage() {
+    try {
+        // Open the cache
+        const cache = await caches.open('mountaincircles-state-v1');
+        
+        // Try to get the state from cache
+        const response = await cache.match('/app-state');
+        if (!response) {
+            console.log('No saved state found in Cache API');
+            return false;
+        }
+        
+        // Parse the JSON from the response
+        const savedState = await response.json();
+        
+        // Handle special case for enabledAirspaceTypes - convert array back to Set
+        if (savedState.enabledAirspaceTypes) {
+            _state.enabledAirspaceTypes = new Set(savedState.enabledAirspaceTypes);
+            // Remove it from parsedState to avoid processing it twice
+            delete savedState.enabledAirspaceTypes;
+        }
+        
+        // Update state with saved values
+        Object.keys(savedState).forEach(key => {
+            if (key in _state) {
+                _state[key] = savedState[key];
+            }
+        });
+        
+        console.log('State loaded from Cache API');
+        return true;
+    } catch (error) {
+        console.error('Failed to load state from Cache API:', error);
+        return false;
+    }
+}
+
+/**
+ * Clears all saved state from Cache API
+ * This can be called in emergency situations where saved state might be causing issues
+ */
+export async function clearSavedState() {
+    try {
+        const cache = await caches.open('mountaincircles-state-v1');
+        await cache.delete('/app-state');
+        console.log('Saved state cleared from Cache API');
+        
+        // Reset critical state values to defaults
+        _state.currentPolicy = DEFAULT_POLICY;
+        _state.currentConfig = DEFAULT_CONFIG;
+        
+        return true;
+    } catch (error) {
+        console.error('Failed to clear state from Cache API:', error);
+        return false;
+    }
+}
+
+/**
+ * Gets the enabled airspace types
+ * @returns {Set<string>} Set of enabled airspace type names
+ */
+export function getEnabledAirspaceTypes() {
+    return _state.enabledAirspaceTypes;
+}
+
+/**
+ * Sets the enabled airspace types
+ * @param {Array<string>} types - Array of enabled airspace type names
+ */
+export function setEnabledAirspaceTypes(types) {
+    _state.enabledAirspaceTypes = new Set(types);
+    // Save to Cache API whenever we update this
+    saveStateToLocalStorage().catch(err => console.error('Error saving airspace types state:', err));
+}
+
+/**
+ * Gets whether airspace layers are visible
+ * @returns {boolean} Whether airspace layers are visible
+ */
+export function getAirspaceVisible() {
+    return _state.airspaceVisible;
+}
+
+/**
+ * Sets visibility for airspace layers
+ * @param {boolean} visible - Whether airspace layers should be visible
+ */
+export function setAirspaceVisible(visible) {
+    _state.airspaceVisible = visible;
+    // Save to Cache API whenever we update this
+    saveStateToLocalStorage().catch(err => console.error('Error saving airspace visibility state:', err));
+} 

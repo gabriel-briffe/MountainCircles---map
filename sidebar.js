@@ -25,6 +25,13 @@ import {
     setCurrentConfig,
     setCurrentPolicy,
     clearPopup,
+    getCurrentPolicy,
+    getPolygonOpacity,
+    getEnabledAirspaceTypes,
+    setEnabledAirspaceTypes,
+    saveStateToLocalStorage,
+    getAirspaceVisible,
+    setAirspaceVisible
 } from "./state.js";
 
 // Import from airspace module
@@ -144,7 +151,7 @@ export function createSidebarHeader(sidebar) {
     
     // Create Mac-style toggle switch
     const toggleSwitch = document.createElement('div');
-    toggleSwitch.className = 'toggle-switch active';
+    toggleSwitch.className = `toggle-switch ${getAirspaceVisible() ? 'active' : ''}`;
     toggleSwitch.id = 'airspace-master-toggle';
     
     // Add the slider inside the toggle
@@ -154,8 +161,8 @@ export function createSidebarHeader(sidebar) {
     
     // Add click event listener to toggle visibility
     toggleSwitch.addEventListener('click', () => {
-        toggleSwitch.classList.toggle('active');
-        toggleAirspaceVisibility(toggleSwitch.classList.contains('active'));
+        const newState = !toggleSwitch.classList.contains('active');
+        toggleAirspaceVisibility(newState);
     });
     
     toggleContainer.appendChild(toggleSwitch);
@@ -186,6 +193,19 @@ export function toggleAirspaceVisibility(isVisible) {
         clearHighlight();
         clearMarker();
     }
+    
+    // Update UI toggle
+    const toggleSwitch = document.getElementById('airspace-master-toggle');
+    if (toggleSwitch) {
+        if (isVisible) {
+            toggleSwitch.classList.add('active');
+        } else {
+            toggleSwitch.classList.remove('active');
+        }
+    }
+    
+    // Save state
+    setAirspaceVisible(isVisible);
 }
 
 /**
@@ -210,6 +230,9 @@ export function addAirspaceTypeCheckboxes(sidebar, features) {
         return indexA - indexB;
     });
     
+    // Get saved enabled types if available
+    const savedEnabledTypes = getEnabledAirspaceTypes();
+    
     // Create container for checkboxes
     const checkboxContainer = document.createElement('div');
     checkboxContainer.className = 'checkbox-container';
@@ -217,11 +240,19 @@ export function addAirspaceTypeCheckboxes(sidebar, features) {
     // Add checkbox for each type using the factory function
     sortedTypes.forEach(type => {
         const id = `toggle-${type.replace(/\s+/g, '-')}`;
-        const checkbox = createOptionCheckbox(id, type, true, updateAirspaceFilter);
+        // Use saved state if available, otherwise default to true
+        const isChecked = savedEnabledTypes ? savedEnabledTypes.has(type) : true;
+        const checkbox = createOptionCheckbox(id, type, isChecked, updateAirspaceFilter);
         checkboxContainer.appendChild(checkbox);
     });
     
     sidebar.appendChild(checkboxContainer);
+    
+    // Initialize the airspace filter based on current checkbox states
+    updateAirspaceFilter();
+    
+    // Set initial airspace visibility based on state
+    toggleAirspaceVisibility(getAirspaceVisible());
 }
 
 /**
@@ -253,6 +284,7 @@ export function addPeaksPassesToggle(sidebar) {
         (e) => {
             setPeaksVisible(e.target.checked);
             getLayerManager().setVisibility('peaks-symbols', e.target.checked);
+            saveStateToLocalStorage().catch(err => console.error('Error saving state:', err));
         }
     );
     checkboxContainer.appendChild(peaksCheckbox);
@@ -265,6 +297,7 @@ export function addPeaksPassesToggle(sidebar) {
         (e) => {
             setPassesVisible(e.target.checked);
             getLayerManager().setVisibility('passes-symbols', e.target.checked);
+            saveStateToLocalStorage().catch(err => console.error('Error saving state:', err));
         }
     );
     checkboxContainer.appendChild(passesCheckbox);
@@ -375,10 +408,13 @@ export function addTextSizeControls(sidebar) {
  * Updates the airspace filter based on checkbox state
  */
 export function updateAirspaceFilter() {
-    const checkboxes = document.querySelectorAll('#airspace-sidebar input[type="checkbox"]');
+    const checkboxes = document.querySelectorAll('#airspace-sidebar input[type="checkbox"][id^="toggle-"]');
     const enabledTypes = Array.from(checkboxes)
         .filter(cb => cb.checked)
         .map(cb => cb.id.replace('toggle-', '').replace(/-/g, ' '));
+    
+    // Save enabled types to state and to Cache API
+    setEnabledAirspaceTypes(enabledTypes);
     
     const filter = ['in', ['get', 'type'], ['literal', enabledTypes]];
     getLayerManager().setFilter('airspace-fill', filter);
@@ -480,8 +516,12 @@ export function switchConfig(cfg) {
     setCurrentPolicy(cfg.split('/')[0]);
     addGeoJSONLayers();
     
+    // Apply layer visibilities from state
     getLayerManager().setVisibility('peaks-symbols', getPeaksVisible());
     getLayerManager().setVisibility('passes-symbols', getPassesVisible());
+    
+    // Apply polygon opacity from state
+    getLayerManager().setPaintProperty('polygons-layer', 'fill-opacity', getPolygonOpacity());
     
     // Ensure proper drawing order
     getLayerManager().redrawLayersInOrder();

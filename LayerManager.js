@@ -18,6 +18,20 @@ export class LayerManager {
         return !!this.map.getSource(sourceId);
     }
 
+    // Check if any layer with the given prefix is visible
+    hasVisibleLayerStartingWith(prefix) {
+        const style = this.map.getStyle();
+        if (!style || !style.layers) return false;
+        
+        for (const layer of style.layers) {
+            if (layer.id.startsWith(prefix) && 
+                this.getVisibility(layer.id) === 'visible') {
+                return true;
+            }
+        }
+        return false;
+    }
+
     // Set layer visibility
     setVisibility(layerId, visible) {
         if (this.hasLayer(layerId)) {

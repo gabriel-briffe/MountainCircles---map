@@ -5,7 +5,8 @@ import {
     getBaseTextSize,
     getCurrentConfig,
     getPopup,
-    clearPopup
+    clearPopup,
+    getLayersToggleState
 } from "./state.js";
 
 import { 
@@ -28,37 +29,47 @@ export function handlePointClick(e) {
     console.log("Point clicked event:", e);
     if (!e.features || !e.features.length) return;
 
-    // Set flag to prevent airspace popup from showing
-    pointClickedFlag = true;
-    
-    // Clear any existing popups or markers
-    clearPopup();
-    clearMarker();
-    clearHighlight();
-    
-    // Reset the flag after a brief delay
-    setTimeout(() => {
-        pointClickedFlag = false;
-    }, 200);
-    
     const feature = e.features[0];
     if (!feature.properties || !feature.properties.filename) {
         console.warn("Clicked feature missing 'filename' property:", feature);
         return;
     }
 
-    const filePath = getCurrentConfig() + "/" + feature.properties.filename;
-    const dynamicLayerId = 'dynamic-lines-' + getCurrentConfig() + '-' + feature.properties.filename;
-    const dynamicSourceId = dynamicLayerId + '-source';
-    const dynamicLabelId = dynamicLayerId + '-labels';
+    // Check if layers toggle is on (using the independent state variable)
+    const linestringsToggleOn = getLayersToggleState();
+    
+    if (linestringsToggleOn) {
+        // When toggle is on, prevent airspace popup and handle dynamic layers
+        pointClickedFlag = true;
+        
+        // Clear any existing popups or markers
+        clearPopup();
+        clearMarker();
+        clearHighlight();
+        
+        // Reset the flag after a brief delay
+        setTimeout(() => {
+            pointClickedFlag = false;
+        }, 200);
+        
+        const filePath = getCurrentConfig() + "/" + feature.properties.filename;
+        const dynamicLayerId = 'dynamic-lines-' + getCurrentConfig() + '-' + feature.properties.filename;
+        const dynamicSourceId = dynamicLayerId + '-source';
+        const dynamicLabelId = dynamicLayerId + '-labels';
 
-    // Hide all other dynamic layers
-    hideOtherDynamicLayers(dynamicLayerId);
+        // Hide all other dynamic layers
+        hideOtherDynamicLayers(dynamicLayerId);
 
-    if (getLayerManager().hasLayer(dynamicLayerId)) {
-        toggleExistingDynamicLayer(dynamicLayerId, dynamicLabelId);
+        if (getLayerManager().hasLayer(dynamicLayerId)) {
+            toggleExistingDynamicLayer(dynamicLayerId, dynamicLabelId);
+        } else {
+            createNewDynamicLayer(filePath, dynamicLayerId, dynamicSourceId, dynamicLabelId);
+        }
     } else {
-        createNewDynamicLayer(filePath, dynamicLayerId, dynamicSourceId, dynamicLabelId);
+        // When toggle is off, don't set the pointClickedFlag to allow the airspace popup
+        clearPopup();
+        clearMarker();
+        clearHighlight();
     }
 
     // Update visibility icon
