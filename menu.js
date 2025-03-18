@@ -253,7 +253,7 @@ export async function cacheTiles() {
 }
 
 /**
- * Updates the app by refreshing service worker and cache
+ * Updates the app by triggering a service worker update for core files
  * @returns {Promise<Object>} - Result of the update operation
  */
 export async function updateApp() {
@@ -268,45 +268,126 @@ export async function updateApp() {
             throw new Error('No service worker registration found');
         }
         
-        await registration.update();
+        if (!navigator.serviceWorker.controller) {
+            // If service worker is not controlling the page yet, update and reload
+            await registration.update();
+            alert('App update started. Please reload the page to complete the update.');
+            return { success: true };
+        }
         
-        // List of core files to refresh
-        const filesToRefresh = [
-            // Core HTML
-            `${BASE_PATH}/index.html`,
-            // Service worker
-            `${BASE_PATH}/sw.js`,
-            // CSS files
-            `${BASE_PATH}/styles.css`,
-            // JS files
-            `${BASE_PATH}/main.js`,
-            `${BASE_PATH}/init.js`,
-            `${BASE_PATH}/mapInitializer.js`,
-            `${BASE_PATH}/map.js`,
-            `${BASE_PATH}/sidebar.js`,
-            `${BASE_PATH}/menu.js`,
-            `${BASE_PATH}/dock.js`,
-            `${BASE_PATH}/layers.js`,
-            `${BASE_PATH}/airspace.js`,
-            `${BASE_PATH}/config.js`,
-            `${BASE_PATH}/state.js`,
-            `${BASE_PATH}/utils.js`,
-            `${BASE_PATH}/igc.js`,
-            `${BASE_PATH}/install.js`,
-            `${BASE_PATH}/airspaceStyle.js`,
-            `${BASE_PATH}/mappings.js`,
-            `${BASE_PATH}/layerStyles.js`
-        ];
+        // Set up progress UI
+        const progressContainer = document.createElement('div');
+        progressContainer.id = 'update-progress-container';
+        progressContainer.style.position = 'fixed';
+        progressContainer.style.top = '50%';
+        progressContainer.style.left = '50%';
+        progressContainer.style.transform = 'translate(-50%, -50%)';
+        progressContainer.style.backgroundColor = 'white';
+        progressContainer.style.padding = '20px';
+        progressContainer.style.borderRadius = '8px';
+        progressContainer.style.boxShadow = '0 4px 8px rgba(0,0,0,0.2)';
+        progressContainer.style.zIndex = '10000';
+        progressContainer.style.display = 'none';
         
-        // Fetch all files with cache busting
-        await Promise.all(
-            filesToRefresh.map(file => 
-                fetch(file, { cache: 'reload' })
-                    .catch(err => console.warn(`Failed to refresh ${file}:`, err))
-            )
-        );
+        const progressText = document.createElement('div');
+        progressText.id = 'update-progress-text';
+        progressText.style.marginBottom = '10px';
+        progressText.textContent = 'Starting update...';
         
-        alert('App update completed. Please reload the page to see the newest version.');
+        const progressBar = document.createElement('div');
+        progressBar.id = 'update-progress-bar';
+        progressBar.style.height = '20px';
+        progressBar.style.backgroundColor = '#f0f0f0';
+        progressBar.style.borderRadius = '4px';
+        progressBar.style.overflow = 'hidden';
+        
+        const progressFill = document.createElement('div');
+        progressFill.id = 'update-progress-fill';
+        progressFill.style.height = '100%';
+        progressFill.style.backgroundColor = '#4CAF50';
+        progressFill.style.width = '0%';
+        progressFill.style.transition = 'width 0.3s';
+        
+        progressBar.appendChild(progressFill);
+        progressContainer.appendChild(progressText);
+        progressContainer.appendChild(progressBar);
+        document.body.appendChild(progressContainer);
+        
+        // Set up message listener for service worker updates
+        const messagePromise = new Promise((resolve, reject) => {
+            const messageHandler = (event) => {
+                const data = event.data;
+                
+                switch (data.type) {
+                    case 'appUpdateStart':
+                        progressContainer.style.display = 'block';
+                        progressText.textContent = data.message;
+                        break;
+                        
+                    case 'appUpdateProgress':
+                        progressText.textContent = data.message;
+                        const percent = (data.completed / data.total) * 100;
+                        progressFill.style.width = `${percent}%`;
+                        break;
+                        
+                    case 'appUpdateError':
+                        progressText.textContent = data.message;
+                        progressFill.style.backgroundColor = '#f44336'; // Red for error
+                        setTimeout(() => {
+                            progressContainer.style.display = 'none';
+                            document.body.removeChild(progressContainer);
+                        }, 5000);
+                        navigator.serviceWorker.removeEventListener('message', messageHandler);
+                        reject(new Error(data.message));
+                        break;
+                        
+                    case 'appUpdateFailed':
+                        progressText.textContent = data.message;
+                        progressFill.style.backgroundColor = '#f44336'; // Red for error
+                        setTimeout(() => {
+                            progressContainer.style.display = 'none';
+                            document.body.removeChild(progressContainer);
+                        }, 5000);
+                        navigator.serviceWorker.removeEventListener('message', messageHandler);
+                        reject(new Error(data.message));
+                        break;
+                        
+                    case 'appUpdateComplete':
+                        progressText.textContent = data.message;
+                        progressFill.style.width = '100%';
+                        setTimeout(() => {
+                            progressContainer.style.display = 'none';
+                            document.body.removeChild(progressContainer);
+                            
+                            if (data.needsReload) {
+                                if (confirm('Update complete! Reload page to apply changes?')) {
+                                    window.location.reload();
+                                }
+                            }
+                        }, 2000);
+                        navigator.serviceWorker.removeEventListener('message', messageHandler);
+                        resolve();
+                        break;
+                }
+            };
+            
+            navigator.serviceWorker.addEventListener('message', messageHandler);
+            
+            // Add timeout to remove listener if no response
+            setTimeout(() => {
+                navigator.serviceWorker.removeEventListener('message', messageHandler);
+                progressContainer.style.display = 'none';
+                document.body.removeChild(progressContainer);
+                reject(new Error('Update timed out. No response from service worker.'));
+            }, 60000); // 1 minute timeout
+        });
+        
+        // Send update request to service worker
+        navigator.serviceWorker.controller.postMessage({
+            type: 'updateAppFiles'
+        });
+        
+        await messagePromise;
         return { success: true };
     } catch (error) {
         console.error('Error updating app:', error);

@@ -420,4 +420,150 @@ self.addEventListener('message', async (event) => {
       }));
     }
   }
+  
+  // New handler for updating app files
+  if (event.data.type === 'updateAppFiles') {
+    // Define core app files that should be refreshed
+    const coreFiles = [
+      // HTML files
+      `${BASE_PATH}/index.html`,
+      
+      // CSS files
+      `${BASE_PATH}/styles.css`,
+      
+      // JS files
+      `${BASE_PATH}/config.js`,
+      `${BASE_PATH}/map.js`,
+      `${BASE_PATH}/mapInitializer.js`,
+      `${BASE_PATH}/sidebar.js`,
+      `${BASE_PATH}/layers.js`,
+      `${BASE_PATH}/airspace.js`,
+      `${BASE_PATH}/LayerManager.js`,
+      `${BASE_PATH}/state.js`,
+      `${BASE_PATH}/menu.js`,
+      `${BASE_PATH}/utils.js`,
+      `${BASE_PATH}/mappings.js`,
+      `${BASE_PATH}/init.js`,
+      `${BASE_PATH}/dock.js`,
+      `${BASE_PATH}/igc.js`,
+      `${BASE_PATH}/install.js`,
+      `${BASE_PATH}/layerStyles.js`,
+      `${BASE_PATH}/sw.js`
+    ];
+    
+    // Start update notification
+    sendMessageToClients({
+      type: 'appUpdateStart',
+      message: `Starting to update ${coreFiles.length} app files`
+    });
+    
+    // PHASE 1: Download all files to temporary storage
+    const tempStorage = new Map(); // In-memory storage for downloads
+    let completed = 0;
+    let failed = false;
+    
+    for (const file of coreFiles) {
+      try {
+        const url = new URL(file, self.location.origin).href;
+        
+        sendMessageToClients({
+          type: 'appUpdateProgress',
+          message: `Downloading: ${file}`,
+          completed: completed,
+          total: coreFiles.length,
+          currentFile: file
+        });
+        
+        // Try to download the file
+        const response = await fetch(url, { cache: 'no-store' });
+        
+        if (response.ok) {
+          // Store the response in memory temporarily
+          tempStorage.set(url, await response.clone().blob());
+          completed++;
+          
+          sendMessageToClients({
+            type: 'appUpdateProgress',
+            message: `Downloaded: ${file}`,
+            completed: completed,
+            total: coreFiles.length,
+            currentFile: file
+          });
+        } else {
+          failed = true;
+          sendMessageToClients({
+            type: 'appUpdateError',
+            message: `Failed to download ${file}: ${response.status} ${response.statusText}`
+          });
+          break; // Stop on first failure
+        }
+      } catch (error) {
+        failed = true;
+        sendMessageToClients({
+          type: 'appUpdateError',
+          message: `Failed to download ${file}: ${error.message}`
+        });
+        break; // Stop on first failure
+      }
+    }
+    
+    // If any download failed, abort the update
+    if (failed) {
+      sendMessageToClients({
+        type: 'appUpdateFailed',
+        message: 'Update aborted: Some files could not be downloaded. Your app is unchanged.'
+      });
+      return;
+    }
+    
+    // PHASE 2: All downloads succeeded, now update the cache
+    try {
+      const cache = await caches.open(CACHE_NAME);
+      
+      // Update each file in the cache
+      for (const [url, blob] of tempStorage.entries()) {
+        const headers = new Headers({
+          'Content-Type': getContentType(url),
+          'Content-Length': blob.size.toString(),
+          'Last-Modified': new Date().toUTCString()
+        });
+        
+        const response = new Response(blob, {
+          status: 200,
+          statusText: 'OK',
+          headers: headers
+        });
+        
+        await cache.put(url, response);
+      }
+      
+      // Notify completion
+      sendMessageToClients({
+        type: 'appUpdateComplete',
+        message: `Successfully updated ${coreFiles.length} app files`,
+        needsReload: true
+      });
+    } catch (error) {
+      sendMessageToClients({
+        type: 'appUpdateFailed',
+        message: `Cache update failed: ${error.message}. Your app is unchanged.`
+      });
+    }
+  }
 });
+
+// Helper function to determine content type from URL
+function getContentType(url) {
+  const extension = url.split('.').pop().toLowerCase();
+  switch (extension) {
+    case 'html': return 'text/html';
+    case 'css': return 'text/css';
+    case 'js': return 'application/javascript';
+    case 'json': return 'application/json';
+    case 'png': return 'image/png';
+    case 'jpg':
+    case 'jpeg': return 'image/jpeg';
+    case 'svg': return 'image/svg+xml';
+    default: return 'application/octet-stream';
+  }
+}
