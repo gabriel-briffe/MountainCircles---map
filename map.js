@@ -6,7 +6,9 @@ import {
     setPopupMarker,
     setLastPopupLngLat,
     getPopup,
-    clearPopup
+    clearPopup,
+    getCurrentConfig,
+    getLastPopupLngLat
 } from "./state.js";
 
 import {
@@ -14,6 +16,8 @@ import {
     createAirspacePopup,
     clearHighlight
 } from "./airspace.js";
+
+import { pointClickedFlag } from "./layers.js";
 
 /**
  * Removes the popup marker if it exists
@@ -46,6 +50,11 @@ export function setupAirspacePopupHandler(mapInstance) {
     // Add click handler for airspace popups
     mapInstance.on('click', async function(e) {
         const map = getMap();
+        
+        // Don't show airspace popup if a point was just clicked
+        if (pointClickedFlag) {
+            return;
+        }
         
         // Close the sidebar if it's open
         if (closeSidebarIfOpen()) {

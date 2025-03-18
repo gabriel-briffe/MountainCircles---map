@@ -3,7 +3,9 @@ import {
     getMap, 
     getLayerManager, 
     getBaseTextSize,
-    getCurrentConfig
+    getCurrentConfig,
+    getPopup,
+    clearPopup
 } from "./state.js";
 
 import { 
@@ -12,6 +14,11 @@ import {
 } from "./layerStyles.js";
 
 import { updateVisibilityIcon } from "./dock.js";
+import { clearMarker } from "./map.js";
+import { clearHighlight } from "./airspace.js";
+
+// Flag to track if a point was just clicked, to prevent airspace popup from showing
+export let pointClickedFlag = false;
 
 /**
  * Handles click events on map points
@@ -21,6 +28,19 @@ export function handlePointClick(e) {
     console.log("Point clicked event:", e);
     if (!e.features || !e.features.length) return;
 
+    // Set flag to prevent airspace popup from showing
+    pointClickedFlag = true;
+    
+    // Clear any existing popups or markers
+    clearPopup();
+    clearMarker();
+    clearHighlight();
+    
+    // Reset the flag after a brief delay
+    setTimeout(() => {
+        pointClickedFlag = false;
+    }, 200);
+    
     const feature = e.features[0];
     if (!feature.properties || !feature.properties.filename) {
         console.warn("Clicked feature missing 'filename' property:", feature);
