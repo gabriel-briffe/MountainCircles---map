@@ -1,6 +1,6 @@
 // Application initialization for MountainCircles Map
 import { initializeMap } from "./mapInitializer.js";
-import { addGeoJSONLayers, updateParametersBox, switchConfig, toggleAirspaceVisibility } from "./sidebar.js";
+import { addGeoJSONLayers, updateParametersBox, switchConfig, toggleAirspaceVisibility, updateSidebarConfigButtonStyles } from "./sidebar.js";
 import { setupLayerEventHandlers } from "./layers.js";
 import { initializeAirspaceData, setupAirspacePopupHandler } from "./map.js";
 import { setupDockEventListeners } from "./dock.js";
@@ -54,6 +54,9 @@ export async function initializeApp(mapContainerId = 'map') {
     // Set up menu event listeners
     setupMenuEventListeners();
     
+    // Update sidebar config button styles to show which configs are cached
+    // This needs to be done after the sidebar is created, so we'll do it after map initialization
+    
     // Save state when user leaves the page or closes the tab
     window.addEventListener('beforeunload', () => {
         // Need to use a synchronous approach here since beforeunload doesn't wait for promises
@@ -88,7 +91,7 @@ export async function initializeApp(mapContainerId = 'map') {
         setupIGCEventListeners();
         
         // After all initialization is done, ensure visibility states match saved state
-        mapInstance.once('idle', () => {
+        mapInstance.once('idle', async () => {
             // Apply the saved linestring layer toggle state
             if (stateLoaded) {
                 // Apply linestring layers visibility based on toggle state
@@ -125,6 +128,10 @@ export async function initializeApp(mapContainerId = 'map') {
                     cb.disabled = !airspaceVisible;
                 });
             }
+            
+            // Update the config button styles to show which configs are cached
+            console.log('Updating config button cache indicators on initial load');
+            await updateSidebarConfigButtonStyles();
         });
     });
 } 

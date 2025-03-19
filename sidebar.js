@@ -356,12 +356,26 @@ export function addConfigButton(container, policy, config) {
     const fullConfig = policy + '/' + config;
     btn.setAttribute('data-config', fullConfig);
     
+    // Check if this is the current configuration and apply styles if needed
+    if (fullConfig === getCurrentConfig()) {
+        btn.style.backgroundColor = '#4a90e2';
+        btn.style.color = 'white';
+    }
+    
     btn.onclick = async () => {
+        // Reset all config buttons first
+        document.querySelectorAll('.sidebar-config-btn').forEach(button => {
+            button.style.backgroundColor = '';
+            button.style.color = '';
+        });
+        
+        // Apply active style to clicked button immediately
+        btn.style.backgroundColor = '#4a90e2';
+        btn.style.color = 'white';
+        
+        // Switch configuration
         switchConfig(fullConfig);
         console.log("Switched to configuration: " + fullConfig);
-        
-        // Update cache indicator for sidebar buttons
-        await updateSidebarConfigButtonStyles();
     };
     
     container.appendChild(btn);
@@ -439,6 +453,7 @@ export function updateAirspaceFilter() {
  */
 export async function updateSidebarConfigButtonStyles() {
     const buttons = document.querySelectorAll('.sidebar-config-btn');
+    const currentConfig = getCurrentConfig();
     
     try {
         const cacheCheckPromises = [];
@@ -448,7 +463,7 @@ export async function updateSidebarConfigButtonStyles() {
             const buttonConfig = button.getAttribute('data-config');
             if (buttonConfig) {
                 const promise = isConfigCached(buttonConfig).then(isCached => {
-                    return { button, isCached };
+                    return { button, isCached, isActive: buttonConfig === currentConfig };
                 });
                 cacheCheckPromises.push(promise);
             }
@@ -458,8 +473,18 @@ export async function updateSidebarConfigButtonStyles() {
         const results = await Promise.all(cacheCheckPromises);
         
         // Update button styles based on results
-        results.forEach(({ button, isCached }) => {
+        results.forEach(({ button, isCached, isActive }) => {
+            // Always maintain the green border for cached configs
             button.style.border = isCached ? '2px solid #4CAF50' : 'none';
+            
+            // Set blue background for active config
+            if (isActive) {
+                button.style.backgroundColor = '#4a90e2'; // Blue color to match other UI elements
+                button.style.color = 'white';             // White text for better contrast
+            } else {
+                button.style.backgroundColor = '';        // Reset to default
+                button.style.color = '';                  // Reset to default
+            }
         });
     } catch (error) {
         console.error('Error updating sidebar config button styles:', error);

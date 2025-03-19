@@ -199,13 +199,18 @@ export const passesSymbolsLayerStyle = {
  */
 export const locationMarkerStyle = {
     id: 'location-marker-circle',
-    type: 'circle',
+    type: 'symbol',
     source: 'location-marker',
+    layout: {
+        'icon-image': 'location-icon-rotated',
+        'icon-size': 0.7,
+        'icon-allow-overlap': true,
+        'icon-rotation-alignment': 'map',
+        'icon-ignore-placement': true,
+        'visibility': 'visible'
+    },
     paint: {
-        'circle-radius': 8,
-        'circle-color': '#0066FF',
-        'circle-stroke-width': 2,
-        'circle-stroke-color': '#FFFFFF'
+        'icon-opacity': 1
     }
 };
 

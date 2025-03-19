@@ -14,6 +14,7 @@ import {
     dynamicLineLayerStyle,
     dynamicLabelLayerStyle
 } from "./layerStyles.js";
+import { setupGeolocation } from "./location.js";
 
 import {
     MAP_BOUNDS,
@@ -193,10 +194,11 @@ async function createMapIcons() {
     ]);
     
     console.log('Triangle images loaded');
-    getMap().addImage('peak-triangle', peakImage);
-    getMap().addImage('pass-triangle', passImage);
+    const map = getMap();
+    map.addImage('peak-triangle', peakImage);
+    map.addImage('pass-triangle', passImage);
     console.log('Added triangle images to map');
-
+    
     // Create a copy of the style to update the text-size with the current base text size
     const peaksStyle = { ...peaksSymbolsLayerStyle };
     peaksStyle.layout = { ...peaksSymbolsLayerStyle.layout };
@@ -259,53 +261,6 @@ export function createDynamicLineWithLabels(id, lineData) {
     const labelLayerId = createDynamicLayer(`${id}-label`, dynamicLabelLayerStyle, lineData);
     
     return [lineLayerId, labelLayerId];
-}
-
-/**
- * Sets up geolocation tracking if available
- */
-function setupGeolocation() {
-    if ('geolocation' in navigator) {
-        const options = {
-            enableHighAccuracy: true,
-            maximumAge: 0,
-            timeout: 5000
-        };
-        
-        navigator.geolocation.watchPosition(
-            updateLocation,
-            (error) => {
-                console.error('Error getting location:', error);
-            },
-            options
-        );
-    } else {
-        console.warn('Geolocation is not supported by this browser.');
-    }
-}
-
-/**
- * Updates the user's location on the map
- * @param {Object} position - Geolocation position object
- */
-function updateLocation(position) {
-    if (!getLayerManager().hasSource('location-marker')) {
-        console.warn('Location marker source not found');
-        return;
-    }
-    
-    const coords = [position.coords.longitude, position.coords.latitude];
-    
-    getLayerManager().addOrUpdateSource('location-marker', {
-        type: 'geojson',
-        data: {
-            type: 'Feature',
-            geometry: {
-                type: 'Point',
-                coordinates: coords
-            }
-        }
-    });
 }
 
 /**
