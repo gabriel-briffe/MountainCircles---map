@@ -4,7 +4,8 @@
  */
 
 import { getLayerManager, getMap } from "./state.js";
-import { initNavboxes, updateNavboxesWithPosition } from "./navboxes.js";
+import { initNavboxes, updateNavboxesWithPosition } from "./navboxManager.js";
+
 
 // Track previous positions to calculate heading
 const positionHistory = [];

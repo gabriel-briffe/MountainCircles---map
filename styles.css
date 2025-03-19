@@ -157,7 +157,7 @@ h3 {
 }
 
 /* --------------- NAVBOXES --------------- */
-.navbox-container {
+.navboxes-enabled .navbox-container {
     position: fixed;
     right: 8px; /* Position on right side in landscape */
     top: 50%;
@@ -171,7 +171,7 @@ h3 {
     font-family: var(--font-family);
 }
 
-.navbox {
+.navboxes-enabled .navbox {
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -188,36 +188,36 @@ h3 {
     transition: transform 0.15s ease, background-color 0.15s ease; /* Smooth transition for feedback */
 }
 
-.navbox:hover {
+.navboxes-enabled .navbox:hover {
     background-color: var(--bg-button-hover-light); /* Use hover style from buttons */
 }
 
 /* Animation for unit change feedback */
-.navbox.unit-change {
+.navboxes-enabled .navbox.unit-change {
     transform: scale(1.1); /* Slightly enlarge when clicked */
     background-color: var(--accent-blue); /* Briefly flash with accent color */
     color: white; /* Change text to white for better contrast */
 }
 
 /* Ensure the value text keeps its color during unit change */
-.navbox.unit-change .navbox-value {
+.navboxes-enabled .navbox.unit-change .navbox-value {
     color: white;
 }
 
 /* Dark mode hover state */
 @media (prefers-color-scheme: dark) {
-    .navbox:hover {
+    .navboxes-enabled .navbox:hover {
         background-color: var(--bg-button-hover-dark);
     }
 }
 
-.navbox-value {
+.navboxes-enabled .navbox-value {
     font-size: var(--font-size-large);
     font-weight: var(--font-weight-bold);
     color: var(--text-light);
 }
 
-.navbox-label {
+.navboxes-enabled .navbox-label {
     font-size: var(--font-size-small);
     margin-top: 4px;
     color: inherit;
@@ -225,20 +225,20 @@ h3 {
 
 /* Dark mode support for navboxes */
 @media (prefers-color-scheme: dark) {
-    .navbox {
+    .navboxes-enabled .navbox {
         background-color: var(--bg-dark);
         color: var(--text-dark);
         box-shadow: 0 2px 5px rgba(0, 0, 0, 0.5);
     }
     
-    .navbox-value {
+    .navboxes-enabled .navbox-value {
         color: var(--text-dark);
     }
 }
 
 /* Portrait mode for navboxes */
 @media (orientation: portrait) {
-    .navbox-container {
+    .navboxes-enabled .navbox-container {
         right: auto; /* Reset right position */
         top: auto; /* Reset top position */
         bottom: 45px; /* Position at bottom in portrait */
@@ -246,7 +246,7 @@ h3 {
         transform: translateX(-50%); /* Center horizontally in portrait */
         flex-direction: row; /* Horizontal layout in portrait */
     }
-    }
+}
 
 /* Parameters Box styling */
 #parametersBox {
@@ -365,7 +365,7 @@ h3 {
     height: 20px;
     width: 20px;
     border-radius: 50%;
-    background: var(--bg-light-solid);
+    background: var(--text-light);
     margin-top: -7px; /* Center the thumb on the track */
     cursor: pointer;
 }
@@ -381,7 +381,7 @@ h3 {
     height: 20px;
     width: 20px;
     border-radius: 50%;
-    background: var(--bg-light-solid);
+    background: var(--text-light);
     cursor: pointer;
 }
 
@@ -405,7 +405,7 @@ h3 {
     height: 20px;
     width: 20px;
     border-radius: 50%;
-    background: var(--bg-light-solid);
+    background: var(--text-light);
     cursor: pointer;
 }
 
@@ -420,6 +420,16 @@ h3 {
     #polygonOpacitySlider::-ms-fill-lower,
     #polygonOpacitySlider::-ms-fill-upper {
         background: var(--slider-track-dark);
+    }
+    /* Add dark mode slider thumb color to keep it white */
+    #polygonOpacitySlider::-webkit-slider-thumb {
+        background: var(--text-dark);
+    }
+    #polygonOpacitySlider::-moz-range-thumb {
+        background: var(--text-dark);
+    }
+    #polygonOpacitySlider::-ms-thumb {
+        background: var(--text-dark);
     }
 }
 
@@ -1159,4 +1169,50 @@ h3 {
     font-size: var(--airspace-popup-header);
     display: block;
     margin-bottom: 5px;
+}
+
+/* Install Prompt */
+#installPrompt {
+    display: none;
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0, 0, 0, 0.8);
+    color: white;
+    padding: 15px;
+    border-radius: var(--border-radius-large);
+    z-index: 3000;
+    text-align: center;
+}
+
+#installPrompt p {
+    margin: 0 0 10px 0;
+}
+
+#installPrompt button {
+    border: none;
+    color: white;
+    padding: 8px 16px;
+    border-radius: var(--border-radius-standard);
+    cursor: pointer;
+    font-family: var(--font-family);
+    font-size: var(--font-size-base);
+}
+
+#installPrompt #installButton {
+    background: var(--accent-green);
+    margin-right: 10px;
+}
+
+#installPrompt #cancelInstall {
+    background: #666;
+}
+
+#installPrompt #installButton:hover {
+    background: #45a049;
+}
+
+#installPrompt #cancelInstall:hover {
+    background: #555;
 }

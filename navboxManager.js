@@ -1,9 +1,14 @@
 /**
- * Navigation boxes module for MountainCircles Map
- * Displays flight/position information in boxes at bottom of screen
+ * Navigation boxes manager for MountainCircles Map
+ * Mobile-only component that displays flight/position information
+ * Only created and activated on mobile devices
  */
 
 import { getMap } from "./state.js";
+import { isMobileDevice } from "./utils.js";
+
+// Module state
+let initialized = false;
 
 // Container for all navboxes
 let navboxContainer = null;
@@ -28,23 +33,38 @@ const MS_TO_KMH = 3.6;
 
 /**
  * Initializes the navigation boxes on the map
+ * Only creates the navboxes if on a mobile device
  */
 export function initNavboxes() {
-    // Create container for navboxes if it doesn't exist
-    if (!navboxContainer) {
-        navboxContainer = document.createElement('div');
-        navboxContainer.id = 'navbox-container';
-        navboxContainer.className = 'navbox-container';
-        document.body.appendChild(navboxContainer);
-        
-        console.log('Created navbox container');
+    // Only initialize on mobile devices
+    if (!isMobileDevice()) {
+        console.log('Navboxes not initialized - not a mobile device');
+        return;
     }
     
-    // Create altitude box
-    createAltitudeBox();
+    // Prevent multiple initializations
+    if (initialized) {
+        console.log('Navboxes already initialized');
+        return;
+    }
     
-    // Create speed box
+    // Add class to body to enable navbox styles
+    document.body.classList.add('navboxes-enabled');
+    
+    // Create container for navboxes
+    navboxContainer = document.createElement('div');
+    navboxContainer.id = 'navbox-container';
+    navboxContainer.className = 'navbox-container';
+    document.body.appendChild(navboxContainer);
+    
+    console.log('Created navbox container');
+    
+    // Create individual navboxes
+    createAltitudeBox();
     createSpeedBox();
+    
+    // Mark as initialized
+    initialized = true;
 }
 
 /**
@@ -100,7 +120,8 @@ function toggleAltitudeUnits() {
  * @param {number} altitude - The altitude in meters
  */
 export function updateAltitude(altitude) {
-    if (!altitudeBox) return;
+    // Skip if not initialized or not on mobile
+    if (!initialized || !isMobileDevice() || !altitudeBox) return;
     
     currentAltitude = altitude;
     
@@ -161,7 +182,8 @@ function createSpeedBox() {
  * @param {number} speed - The speed in meters per second
  */
 export function updateSpeed(speed) {
-    if (!speedBox) return;
+    // Skip if not initialized or not on mobile
+    if (!initialized || !isMobileDevice() || !speedBox) return;
     
     currentSpeed = speed;
     
@@ -181,10 +203,12 @@ export function updateSpeed(speed) {
 
 /**
  * Updates navboxes with position data
+ * Only processes updates on mobile devices
  * @param {Object} position - The geolocation position object
  */
 export function updateNavboxesWithPosition(position) {
-    if (!position || !position.coords) return;
+    // Skip if not initialized or not on mobile
+    if (!initialized || !isMobileDevice() || !position || !position.coords) return;
     
     // Update altitude if available
     if (position.coords.altitude !== null) {
@@ -201,6 +225,9 @@ export function updateNavboxesWithPosition(position) {
  * Clears all navboxes and resets their values
  */
 export function clearNavboxes() {
+    // Skip if not initialized or not on mobile
+    if (!initialized || !isMobileDevice()) return;
+    
     currentAltitude = null;
     currentSpeed = null;
     
@@ -226,6 +253,9 @@ export function clearNavboxes() {
  * @param {boolean} visible - Whether the navboxes should be visible
  */
 export function setNavboxesVisible(visible) {
+    // Skip if not initialized or not on mobile
+    if (!initialized || !isMobileDevice()) return;
+    
     navboxesVisible = visible;
     
     if (navboxContainer) {
@@ -238,6 +268,9 @@ export function setNavboxesVisible(visible) {
  * @returns {boolean} The new visibility state
  */
 export function toggleNavboxes() {
+    // Skip if not initialized or not on mobile
+    if (!initialized || !isMobileDevice()) return false;
+    
     const newState = !navboxesVisible;
     setNavboxesVisible(newState);
     return newState;
