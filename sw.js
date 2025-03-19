@@ -54,8 +54,18 @@ let networkFetchCount = 0;
 // Global counter to track ongoing GeoJSON network fetches
 let activeFetches = 0;
 
-// Core app files that should be cached on install and updated when updating the app
-const CORE_FILES = [
+// External resources that should be cached on install but not updated with the app
+const EXTERNAL_RESOURCES = [
+    // External libraries, fonts and resources
+    'https://cdn.jsdelivr.net/npm/maplibre-gl@latest/dist/maplibre-gl.js',
+    'https://cdn.jsdelivr.net/npm/maplibre-gl@latest/dist/maplibre-gl.css',
+    'https://fonts.googleapis.com/icon?family=Material+Icons+Round',
+    'https://demotiles.maplibre.org/font/Open%20Sans%20Regular,Arial%20Unicode%20MS%20Regular/0-255.pbf',
+    'https://demotiles.maplibre.org/font/Open%20Sans%20Regular,Arial%20Unicode%20MS%20Regular/256-511.pbf'
+];
+
+// Initial resources to cache on install - includes all files needed for offline functionality
+const INITIAL_CACHE_RESOURCES = [
     // HTML files
     `${BASE_PATH}/`,
     `${BASE_PATH}/index.html`,
@@ -64,8 +74,12 @@ const CORE_FILES = [
     // CSS files
     `${BASE_PATH}/styles.css`,
     
-    // JS files
+    // Core JS files
     `${BASE_PATH}/config.js`,
+    `${BASE_PATH}/coreFiles.js`,
+    `${BASE_PATH}/sw.js`,
+    
+    // Map and functionality JS files
     `${BASE_PATH}/map.js`,
     `${BASE_PATH}/mapInitializer.js`,
     `${BASE_PATH}/sidebar.js`,
@@ -83,9 +97,8 @@ const CORE_FILES = [
     `${BASE_PATH}/layerStyles.js`,
     `${BASE_PATH}/navboxManager.js`,
     `${BASE_PATH}/location.js`,
-    `${BASE_PATH}/sw.js`,
     
-    // GeoJSON files
+    // GeoJSON data files
     `${BASE_PATH}/peaks.geojson`,
     `${BASE_PATH}/passes.geojson`,
     `${BASE_PATH}/airspace.geojson`,
@@ -94,11 +107,7 @@ const CORE_FILES = [
     `${BASE_PATH}/icons/icon-192.png`,
     
     // External resources
-    'https://cdn.jsdelivr.net/npm/maplibre-gl@latest/dist/maplibre-gl.js',
-    'https://cdn.jsdelivr.net/npm/maplibre-gl@latest/dist/maplibre-gl.css',
-    'https://fonts.googleapis.com/icon?family=Material+Icons+Round',
-    'https://demotiles.maplibre.org/font/Open Sans Regular/0-255.pbf',
-    'https://demotiles.maplibre.org/font/Open Sans Regular/256-511.pbf'
+    ...EXTERNAL_RESOURCES
 ];
 
 // Cache GeoJSON files for each policy and configuration
@@ -111,7 +120,7 @@ const POLICY_CONFIGS = {
 self.addEventListener('install', event => {
     event.waitUntil(
         caches.open(CACHE_NAME)
-            .then(cache => cache.addAll(CORE_FILES))
+            .then(cache => cache.addAll(INITIAL_CACHE_RESOURCES))
             .catch(error => console.error('Install cache failed:', error))
     );
     self.skipWaiting();
@@ -339,12 +348,11 @@ async function handleGlyphRequest(request) {
         // '3840-4095'
       ];
 
-      // The fontstack we're using
-      const fontstacks = ['Open Sans Regular'];
+      // The fontstack we're using - Updated with URL encoding and proper format
+      const fontstack = 'Open%20Sans%20Regular,Arial%20Unicode%20MS%20Regular';
 
       // Cache all ranges for this fontstack on first glyph request
       if (request.url.includes('/font/')) {
-        const fontstack = fontstacks[0];
         for (const range of ranges) {
           const glyphUrl = `https://demotiles.maplibre.org/font/${fontstack}/${range}.pbf`;
           const glyphResponse = await fetch(glyphUrl);
@@ -453,10 +461,22 @@ self.addEventListener('message', async (event) => {
   
   // New handler for updating app files
   if (event.data.type === 'updateAppFiles') {
+    // Get the files list from the message data
+    const filesToUpdate = event.data.files;
+    
+    // Verify we have files to update
+    if (!filesToUpdate || !Array.isArray(filesToUpdate) || filesToUpdate.length === 0) {
+      sendMessageToClients({
+        type: 'appUpdateFailed',
+        message: 'Update failed: No files list provided. Your app is unchanged.'
+      });
+      return;
+    }
+    
     // Start update notification
     sendMessageToClients({
         type: 'appUpdateStart',
-        message: `Starting to update ${CORE_FILES.length} app files`
+        message: `Starting to update ${filesToUpdate.length} app files`
     });
     
     // PHASE 1: Download all files to temporary storage
@@ -464,7 +484,7 @@ self.addEventListener('message', async (event) => {
     let completed = 0;
     let failed = false;
     
-    for (const file of CORE_FILES) {
+    for (const file of filesToUpdate) {
         try {
             const url = new URL(file, self.location.origin).href;
             
@@ -472,7 +492,7 @@ self.addEventListener('message', async (event) => {
                 type: 'appUpdateProgress',
                 message: `Downloading: ${file}`,
                 completed: completed,
-                total: CORE_FILES.length,
+                total: filesToUpdate.length,
                 currentFile: file
             });
             
@@ -488,7 +508,7 @@ self.addEventListener('message', async (event) => {
                     type: 'appUpdateProgress',
                     message: `Downloaded: ${file}`,
                     completed: completed,
-                    total: CORE_FILES.length,
+                    total: filesToUpdate.length,
                     currentFile: file
                 });
             } else {
@@ -542,7 +562,7 @@ self.addEventListener('message', async (event) => {
         // Notify completion
         sendMessageToClients({
             type: 'appUpdateComplete',
-            message: `Successfully updated ${CORE_FILES.length} app files`,
+            message: `Successfully updated ${filesToUpdate.length} app files`,
             needsReload: true
         });
     } catch (error) {

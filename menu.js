@@ -385,13 +385,47 @@ export async function updateApp() {
             }, 60000); // 1 minute timeout
         });
         
-        // Send update request to service worker
-        navigator.serviceWorker.controller.postMessage({
-            type: 'updateAppFiles'
-        });
+        // Step 1: Get latest coreFiles.js module
+        progressText.textContent = 'Fetching latest file list...';
+        progressContainer.style.display = 'block';
         
-        await messagePromise;
-        return { success: true };
+        try {
+            // Fetch the latest coreFiles.js with cache busting
+            const timestamp = new Date().getTime();
+            console.log(`[App Update] Fetching coreFiles.js with timestamp ${timestamp}`);
+            const coreFilesModule = await import(`./coreFiles.js?v=${timestamp}`);
+            console.log(`[App Update] Successfully imported coreFiles.js module`, coreFilesModule);
+            
+            // Get the list of files to update
+            const filesToUpdate = coreFilesModule.getCoreFiles();
+            console.log(`[App Update] Retrieved ${filesToUpdate.length} files to update:`, filesToUpdate);
+            
+            progressText.textContent = `Found ${filesToUpdate.length} files to update...`;
+            
+            // Step 2: Send the list of files to update to the service worker
+            console.log(`[App Update] Sending update request to service worker with ${filesToUpdate.length} files`);
+            navigator.serviceWorker.controller.postMessage({
+                type: 'updateAppFiles',
+                files: filesToUpdate
+            });
+            
+            // Wait for the update to complete
+            console.log(`[App Update] Waiting for service worker to complete update`);
+            await messagePromise;
+            console.log(`[App Update] Update process completed successfully`);
+            return { success: true };
+        } catch (error) {
+            console.error('[App Update] Error during update process:', error);
+            progressText.textContent = `Error fetching file list: ${error.message}`;
+            progressFill.style.backgroundColor = '#f44336'; // Red for error
+            
+            setTimeout(() => {
+                progressContainer.style.display = 'none';
+                document.body.removeChild(progressContainer);
+            }, 5000);
+            
+            return { success: false, error: error.message };
+        }
     } catch (error) {
         console.error('Error updating app:', error);
         alert(`App update failed: ${error.message}`);
