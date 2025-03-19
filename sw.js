@@ -63,6 +63,7 @@ const INITIAL_CACHE_URLS = [
   `${BASE_PATH}/passes.geojson`,
   `${BASE_PATH}/airspace.geojson`,
   `${BASE_PATH}/mappings.js`,
+  `${BASE_PATH}/navboxes.js`,
   `${BASE_PATH}/icons/icon-192.png`,
   'https://cdn.jsdelivr.net/npm/maplibre-gl@latest/dist/maplibre-gl.js',
   'https://cdn.jsdelivr.net/npm/maplibre-gl@latest/dist/maplibre-gl.css',
@@ -448,6 +449,8 @@ self.addEventListener('message', async (event) => {
       `${BASE_PATH}/igc.js`,
       `${BASE_PATH}/install.js`,
       `${BASE_PATH}/layerStyles.js`,
+      `${BASE_PATH}/navboxes.js`,
+      `${BASE_PATH}/location.js`,
       `${BASE_PATH}/sw.js`
     ];
     

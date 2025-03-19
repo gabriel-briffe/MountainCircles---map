@@ -241,7 +241,7 @@ h3 {
     .navbox-container {
         right: auto; /* Reset right position */
         top: auto; /* Reset top position */
-        bottom: 55px; /* Position at bottom in portrait */
+        bottom: 45px; /* Position at bottom in portrait */
         left: 50%; /* Center horizontally in portrait */
         transform: translateX(-50%); /* Center horizontally in portrait */
         flex-direction: row; /* Horizontal layout in portrait */
@@ -256,13 +256,19 @@ h3 {
     transform: translateX(-50%); /* Center horizontally */
     z-index: 1000;
     background: rgba(255, 255, 255, 0.5);
-    padding: 10px;
+    padding: 5px 10px; /* Add more horizontal padding */
     border-radius: 5px;
     font-family: var(--font-family);
     font-weight: var(--font-weight-bold);
     font-size: 24px;
     color: var(--text-light);
     text-align: center;
+    width: auto; /* Allow content to determine width */
+    max-width: 100%; /* Take up to full width minus margin */
+    box-sizing: border-box; /* Include padding in width calculation */
+    white-space: nowrap; /* Keep all text on one line if possible */
+    overflow: hidden; /* Hide overflow if too wide */
+    text-overflow: ellipsis; /* Show ellipsis if text is truncated */
 }
 
 /* Dark mode support for parameters box */
