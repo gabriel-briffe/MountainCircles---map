@@ -10,12 +10,21 @@ let navboxContainer = null;
 
 // Individual navbox elements
 let altitudeBox = null;
+let speedBox = null;
 
 // Current values
 let currentAltitude = null;
+let currentSpeed = null;
 
 // Visibility state
 let navboxesVisible = true;
+
+// Display units state
+let altitudeInMeters = true; // True for meters, false for feet
+
+// Conversion constants
+const METERS_TO_FEET = 3.28084;
+const MS_TO_KMH = 3.6;
 
 /**
  * Initializes the navigation boxes on the map
@@ -28,26 +37,14 @@ export function initNavboxes() {
         navboxContainer.className = 'navbox-container';
         document.body.appendChild(navboxContainer);
         
-        // Apply styles to container
-        Object.assign(navboxContainer.style, {
-            position: 'fixed',
-            bottom: '10px',
-            left: '50%',
-            transform: 'translateX(-50%)',
-            display: 'flex',
-            gap: '10px',
-            zIndex: '1000',
-            padding: '5px',
-            backgroundColor: 'rgba(0, 0, 0, 0.5)',
-            borderRadius: '5px',
-            fontFamily: 'sans-serif'
-        });
-        
         console.log('Created navbox container');
     }
     
     // Create altitude box
     createAltitudeBox();
+    
+    // Create speed box
+    createSpeedBox();
 }
 
 /**
@@ -57,50 +54,45 @@ function createAltitudeBox() {
     altitudeBox = document.createElement('div');
     altitudeBox.className = 'navbox altitude-box';
     
-    // Apply styles to the box
-    Object.assign(altitudeBox.style, {
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: '5px 10px',
-        backgroundColor: '#4a90e2',
-        borderRadius: '4px',
-        color: 'white',
-        minWidth: '60px',
-        textAlign: 'center'
-    });
-    
     // Create value element
     const valueElement = document.createElement('div');
     valueElement.className = 'navbox-value';
     valueElement.textContent = '---m';
-    
-    // Style the value
-    Object.assign(valueElement.style, {
-        fontSize: '18px',
-        fontWeight: 'bold'
-    });
     
     // Create label element
     const labelElement = document.createElement('div');
     labelElement.className = 'navbox-label';
     labelElement.textContent = 'alt';
     
-    // Style the label
-    Object.assign(labelElement.style, {
-        fontSize: '12px',
-        opacity: '0.8'
-    });
-    
     // Add elements to the box
     altitudeBox.appendChild(valueElement);
     altitudeBox.appendChild(labelElement);
+    
+    // Add click handler to toggle between meters and feet
+    altitudeBox.addEventListener('click', toggleAltitudeUnits);
     
     // Add box to container
     navboxContainer.appendChild(altitudeBox);
     
     console.log('Created altitude navbox');
+}
+
+/**
+ * Toggles between meters and feet for altitude display
+ */
+function toggleAltitudeUnits() {
+    altitudeInMeters = !altitudeInMeters;
+    
+    // Re-update the display with current value but new units
+    updateAltitude(currentAltitude);
+    
+    // Optional: Add a visual feedback for unit change
+    altitudeBox.classList.add('unit-change');
+    setTimeout(() => {
+        altitudeBox.classList.remove('unit-change');
+    }, 300);
+    
+    console.log(`Altitude units switched to ${altitudeInMeters ? 'meters' : 'feet'}`);
 }
 
 /**
@@ -116,11 +108,73 @@ export function updateAltitude(altitude) {
     const valueElement = altitudeBox.querySelector('.navbox-value');
     if (valueElement) {
         if (altitude !== null && !isNaN(altitude)) {
-            // Round to nearest meter and display
-            const roundedAltitude = Math.round(altitude);
-            valueElement.textContent = `${roundedAltitude}m`;
+            let displayValue;
+            let unit;
+            
+            if (altitudeInMeters) {
+                // Display in meters
+                displayValue = Math.round(altitude);
+                unit = 'm';
+            } else {
+                // Convert to feet
+                displayValue = Math.round(altitude * METERS_TO_FEET);
+                unit = 'ft';
+            }
+            
+            valueElement.textContent = `${displayValue}${unit}`;
         } else {
-            valueElement.textContent = '---m';
+            // No valid altitude data
+            valueElement.textContent = altitudeInMeters ? '---m' : '---ft';
+        }
+    }
+}
+
+/**
+ * Creates the speed navbox
+ */
+function createSpeedBox() {
+    speedBox = document.createElement('div');
+    speedBox.className = 'navbox speed-box';
+    
+    // Create value element
+    const valueElement = document.createElement('div');
+    valueElement.className = 'navbox-value';
+    valueElement.textContent = '---km/h';
+    
+    // Create label element
+    const labelElement = document.createElement('div');
+    labelElement.className = 'navbox-label';
+    labelElement.textContent = 'Vgps';
+    
+    // Add elements to the box
+    speedBox.appendChild(valueElement);
+    speedBox.appendChild(labelElement);
+    
+    // Add box to container
+    navboxContainer.appendChild(speedBox);
+    
+    console.log('Created speed navbox');
+}
+
+/**
+ * Updates the speed navbox with GPS speed
+ * @param {number} speed - The speed in meters per second
+ */
+export function updateSpeed(speed) {
+    if (!speedBox) return;
+    
+    currentSpeed = speed;
+    
+    // Find value element
+    const valueElement = speedBox.querySelector('.navbox-value');
+    if (valueElement) {
+        if (speed !== null && !isNaN(speed)) {
+            // Display in km/h
+            const displayValue = Math.round(speed * MS_TO_KMH);
+            valueElement.textContent = `${displayValue}km/h`;
+        } else {
+            // No valid speed data
+            valueElement.textContent = '---km/h';
         }
     }
 }
@@ -136,6 +190,11 @@ export function updateNavboxesWithPosition(position) {
     if (position.coords.altitude !== null) {
         updateAltitude(position.coords.altitude);
     }
+    
+    // Update speed if available
+    if (position.coords.speed !== null) {
+        updateSpeed(position.coords.speed);
+    }
 }
 
 /**
@@ -143,12 +202,21 @@ export function updateNavboxesWithPosition(position) {
  */
 export function clearNavboxes() {
     currentAltitude = null;
+    currentSpeed = null;
     
     // Reset altitude display
     if (altitudeBox) {
         const valueElement = altitudeBox.querySelector('.navbox-value');
         if (valueElement) {
-            valueElement.textContent = '---m';
+            valueElement.textContent = altitudeInMeters ? '---m' : '---ft';
+        }
+    }
+    
+    // Reset speed display
+    if (speedBox) {
+        const valueElement = speedBox.querySelector('.navbox-value');
+        if (valueElement) {
+            valueElement.textContent = '---km/h';
         }
     }
 }
