@@ -473,6 +473,9 @@ self.addEventListener('message', async (event) => {
       return;
     }
     
+    // Log the files to be updated for debugging
+    console.log('SW - Files to update:', filesToUpdate);
+    
     // Start update notification
     sendMessageToClients({
         type: 'appUpdateStart',
@@ -487,6 +490,7 @@ self.addEventListener('message', async (event) => {
     for (const file of filesToUpdate) {
         try {
             const url = new URL(file, self.location.origin).href;
+            console.log(`SW - Downloading: ${url}`);
             
             sendMessageToClients({
                 type: 'appUpdateProgress',
@@ -503,6 +507,7 @@ self.addEventListener('message', async (event) => {
                 // Store the response in memory temporarily
                 tempStorage.set(url, await response.clone().blob());
                 completed++;
+                console.log(`SW - Downloaded: ${url} (${completed}/${filesToUpdate.length})`);
                 
                 sendMessageToClients({
                     type: 'appUpdateProgress',
@@ -513,17 +518,21 @@ self.addEventListener('message', async (event) => {
                 });
             } else {
                 failed = true;
+                console.error(`SW - Download failed: ${url} - ${response.status} ${response.statusText}`);
                 sendMessageToClients({
                     type: 'appUpdateError',
-                    message: `Failed to download ${file}: ${response.status} ${response.statusText}`
+                    message: `Failed to download ${file}: ${response.status} ${response.statusText}`,
+                    needsCleanup: true
                 });
                 break; // Stop on first failure
             }
         } catch (error) {
             failed = true;
+            console.error(`SW - Download error: ${file} - ${error.message}`);
             sendMessageToClients({
                 type: 'appUpdateError',
-                message: `Failed to download ${file}: ${error.message}`
+                message: `Failed to download ${file}: ${error.message}`,
+                needsCleanup: true
             });
             break; // Stop on first failure
         }

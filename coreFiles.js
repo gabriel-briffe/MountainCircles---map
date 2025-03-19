@@ -27,7 +27,6 @@ try {
 export function getCoreFiles() {
     return [
         // HTML files
-        `${BASE_PATH}/`,
         `${BASE_PATH}/index.html`,
         `${BASE_PATH}/manifest.json`,
         

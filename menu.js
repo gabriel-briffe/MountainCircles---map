@@ -337,8 +337,10 @@ export async function updateApp() {
                         progressText.textContent = data.message;
                         progressFill.style.backgroundColor = '#f44336'; // Red for error
                         setTimeout(() => {
-                            progressContainer.style.display = 'none';
-                            document.body.removeChild(progressContainer);
+                            if (document.body.contains(progressContainer)) {
+                                progressContainer.style.display = 'none';
+                                document.body.removeChild(progressContainer);
+                            }
                         }, 5000);
                         navigator.serviceWorker.removeEventListener('message', messageHandler);
                         reject(new Error(data.message));
@@ -348,8 +350,10 @@ export async function updateApp() {
                         progressText.textContent = data.message;
                         progressFill.style.backgroundColor = '#f44336'; // Red for error
                         setTimeout(() => {
-                            progressContainer.style.display = 'none';
-                            document.body.removeChild(progressContainer);
+                            if (document.body.contains(progressContainer)) {
+                                progressContainer.style.display = 'none';
+                                document.body.removeChild(progressContainer);
+                            }
                         }, 5000);
                         navigator.serviceWorker.removeEventListener('message', messageHandler);
                         reject(new Error(data.message));
@@ -359,8 +363,10 @@ export async function updateApp() {
                         progressText.textContent = data.message;
                         progressFill.style.width = '100%';
                         setTimeout(() => {
-                            progressContainer.style.display = 'none';
-                            document.body.removeChild(progressContainer);
+                            if (document.body.contains(progressContainer)) {
+                                progressContainer.style.display = 'none';
+                                document.body.removeChild(progressContainer);
+                            }
                             
                             if (data.needsReload) {
                                 if (confirm('Update complete! Reload page to apply changes?')) {
