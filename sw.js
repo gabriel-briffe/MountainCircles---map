@@ -54,38 +54,67 @@ let networkFetchCount = 0;
 // Global counter to track ongoing GeoJSON network fetches
 let activeFetches = 0;
 
-// Resources to cache immediately on install
-const INITIAL_CACHE_URLS = [
-  `${BASE_PATH}/`,
-  `${BASE_PATH}/index.html`,
-  `${BASE_PATH}/manifest.json`,
-  `${BASE_PATH}/peaks.geojson`,
-  `${BASE_PATH}/passes.geojson`,
-  `${BASE_PATH}/airspace.geojson`,
-  `${BASE_PATH}/mappings.js`,
-  `${BASE_PATH}/navboxManager.js`,
-  `${BASE_PATH}/icons/icon-192.png`,
-  'https://cdn.jsdelivr.net/npm/maplibre-gl@latest/dist/maplibre-gl.js',
-  'https://cdn.jsdelivr.net/npm/maplibre-gl@latest/dist/maplibre-gl.css',
-  'https://fonts.googleapis.com/icon?family=Material+Icons+Round',
-  'https://demotiles.maplibre.org/font/Open Sans Regular/0-255.pbf',
-  'https://demotiles.maplibre.org/font/Open Sans Regular/256-511.pbf'
+// Core app files that should be cached on install and updated when updating the app
+const CORE_FILES = [
+    // HTML files
+    `${BASE_PATH}/`,
+    `${BASE_PATH}/index.html`,
+    `${BASE_PATH}/manifest.json`,
+    
+    // CSS files
+    `${BASE_PATH}/styles.css`,
+    
+    // JS files
+    `${BASE_PATH}/config.js`,
+    `${BASE_PATH}/map.js`,
+    `${BASE_PATH}/mapInitializer.js`,
+    `${BASE_PATH}/sidebar.js`,
+    `${BASE_PATH}/layers.js`,
+    `${BASE_PATH}/airspace.js`,
+    `${BASE_PATH}/LayerManager.js`,
+    `${BASE_PATH}/state.js`,
+    `${BASE_PATH}/menu.js`,
+    `${BASE_PATH}/utils.js`,
+    `${BASE_PATH}/mappings.js`,
+    `${BASE_PATH}/init.js`,
+    `${BASE_PATH}/dock.js`,
+    `${BASE_PATH}/igc.js`,
+    `${BASE_PATH}/install.js`,
+    `${BASE_PATH}/layerStyles.js`,
+    `${BASE_PATH}/navboxManager.js`,
+    `${BASE_PATH}/location.js`,
+    `${BASE_PATH}/sw.js`,
+    
+    // GeoJSON files
+    `${BASE_PATH}/peaks.geojson`,
+    `${BASE_PATH}/passes.geojson`,
+    `${BASE_PATH}/airspace.geojson`,
+    
+    // Icons
+    `${BASE_PATH}/icons/icon-192.png`,
+    
+    // External resources
+    'https://cdn.jsdelivr.net/npm/maplibre-gl@latest/dist/maplibre-gl.js',
+    'https://cdn.jsdelivr.net/npm/maplibre-gl@latest/dist/maplibre-gl.css',
+    'https://fonts.googleapis.com/icon?family=Material+Icons+Round',
+    'https://demotiles.maplibre.org/font/Open Sans Regular/0-255.pbf',
+    'https://demotiles.maplibre.org/font/Open Sans Regular/256-511.pbf'
 ];
 
 // Cache GeoJSON files for each policy and configuration
 const POLICY_CONFIGS = {
-  'alps': ['10-100-250-4200', '20-100-250-4200', '25-100-250-4200', '30-100-250-4200'],
-  'West_alps_with_fields': ['10-100-250-4200', '20-100-250-4200', '25-100-250-4200', '30-100-250-4200']
+    'alps': ['10-100-250-4200', '20-100-250-4200', '25-100-250-4200', '30-100-250-4200'],
+    'West_alps_with_fields': ['10-100-250-4200', '20-100-250-4200', '25-100-250-4200', '30-100-250-4200']
 };
 
 // Install event - cache initial resources
 self.addEventListener('install', event => {
-  event.waitUntil(
-    caches.open(CACHE_NAME)
-      .then(cache => cache.addAll(INITIAL_CACHE_URLS))
-      .catch(error => console.error('Install cache failed:', error))
-  );
-  self.skipWaiting();
+    event.waitUntil(
+        caches.open(CACHE_NAME)
+            .then(cache => cache.addAll(CORE_FILES))
+            .catch(error => console.error('Install cache failed:', error))
+    );
+    self.skipWaiting();
 });
 
 // Activate event - clean up old caches
@@ -424,40 +453,10 @@ self.addEventListener('message', async (event) => {
   
   // New handler for updating app files
   if (event.data.type === 'updateAppFiles') {
-    // Define core app files that should be refreshed
-    const coreFiles = [
-      // HTML files
-      `${BASE_PATH}/index.html`,
-      
-      // CSS files
-      `${BASE_PATH}/styles.css`,
-      
-      // JS files
-      `${BASE_PATH}/config.js`,
-      `${BASE_PATH}/map.js`,
-      `${BASE_PATH}/mapInitializer.js`,
-      `${BASE_PATH}/sidebar.js`,
-      `${BASE_PATH}/layers.js`,
-      `${BASE_PATH}/airspace.js`,
-      `${BASE_PATH}/LayerManager.js`,
-      `${BASE_PATH}/state.js`,
-      `${BASE_PATH}/menu.js`,
-      `${BASE_PATH}/utils.js`,
-      `${BASE_PATH}/mappings.js`,
-      `${BASE_PATH}/init.js`,
-      `${BASE_PATH}/dock.js`,
-      `${BASE_PATH}/igc.js`,
-      `${BASE_PATH}/install.js`,
-      `${BASE_PATH}/layerStyles.js`,
-      `${BASE_PATH}/navboxManager.js`,
-      `${BASE_PATH}/location.js`,
-      `${BASE_PATH}/sw.js`
-    ];
-    
     // Start update notification
     sendMessageToClients({
-      type: 'appUpdateStart',
-      message: `Starting to update ${coreFiles.length} app files`
+        type: 'appUpdateStart',
+        message: `Starting to update ${CORE_FILES.length} app files`
     });
     
     // PHASE 1: Download all files to temporary storage
@@ -465,92 +464,92 @@ self.addEventListener('message', async (event) => {
     let completed = 0;
     let failed = false;
     
-    for (const file of coreFiles) {
-      try {
-        const url = new URL(file, self.location.origin).href;
-        
-        sendMessageToClients({
-          type: 'appUpdateProgress',
-          message: `Downloading: ${file}`,
-          completed: completed,
-          total: coreFiles.length,
-          currentFile: file
-        });
-        
-        // Try to download the file
-        const response = await fetch(url, { cache: 'no-store' });
-        
-        if (response.ok) {
-          // Store the response in memory temporarily
-          tempStorage.set(url, await response.clone().blob());
-          completed++;
-          
-          sendMessageToClients({
-            type: 'appUpdateProgress',
-            message: `Downloaded: ${file}`,
-            completed: completed,
-            total: coreFiles.length,
-            currentFile: file
-          });
-        } else {
-          failed = true;
-          sendMessageToClients({
-            type: 'appUpdateError',
-            message: `Failed to download ${file}: ${response.status} ${response.statusText}`
-          });
-          break; // Stop on first failure
+    for (const file of CORE_FILES) {
+        try {
+            const url = new URL(file, self.location.origin).href;
+            
+            sendMessageToClients({
+                type: 'appUpdateProgress',
+                message: `Downloading: ${file}`,
+                completed: completed,
+                total: CORE_FILES.length,
+                currentFile: file
+            });
+            
+            // Try to download the file
+            const response = await fetch(url, { cache: 'no-store' });
+            
+            if (response.ok) {
+                // Store the response in memory temporarily
+                tempStorage.set(url, await response.clone().blob());
+                completed++;
+                
+                sendMessageToClients({
+                    type: 'appUpdateProgress',
+                    message: `Downloaded: ${file}`,
+                    completed: completed,
+                    total: CORE_FILES.length,
+                    currentFile: file
+                });
+            } else {
+                failed = true;
+                sendMessageToClients({
+                    type: 'appUpdateError',
+                    message: `Failed to download ${file}: ${response.status} ${response.statusText}`
+                });
+                break; // Stop on first failure
+            }
+        } catch (error) {
+            failed = true;
+            sendMessageToClients({
+                type: 'appUpdateError',
+                message: `Failed to download ${file}: ${error.message}`
+            });
+            break; // Stop on first failure
         }
-      } catch (error) {
-        failed = true;
-        sendMessageToClients({
-          type: 'appUpdateError',
-          message: `Failed to download ${file}: ${error.message}`
-        });
-        break; // Stop on first failure
-      }
     }
     
     // If any download failed, abort the update
     if (failed) {
-      sendMessageToClients({
-        type: 'appUpdateFailed',
-        message: 'Update aborted: Some files could not be downloaded. Your app is unchanged.'
-      });
-      return;
+        sendMessageToClients({
+            type: 'appUpdateFailed',
+            message: 'Update aborted: Some files could not be downloaded. Your app is unchanged.'
+        });
+        return;
     }
     
     // PHASE 2: All downloads succeeded, now update the cache
     try {
-      const cache = await caches.open(CACHE_NAME);
-      
-      // Update each file in the cache
-      for (const [url, blob] of tempStorage.entries()) {
-        const headers = new Headers({
-          'Content-Type': getContentType(url),
-          'Content-Length': blob.size.toString(),
-          'Last-Modified': new Date().toUTCString()
-        });
+        const cache = await caches.open(CACHE_NAME);
         
-        const response = new Response(blob, {
-          status: 200,
-          statusText: 'OK',
-          headers: headers
-        });
+        // Update each file in the cache
+        for (const [url, blob] of tempStorage.entries()) {
+            const headers = new Headers({
+                'Content-Type': getContentType(url),
+                'Content-Length': blob.size.toString(),
+                'Last-Modified': new Date().toUTCString()
+            });
+            
+            const response = new Response(blob, {
+                status: 200,
+                statusText: 'OK',
+                headers: headers
+            });
+            
+            await cache.put(url, response);
+        }
         
-        await cache.put(url, response);
-      }
-      
-      // Notify completion
-      sendMessageToClients({
-        type: 'appUpdateComplete',
-        message: `Successfully updated ${coreFiles.length} app files`,
-        needsReload: true
-      });
+        // Notify completion
+        sendMessageToClients({
+            type: 'appUpdateComplete',
+            message: `Successfully updated ${CORE_FILES.length} app files`,
+            needsReload: true
+        });
     } catch (error) {
-      sendMessageToClients({
-        type: 'appUpdateFailed',
-        message: `Cache update failed: ${error.message}. Your app is unchanged.`
-      });
+        sendMessageToClients({
+            type: 'appUpdateFailed',
+            message: `Cache update failed: ${error.message}. Your app is unchanged.`
+        });
     }
   }
 });
