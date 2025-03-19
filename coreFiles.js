@@ -5,28 +5,55 @@
  * when the app is updated.
  */
 
-// Import BASE_PATH from config if available, or define it here
-let BASE_PATH = '.';
-try {
-    if (typeof window !== 'undefined') {
-        // Try to get BASE_PATH from config in browser context
-        import('./config.js').then(config => {
-            BASE_PATH = config.BASE_PATH;
-        }).catch(() => {
-            console.warn('Could not import BASE_PATH from config.js, using default "."');
-        });
+// Internal implementation of getBasePath as fallback
+function internalGetBasePath() {
+    // Check if we're on GitHub Pages
+    if (typeof window !== 'undefined' && window.location) {
+        const hostname = window.location.hostname;
+        const pathname = window.location.pathname;
+
+        if (hostname === 'gabriel-briffe.github.io') {
+            console.log('CoreFiles - Detected GitHub Pages deployment');
+            return '/MountainCircles---map';
+        }
+        
+        if (pathname.includes('/MountainCircles---map/')) {
+            console.log('CoreFiles - Detected repository path in URL');
+            return '/MountainCircles---map';
+        }
     }
-} catch (e) {
-    console.warn('Error accessing window or importing config, using default BASE_PATH "."');
+    
+    // Default for local development
+    console.log('CoreFiles - Using local development path');
+    return '.';
 }
+
+// Get BASE_PATH
+let BASE_PATH;
+
+// Try to get the BASE_PATH from the global context if it exists
+// (it would be set if config.js was loaded before this file)
+if (typeof window !== 'undefined' && window.mountainCirclesBasePathForCache) {
+    console.log('CoreFiles - Using BASE_PATH from global context:', window.mountainCirclesBasePathForCache);
+    BASE_PATH = window.mountainCirclesBasePathForCache;
+} else {
+    // Fall back to internal implementation
+    console.log('CoreFiles - BASE_PATH not found in global context, using internal function');
+    BASE_PATH = internalGetBasePath();
+}
+
+console.log('CoreFiles - Final BASE_PATH:', BASE_PATH);
 
 /**
  * Returns the list of core app files that should be updated when updating the app
  * @returns {string[]} Array of file paths
  */
 export function getCoreFiles() {
+    console.log('CoreFiles - Generating file list with BASE_PATH:', BASE_PATH);
+    
     return [
         // HTML files
+        // Root path is removed as it causes 404 errors
         `${BASE_PATH}/index.html`,
         `${BASE_PATH}/manifest.json`,
         

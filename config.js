@@ -6,49 +6,42 @@
 // Import color mappings
 import { COLOR_MAPPING, AIRSPACE_TYPE_ORDER } from "./mappings.js";
 
-// Automatically determine if we're on GitHub Pages or running locally
+// Determine the base path first to ensure it's available globally
 function getBasePath() {
-    if (typeof window === 'undefined') {
-        // If running in a non-browser environment (like Node.js)
-        return '.';
-    }
-
     try {
-        console.log('Config.js - Location:', {
-            protocol: window.location.protocol,
-            hostname: window.location.hostname,
-            pathname: window.location.pathname,
-            href: window.location.href
-        });
-        
-        // Check for GitHub Pages site
-        if (window.location.hostname === 'gabriel-briffe.github.io') {
-            console.log('Config.js - Detected GitHub Pages site');
-            // Use exact case for repository name
-            return '/MountainCircles---map';
+        // Check if we're on GitHub Pages
+        if (typeof window !== 'undefined' && window.location) {
+            const hostname = window.location.hostname;
+            const pathname = window.location.pathname;
+            
+            if (hostname === 'gabriel-briffe.github.io') {
+                console.log('Config - Detected GitHub Pages site');
+                return '/MountainCircles---map';
+            }
+            
+            if (pathname.includes('/MountainCircles---map/')) {
+                console.log('Config - Detected repository path in URL');
+                return '/MountainCircles---map';
+            }
         }
         
-        // Check for repository name in path as fallback
-        const pathname = window.location.pathname;
-        const pathSegments = pathname.split('/').filter(segment => segment);
-        
-        // If path includes our repository name with correct case
-        if (pathSegments.length > 0 && pathSegments[0] === 'MountainCircles---map') {
-            console.log('Config.js - Detected repository in path');
-            return '/MountainCircles---map';
-        }
-        
-        // Otherwise, we're running locally
-        console.log('Config.js - Using local development path');
+        // Default for local development
+        console.log('Config - Using local development path');
         return '.';
     } catch (e) {
-        console.error('Error in getBasePath:', e);
+        console.error('Config - Error in getBasePath:', e);
         return '.';
     }
 }
 
-// Base path for API requests - automatically detects environment
+// Compute the BASE_PATH
 export const BASE_PATH = getBasePath();
+
+// Also set it as a global for use by coreFiles.js during cache updates
+if (typeof window !== 'undefined') {
+    window.mountainCirclesBasePathForCache = BASE_PATH;
+    console.log('Config - Set global BASE_PATH for cache:', BASE_PATH);
+}
 
 // Default text size for labels
 export const DEFAULT_TEXT_SIZE = 14;
