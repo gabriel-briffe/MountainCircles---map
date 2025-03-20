@@ -197,7 +197,7 @@ export class LayerManager {
             'points-labels',
             
             // Location marker - always at the very top
-            'location-marker-circle'
+            'location-marker-triangle'
         ];
         
         // Get all current layers in the map
@@ -229,7 +229,5 @@ export class LayerManager {
                 this.moveLayerToTop(layerId);
             }
         }
-        
-        console.log('Reordered layers according to defined z-order');
     }
 } 

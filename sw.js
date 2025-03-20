@@ -17,27 +17,18 @@ const AIRSPACE_CACHE_NAME = 'mountaincircles-airspace-v1';
 
 // Automatically determine base path from service worker scope
 function getBasePath() {
-    try {
-        console.log('SW - Location:', {
-            origin: self.location.origin,
-            hostname: self.location.hostname, 
-            pathname: self.location.pathname
-        });
-        
+    try {        
         // Check if on GitHub Pages site
         if (self.location.hostname === 'gabriel-briffe.github.io') {
-            console.log('SW - Detected GitHub Pages site');
             return '/MountainCircles---map';
         }
         
         // Check if pathname contains the repo name
         if (self.location.pathname.includes('/MountainCircles---map/')) {
-            console.log('SW - Detected repository path in URL');
             return '/MountainCircles---map';
         }
         
         // Default for local development
-        console.log('SW - Using local development path');
         return '.';
     } catch (e) {
         console.error('SW - Error in getBasePath:', e);
@@ -46,7 +37,6 @@ function getBasePath() {
 }
 
 const BASE_PATH = getBasePath();
-console.log('SW - Final BASE_PATH:', BASE_PATH);
 
 // Global counter for the number of network fetches served (i.e., when there's no cached response)
 let networkFetchCount = 0;
@@ -472,10 +462,7 @@ self.addEventListener('message', async (event) => {
       });
       return;
     }
-    
-    // Log the files to be updated for debugging
-    console.log('SW - Files to update:', filesToUpdate);
-    
+        
     // Start update notification
     sendMessageToClients({
         type: 'appUpdateStart',
@@ -490,7 +477,6 @@ self.addEventListener('message', async (event) => {
     for (const file of filesToUpdate) {
         try {
             const url = new URL(file, self.location.origin).href;
-            console.log(`SW - Downloading: ${url}`);
             
             sendMessageToClients({
                 type: 'appUpdateProgress',
@@ -507,7 +493,6 @@ self.addEventListener('message', async (event) => {
                 // Store the response in memory temporarily
                 tempStorage.set(url, await response.clone().blob());
                 completed++;
-                console.log(`SW - Downloaded: ${url} (${completed}/${filesToUpdate.length})`);
                 
                 sendMessageToClients({
                     type: 'appUpdateProgress',

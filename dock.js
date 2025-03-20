@@ -115,14 +115,52 @@ export function setupDockEventListeners() {
         });
     });
 
-    // Zoom controls
-    document.getElementById('zoomInBtn').addEventListener('click', () => {
-        getMap().zoomIn();
-    });
-    document.getElementById('zoomOutBtn').addEventListener('click', () => {
-        getMap().zoomOut();
-    });
+    // Create and add zoom buttons only for non-mobile devices
+    createZoomButtonsIfNeeded();
     
     // Ensure visibility icon matches the current state
     updateVisibilityIcon();
+}
+
+/**
+ * Creates and adds zoom buttons only for non-mobile devices
+ */
+function createZoomButtonsIfNeeded() {
+    // Import the isMobileDevice function dynamically to avoid circular dependencies
+    import('./utils.js').then(module => {
+        const isMobileDevice = module.isMobileDevice;
+        
+        // Only create zoom buttons if NOT on a mobile device
+        if (!isMobileDevice()) {
+            const mapDock = document.getElementById('mapDock');
+            const moreOptionsBtn = document.getElementById('moreOptionsBtn');
+            
+            // Create zoom in button
+            const zoomInBtn = document.createElement('button');
+            zoomInBtn.id = 'zoomInBtn';
+            zoomInBtn.title = 'Zoom In';
+            zoomInBtn.innerHTML = '<span class="material-icons-round">zoom_in</span>';
+            
+            // Create zoom out button
+            const zoomOutBtn = document.createElement('button');
+            zoomOutBtn.id = 'zoomOutBtn';
+            zoomOutBtn.title = 'Zoom Out';
+            zoomOutBtn.innerHTML = '<span class="material-icons-round">zoom_out</span>';
+            
+            // Insert before the more options button
+            mapDock.insertBefore(zoomInBtn, moreOptionsBtn);
+            mapDock.insertBefore(zoomOutBtn, moreOptionsBtn);
+            
+            // Add event listeners
+            zoomInBtn.addEventListener('click', () => {
+                getMap().zoomIn();
+            });
+            
+            zoomOutBtn.addEventListener('click', () => {
+                getMap().zoomOut();
+            });
+        } 
+    }).catch(err => {
+        console.error('Error importing utils module:', err);
+    });
 } 

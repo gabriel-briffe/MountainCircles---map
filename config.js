@@ -15,18 +15,15 @@ function getBasePath() {
             const pathname = window.location.pathname;
             
             if (hostname === 'gabriel-briffe.github.io') {
-                console.log('Config - Detected GitHub Pages site');
                 return '/MountainCircles---map';
             }
             
             if (pathname.includes('/MountainCircles---map/')) {
-                console.log('Config - Detected repository path in URL');
                 return '/MountainCircles---map';
             }
         }
         
         // Default for local development
-        console.log('Config - Using local development path');
         return '.';
     } catch (e) {
         console.error('Config - Error in getBasePath:', e);
@@ -40,7 +37,6 @@ export const BASE_PATH = getBasePath();
 // Also set it as a global for use by coreFiles.js during cache updates
 if (typeof window !== 'undefined') {
     window.mountainCirclesBasePathForCache = BASE_PATH;
-    console.log('Config - Set global BASE_PATH for cache:', BASE_PATH);
 }
 
 // Default text size for labels

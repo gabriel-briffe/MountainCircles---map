@@ -26,7 +26,6 @@ export let pointClickedFlag = false;
  * @param {Object} e - The click event object
  */
 export function handlePointClick(e) {
-    console.log("Point clicked event:", e);
     if (!e.features || !e.features.length) return;
 
     const feature = e.features[0];
@@ -124,9 +123,7 @@ function createNewDynamicLayer(filePath, dynamicLayerId, dynamicSourceId, dynami
     // Hide main layers
     getLayerManager().setVisibility('linestrings-layer', false);
     getLayerManager().setVisibility('linestrings-labels', false);
-    
-    console.log("Adding dynamic layer for:", filePath);
-    
+        
     // Add source
     getLayerManager().addOrUpdateSource(dynamicSourceId, {
         type: 'geojson',

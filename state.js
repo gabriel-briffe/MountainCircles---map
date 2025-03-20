@@ -14,7 +14,9 @@ const PERSISTED_STATE_KEYS = [
     'layersToggleState',
     'currentPolicy',
     'currentConfig',
-    'airspaceVisible'
+    'airspaceVisible',
+    'geolocationEnabled',  // Add geolocation state to persisted keys
+    'navboxesEnabled'      // Add navboxes state to persisted keys
 ];
 
 // Private state object
@@ -69,6 +71,12 @@ const _state = {
     
     // Airspace type visibility
     enabledAirspaceTypes: null,
+    
+    // Geolocation enabled/disabled
+    geolocationEnabled: false,  // Default to disabled for privacy reasons
+    
+    // Navboxes enabled/disabled
+    navboxesEnabled: false,  // Default to disabled, depends on geolocation
 };
 
 // State getters
@@ -228,7 +236,6 @@ export async function saveStateToLocalStorage() {
         const cache = await caches.open('mountaincircles-state-v1');
         await cache.put('/app-state', response);
         
-        console.log('State saved to Cache API');
     } catch (error) {
         console.error('Failed to save state to Cache API:', error);
     }
@@ -246,7 +253,6 @@ export async function loadStateFromLocalStorage() {
         // Try to get the state from cache
         const response = await cache.match('/app-state');
         if (!response) {
-            console.log('No saved state found in Cache API');
             return false;
         }
         
@@ -260,6 +266,26 @@ export async function loadStateFromLocalStorage() {
             delete savedState.enabledAirspaceTypes;
         }
         
+        // Special handling for geolocation permissions
+        // If geolocation was enabled in saved state, check if we have permission first
+        if (savedState.geolocationEnabled === true && 'permissions' in navigator) {
+            try {
+                // Check current permission state
+                const permissionStatus = await navigator.permissions.query({name: 'geolocation'});
+                
+                // If permission is denied, force geolocation to be disabled regardless of saved state
+                if (permissionStatus.state === 'denied') {
+                    savedState.geolocationEnabled = false;
+                }
+            } catch (permError) {
+                console.warn('Could not check geolocation permission:', permError);
+                // Fall back to directly checking geolocation availability
+                if (!('geolocation' in navigator)) {
+                    savedState.geolocationEnabled = false;
+                }
+            }
+        }
+        
         // Update state with saved values
         Object.keys(savedState).forEach(key => {
             if (key in _state) {
@@ -267,7 +293,6 @@ export async function loadStateFromLocalStorage() {
             }
         });
         
-        console.log('State loaded from Cache API');
         return true;
     } catch (error) {
         console.error('Failed to load state from Cache API:', error);
@@ -283,7 +308,6 @@ export async function clearSavedState() {
     try {
         const cache = await caches.open('mountaincircles-state-v1');
         await cache.delete('/app-state');
-        console.log('Saved state cleared from Cache API');
         
         // Reset critical state values to defaults
         _state.currentPolicy = DEFAULT_POLICY;
@@ -330,4 +354,40 @@ export function setAirspaceVisible(visible) {
     _state.airspaceVisible = visible;
     // Save to Cache API whenever we update this
     saveStateToLocalStorage().catch(err => console.error('Error saving airspace visibility state:', err));
+}
+
+/**
+ * Gets whether geolocation is enabled
+ * @returns {boolean} Whether geolocation is enabled
+ */
+export function getGeolocationEnabled() {
+    return _state.geolocationEnabled;
+}
+
+/**
+ * Sets whether geolocation is enabled
+ * @param {boolean} enabled - Whether geolocation should be enabled
+ */
+export function setGeolocationEnabled(enabled) {
+    _state.geolocationEnabled = enabled;
+    // Save to Cache API whenever we update this
+    saveStateToLocalStorage().catch(err => console.error('Error saving geolocation state:', err));
+}
+
+/**
+ * Gets whether navboxes are enabled
+ * @returns {boolean} Whether navboxes are enabled
+ */
+export function getNavboxesEnabled() {
+    return _state.navboxesEnabled;
+}
+
+/**
+ * Sets whether navboxes are enabled
+ * @param {boolean} enabled - Whether navboxes should be enabled
+ */
+export function setNavboxesEnabled(enabled) {
+    _state.navboxesEnabled = enabled;
+    // Save to Cache API whenever we update this
+    saveStateToLocalStorage().catch(err => console.error('Error saving navboxes state:', err));
 } 

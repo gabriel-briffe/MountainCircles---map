@@ -32,8 +32,15 @@ import {
     saveStateToLocalStorage,
     getAirspaceVisible,
     setAirspaceVisible,
-    getLayersToggleState
+    getLayersToggleState,
+    getGeolocationEnabled,
+    setGeolocationEnabled,
+    getNavboxesEnabled,
+    setNavboxesEnabled
 } from "./state.js";
+
+// Import from utils
+import { isMobileDevice } from "./utils.js";
 
 // Import from airspace module
 import {
@@ -55,6 +62,16 @@ import {
     pointLayerClickableStyle,
     pointLabelsLayerStyle
 } from "./layerStyles.js";
+
+// Import from location module
+import {
+    setupGeolocation
+} from "./location.js";
+
+// Import from navboxManager module
+import {
+    updateNavboxesState
+} from "./navboxManager.js";
 
 
 /**
@@ -102,29 +119,46 @@ export function createTypeCheckboxes(features) {
     // Clear existing content
     sidebar.innerHTML = '';
     
-    // Create header
+    // Create a nice header with toggle and title
     createSidebarHeader(sidebar);
     
-    // Add airspace type checkboxes (removed divider)
-    addAirspaceTypeCheckboxes(sidebar, features);
-    
-    // Add divider
+    // Add a divider
     addSidebarDivider(sidebar);
     
-    // Add peaks/passes toggle
+    // Add airspace type checkboxes
+    addAirspaceTypeCheckboxes(sidebar, features);
+    
+    // Add a divider
+    addSidebarDivider(sidebar);
+    
+    // Add peaks and passes toggles
     addPeaksPassesToggle(sidebar);
     
-    // Add divider
+    // Add geolocation toggle and navboxes toggle only on mobile devices
+    if (isMobileDevice()) {
+        // Add a divider
+        addSidebarDivider(sidebar);
+        
+        // Add geolocation toggle
+        addGeolocationToggle(sidebar);
+    }
+    
+    // Add a divider
     addSidebarDivider(sidebar);
     
     // Add policy/config buttons
     addPolicyConfigButtons(sidebar);
     
-    // Add divider
+    // Add a divider
     addSidebarDivider(sidebar);
     
-    // Add text size controls
+    // Add text size controls at the bottom
     addTextSizeControls(sidebar);
+    
+    // Apply initial state for geolocation if on mobile
+    if (isMobileDevice()) {
+        toggleGeolocationVisibility(getGeolocationEnabled());
+    }
 }
 
 /**
@@ -375,7 +409,6 @@ export function addConfigButton(container, policy, config) {
         
         // Switch configuration
         switchConfig(fullConfig);
-        console.log("Switched to configuration: " + fullConfig);
     };
     
     container.appendChild(btn);
@@ -554,8 +587,6 @@ export function switchConfig(cfg) {
     
     // Get current toggle states for applying visibility
     const linestringsToggleState = getLayersToggleState();
-    console.log(`Config switch - applying linestring toggle state: ${linestringsToggleState ? 'visible' : 'hidden'}`);
-    
     // Apply linestring layer visibility based on toggle state
     getLayerManager().setVisibility('linestrings-layer', linestringsToggleState);
     getLayerManager().setVisibility('linestrings-labels', linestringsToggleState);
@@ -609,13 +640,10 @@ export function removeGeoJSONLayers() {
  * @param {string} cfg - The configuration string
  */
 export function updateParametersBox(cfg) {
-    console.log("updateParametersBox called with:", cfg);
     const configOnly = cfg.split('/')[1] || cfg;
     const parts = configOnly.split('-');
-    console.log("parts after split:", parts);
     if (parts.length >= 3) {
         const labelText = "L/D " + parts[0] + "-ground " + parts[1] + "m-circuit " + parts[2] + "m";
-        console.log("setting label to:", labelText);
         document.getElementById('parametersBox').textContent = labelText;
     }
 }
@@ -714,6 +742,334 @@ export function toggleSidebar() {
     const currentDisplay = sidebar.style.display || 'none';
     sidebar.style.display = currentDisplay === 'none' ? 'block' : 'none';
     document.getElementById('sidebarVisibilityIcon').textContent = 'layers';
+}
+
+/**
+ * Adds geolocation toggle to the sidebar
+ * @param {HTMLElement} sidebar - The sidebar element
+ */
+export function addGeolocationToggle(sidebar) {
+    // Only add this toggle on mobile devices
+    if (!isMobileDevice()) {
+        return;
+    }
+    
+    // Create toggle container
+    const toggleContainer = document.createElement('div');
+    toggleContainer.className = 'toggle-container';
+    toggleContainer.style.display = 'flex';
+    toggleContainer.style.justifyContent = 'space-between';
+    toggleContainer.style.alignItems = 'center';
+    toggleContainer.style.padding = '5px 0';
+    
+    // Create label
+    const label = document.createElement('span');
+    label.textContent = 'Location';
+    label.style.marginRight = '10px';
+    
+    // Get current state from settings (might have been updated during load)
+    const isEnabled = getGeolocationEnabled();
+    
+    // Create toggle switch (default to the current state)
+    const toggleSwitch = document.createElement('button');
+    toggleSwitch.className = `toggle-switch ${isEnabled ? 'active' : ''}`;
+    toggleSwitch.setAttribute('aria-checked', isEnabled.toString());
+    toggleSwitch.setAttribute('role', 'switch');
+    toggleSwitch.id = 'location-toggle';
+    
+    // Create toggle slider
+    const toggleSlider = document.createElement('span');
+    toggleSlider.className = 'toggle-slider';
+    toggleSwitch.appendChild(toggleSlider);
+    
+    // Append elements to container
+    toggleContainer.appendChild(label);
+    toggleContainer.appendChild(toggleSwitch);
+    
+    // Add to sidebar
+    sidebar.appendChild(toggleContainer);
+    
+    // Add click handler
+    toggleSwitch.addEventListener('click', () => {
+        const currentState = getGeolocationEnabled();
+        const newState = !currentState;
+        
+        if (newState === true) {
+            // If trying to enable, check permissions first
+            if ('permissions' in navigator) {
+                navigator.permissions.query({name: 'geolocation'}).then(permissionStatus => {
+                    if (permissionStatus.state === 'denied') {
+                        // Show alert if permission is denied
+                        alert('Geolocation permission is denied. Please enable location access in your browser/device settings.');
+                        return; // Don't update state or appearance
+                    }
+                    
+                    // Permission is granted or prompt, update state and appearance
+                    setGeolocationEnabled(true);
+                    toggleSwitch.className = 'toggle-switch active';
+                    toggleSwitch.setAttribute('aria-checked', 'true');
+                    toggleGeolocationVisibility(true);
+                    
+                    // Also update navboxes toggle state
+                    updateNavboxesToggleState();
+                    
+                    // Add permission change listener
+                    setupPermissionChangeListener(permissionStatus);
+                }).catch(error => {
+                    console.error('Error checking geolocation permission:', error);
+                    // Fall back to traditional approach
+                    handleToggle(true);
+                });
+            } else {
+                // Permissions API not available, use traditional approach
+                handleToggle(true);
+            }
+        } else {
+            // Disabling is always allowed
+            handleToggle(false);
+            
+            // Disable navboxes when geolocation is disabled
+            if (getNavboxesEnabled()) {
+                setNavboxesEnabled(false);
+                updateNavboxesToggleState();
+                updateNavboxesState();
+            }
+        }
+    });
+    
+    // Helper function to handle the toggle state change
+    function handleToggle(newState) {
+        setGeolocationEnabled(newState);
+        toggleSwitch.className = `toggle-switch ${newState ? 'active' : ''}`;
+        toggleSwitch.setAttribute('aria-checked', newState.toString());
+        toggleGeolocationVisibility(newState);
+        
+        // Setup permission listener if enabling
+        if (newState && 'permissions' in navigator) {
+            navigator.permissions.query({name: 'geolocation'})
+                .then(setupPermissionChangeListener)
+                .catch(err => console.error('Error setting up permission listener:', err));
+        }
+    }
+    
+    // Check if permission is already granted and set up listener
+    if (isEnabled && 'permissions' in navigator) {
+        navigator.permissions.query({name: 'geolocation'})
+            .then(setupPermissionChangeListener)
+            .catch(err => console.error('Error setting up initial permission listener:', err));
+    }
+    
+    // Now add the Navboxes toggle
+    addNavboxesToggle(sidebar);
+}
+
+/**
+ * Sets up a listener for permission status changes
+ * @param {PermissionStatus} permissionStatus - The permission status object
+ */
+function setupPermissionChangeListener(permissionStatus) {
+    // Remove any existing listener first to avoid duplicates
+    permissionStatus.onchange = null;
+    
+    // Add new listener
+    permissionStatus.onchange = function() {
+        
+        if (this.state === 'denied') {            
+            // Turn off location
+            setGeolocationEnabled(false);
+            
+            // Also turn off navboxes
+            if (getNavboxesEnabled()) {
+                setNavboxesEnabled(false);
+            }
+            
+            // Update location toggle
+            const locationToggle = document.getElementById('location-toggle');
+            if (locationToggle) {
+                locationToggle.className = 'toggle-switch';
+                locationToggle.setAttribute('aria-checked', 'false');
+            }
+            
+            // Update navboxes toggle
+            updateNavboxesToggleState();
+            
+            // Update navboxes visibility
+            updateNavboxesState();
+            
+            // Hide location marker
+            if (getLayerManager() && getLayerManager().hasLayer('location-marker-triangle')) {
+                getLayerManager().setVisibility('location-marker-triangle', false);
+            }
+        }
+    };
+}
+
+/**
+ * Adds navboxes toggle to the sidebar
+ * @param {HTMLElement} sidebar - The sidebar element
+ */
+export function addNavboxesToggle(sidebar) {
+    // Only add this toggle on mobile devices
+    if (!isMobileDevice()) {
+        return;
+    }
+    
+    // Create toggle container
+    const toggleContainer = document.createElement('div');
+    toggleContainer.className = 'toggle-container';
+    toggleContainer.style.display = 'flex';
+    toggleContainer.style.justifyContent = 'space-between';
+    toggleContainer.style.alignItems = 'center';
+    toggleContainer.style.padding = '5px 0';
+    toggleContainer.id = 'navboxes-toggle-container';
+    
+    // Create label
+    const label = document.createElement('span');
+    label.textContent = 'Navboxes';
+    label.style.marginRight = '10px';
+    
+    // Get current state from settings
+    const isEnabled = getNavboxesEnabled();
+    const geolocationEnabled = getGeolocationEnabled();
+    
+    // Create toggle switch
+    const toggleSwitch = document.createElement('button');
+    toggleSwitch.className = `toggle-switch ${isEnabled ? 'active' : ''}`;
+    toggleSwitch.setAttribute('aria-checked', isEnabled.toString());
+    toggleSwitch.setAttribute('role', 'switch');
+    toggleSwitch.id = 'navboxes-toggle';
+    
+    // Disable the toggle if geolocation is disabled
+    if (!geolocationEnabled) {
+        toggleSwitch.disabled = true;
+        toggleSwitch.style.opacity = '0.5';
+        toggleSwitch.style.cursor = 'not-allowed';
+    }
+    
+    // Create toggle slider
+    const toggleSlider = document.createElement('span');
+    toggleSlider.className = 'toggle-slider';
+    toggleSwitch.appendChild(toggleSlider);
+    
+    // Append elements to container
+    toggleContainer.appendChild(label);
+    toggleContainer.appendChild(toggleSwitch);
+    
+    // Add to sidebar
+    sidebar.appendChild(toggleContainer);
+    
+    // Add click handler
+    toggleSwitch.addEventListener('click', () => {
+        // Only allow toggle if geolocation is enabled
+        if (!getGeolocationEnabled()) {
+            return;
+        }
+        
+        const currentState = getNavboxesEnabled();
+        const newState = !currentState;
+        
+        // Update state and toggle appearance
+        setNavboxesEnabled(newState);
+        toggleSwitch.className = `toggle-switch ${newState ? 'active' : ''}`;
+        toggleSwitch.setAttribute('aria-checked', newState.toString());
+        
+        // Update navboxes visibility
+        updateNavboxesState();
+    });
+}
+
+/**
+ * Updates the navboxes toggle state based on geolocation state
+ */
+export function updateNavboxesToggleState() {
+    const navboxesToggle = document.getElementById('navboxes-toggle');
+    const navboxesToggleContainer = document.getElementById('navboxes-toggle-container');
+    
+    if (!navboxesToggle || !navboxesToggleContainer) return;
+    
+    const geolocationEnabled = getGeolocationEnabled();
+    const navboxesEnabled = getNavboxesEnabled();
+    
+    // Update toggle state
+    if (geolocationEnabled) {
+        // Enable the toggle
+        navboxesToggle.disabled = false;
+        navboxesToggle.style.opacity = '1';
+        navboxesToggle.style.cursor = 'pointer';
+    } else {
+        // Disable the toggle and ensure it's off
+        navboxesToggle.disabled = true;
+        navboxesToggle.style.opacity = '0.5';
+        navboxesToggle.style.cursor = 'not-allowed';
+        
+        // Force the visual state to be off
+        navboxesToggle.className = 'toggle-switch';
+        navboxesToggle.setAttribute('aria-checked', 'false');
+    }
+}
+
+/**
+ * Toggles the visibility of the geolocation marker
+ * @param {boolean} isVisible - Whether the geolocation marker should be visible
+ */
+export function toggleGeolocationVisibility(isVisible) {
+    // Only perform geolocation operations on mobile devices
+    if (!isMobileDevice()) return;
+    
+    if (!getLayerManager()) return;
+    
+    // Toggle visibility of location marker
+    if (getLayerManager().hasLayer('location-marker-triangle')) {
+        getLayerManager().setVisibility('location-marker-triangle', isVisible);
+    }
+    
+    // If not visible, make sure navboxes are also updated
+    if (!isVisible) {
+        updateNavboxesState();
+    }
+    
+    // If enabling, check if we need to set up geolocation
+    if (isVisible && navigator.geolocation) {
+        // Check if geolocation permissions are available before proceeding
+        navigator.permissions.query({name: 'geolocation'}).then(permissionStatus => {
+            if (permissionStatus.state === 'denied') {
+                // Geolocation is denied by the browser/system
+                // Only show alert if we're trying to enable location
+                // if (isVisible) {
+                //     alert('Geolocation permission is denied. Please enable location access in your browser/device settings.');
+                // }
+                
+                // Reset toggle state to off
+                setGeolocationEnabled(false);
+                
+                // Update toggle appearance (find the toggle in the sidebar)
+                const toggleSwitch = document.querySelector('.toggle-switch[role="switch"][aria-checked]');
+                if (toggleSwitch) {
+                    toggleSwitch.className = 'toggle-switch';
+                    toggleSwitch.setAttribute('aria-checked', 'false');
+                }
+                
+                // Update navboxes state
+                updateNavboxesState();
+                
+                return;
+            }
+            
+            // Proceed with enabling geolocation if permission is granted or prompt
+            setupGeolocation();
+            
+            // Update navboxes state
+            updateNavboxesState();
+        }).catch(error => {
+            console.error('Error checking geolocation permission:', error);
+            
+            // Fallback to traditional approach if permissions API is not available
+            setupGeolocation();
+            
+            // Update navboxes state
+            updateNavboxesState();
+        });
+    }
 }
 
 // Note: These functions are referenced but defined elsewhere

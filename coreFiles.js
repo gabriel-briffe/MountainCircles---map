@@ -13,18 +13,15 @@ function internalGetBasePath() {
         const pathname = window.location.pathname;
 
         if (hostname === 'gabriel-briffe.github.io') {
-            console.log('CoreFiles - Detected GitHub Pages deployment');
             return '/MountainCircles---map';
         }
         
         if (pathname.includes('/MountainCircles---map/')) {
-            console.log('CoreFiles - Detected repository path in URL');
             return '/MountainCircles---map';
         }
     }
     
     // Default for local development
-    console.log('CoreFiles - Using local development path');
     return '.';
 }
 
@@ -34,22 +31,18 @@ let BASE_PATH;
 // Try to get the BASE_PATH from the global context if it exists
 // (it would be set if config.js was loaded before this file)
 if (typeof window !== 'undefined' && window.mountainCirclesBasePathForCache) {
-    console.log('CoreFiles - Using BASE_PATH from global context:', window.mountainCirclesBasePathForCache);
     BASE_PATH = window.mountainCirclesBasePathForCache;
 } else {
     // Fall back to internal implementation
-    console.log('CoreFiles - BASE_PATH not found in global context, using internal function');
     BASE_PATH = internalGetBasePath();
 }
 
-console.log('CoreFiles - Final BASE_PATH:', BASE_PATH);
 
 /**
  * Returns the list of core app files that should be updated when updating the app
  * @returns {string[]} Array of file paths
  */
 export function getCoreFiles() {
-    console.log('CoreFiles - Generating file list with BASE_PATH:', BASE_PATH);
     
     return [
         // HTML files

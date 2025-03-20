@@ -3,8 +3,9 @@
  * Handles user location tracking, heading calculation, and position history
  */
 
-import { getLayerManager, getMap } from "./state.js";
-import { initNavboxes, updateNavboxesWithPosition } from "./navboxManager.js";
+import { getLayerManager, getMap, getGeolocationEnabled, setGeolocationEnabled, getNavboxesEnabled, setNavboxesEnabled } from "./state.js";
+import { initNavboxes, updateNavboxesWithPosition, updateNavboxesState } from "./navboxManager.js";
+import { isMobileDevice } from "./utils.js";
 
 
 // Track previous positions to calculate heading
@@ -137,7 +138,6 @@ export function updateLocation(position) {
         const currentPosition = positionHistory[positionHistory.length - 1];
         
         currentHeading = calculateHeading(prevPosition, currentPosition);
-        console.log(`Heading: ${currentHeading.toFixed(2)}°`);
     }
     
     // Update the marker rotation
@@ -243,7 +243,6 @@ export function createRotatedLocationIcon(heading) {
  * Initializes the location tracker and rotated icon
  */
 export function initLocationTracker() {
-    console.log('Initializing location tracker and icon...');
     
     // Create initial rotated icon
     const map = getMap();
@@ -252,7 +251,6 @@ export function initLocationTracker() {
             // Force remove any existing image to prevent conflicts
             if (map.hasImage('location-icon-rotated')) {
                 map.removeImage('location-icon-rotated');
-                console.log('Removed existing location icon');
             }
             
             // Create a fresh icon
@@ -260,7 +258,6 @@ export function initLocationTracker() {
             
             // Add the icon
             map.addImage('location-icon-rotated', imageData, { pixelRatio: 1 });
-            console.log('Added location-icon-rotated to map');
             
             // Initialize an empty source if it doesn't exist
             if (!getLayerManager().hasSource('location-marker')) {
@@ -277,7 +274,6 @@ export function initLocationTracker() {
                         }
                     }
                 });
-                console.log('Initialized empty location marker source');
             }
         } catch (e) {
             console.error('Error initializing location icon:', e);
@@ -291,12 +287,24 @@ export function initLocationTracker() {
  * Sets up geolocation tracking if available
  */
 export function setupGeolocation() {
+    // Only set up geolocation on mobile devices
+    if (!isMobileDevice()) {
+        return;
+    }
+    
+    // Check if geolocation is enabled in state
+    if (!getGeolocationEnabled()) {
+        return;
+    }
+    
     if ('geolocation' in navigator) {
         // Initialize the location tracker first
         initLocationTracker();
         
-        // Initialize the navboxes
-        initNavboxes();
+        // Initialize the navboxes only if they're enabled in settings
+        if (getNavboxesEnabled()) {
+            initNavboxes();
+        }
         
         const options = {
             enableHighAccuracy: true,
@@ -308,10 +316,89 @@ export function setupGeolocation() {
             updateLocation,
             (error) => {
                 console.error('Error getting location:', error);
+                
+                // Handle specific geolocation errors
+                switch(error.code) {
+                    case error.PERMISSION_DENIED:
+                        // Show alert and reset the toggle - keep ONLY this alert
+                        
+                        // Reset toggle state to off
+                        setGeolocationEnabled(false);
+                        
+                        // Also turn off navboxes when geolocation is denied
+                        if (getNavboxesEnabled()) {
+                            setNavboxesEnabled(false);
+                        }
+                        
+                        // Update location toggle appearance
+                        const locationToggle = document.getElementById('location-toggle');
+                        if (locationToggle) {
+                            locationToggle.className = 'toggle-switch';
+                            locationToggle.setAttribute('aria-checked', 'false');
+                        }
+                        
+                        // Also update navboxes toggle appearance
+                        const navboxesToggle = document.getElementById('navboxes-toggle');
+                        if (navboxesToggle) {
+                            navboxesToggle.className = 'toggle-switch';
+                            navboxesToggle.setAttribute('aria-checked', 'false');
+                            navboxesToggle.disabled = true;
+                            navboxesToggle.style.opacity = '0.5';
+                            navboxesToggle.style.cursor = 'not-allowed';
+                        }
+                        
+                        // Update navboxes state to hide them
+                        updateNavboxesState();
+                        break;
+                    
+                    case error.POSITION_UNAVAILABLE:
+                        // Remove alert
+                        console.warn('Location information is unavailable.');
+                        break;
+                        
+                    case error.TIMEOUT:
+                        // Remove alert
+                        console.warn('The request to get user location timed out.');
+                        break;
+                        
+                    default:
+                        // Remove alert
+                        console.warn('An unknown error occurred while retrieving location.');
+                        break;
+                }
             },
             options
         );
     } else {
         console.warn('Geolocation is not supported by this browser.');
+        // Remove alert
+        
+        // Reset location toggle state
+        setGeolocationEnabled(false);
+        
+        // Also turn off navboxes
+        if (getNavboxesEnabled()) {
+            setNavboxesEnabled(false);
+        }
+        
+        // Update location toggle appearance
+        const locationToggle = document.getElementById('location-toggle');
+        if (locationToggle) {
+            locationToggle.className = 'toggle-switch';
+            locationToggle.setAttribute('aria-checked', 'false');
+        }
+        
+        // Also update navboxes toggle appearance
+        const navboxesToggle = document.getElementById('navboxes-toggle');
+        if (navboxesToggle) {
+            navboxesToggle.className = 'toggle-switch';
+            navboxesToggle.setAttribute('aria-checked', 'false');
+            navboxesToggle.disabled = true;
+            navboxesToggle.style.opacity = '0.5';
+            navboxesToggle.style.cursor = 'not-allowed';
+        }
+        
+        // Update navboxes state
+        updateNavboxesState();
     }
 } 

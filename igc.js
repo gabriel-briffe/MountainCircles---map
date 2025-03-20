@@ -41,7 +41,6 @@ export async function handleFileSelect(event) {
         });
         
         const geojsonData = igcToGeoJSON(igcContent);
-        console.log('Converted IGC to GeoJSON:', geojsonData);
         
         if (!geojsonData.features || geojsonData.features.length === 0) {
             throw new Error('No valid data found in IGC file');

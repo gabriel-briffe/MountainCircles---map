@@ -184,31 +184,7 @@ h3 {
     box-sizing: border-box;
     text-align: center;
     box-shadow: 0 2px 5px var(--shadow-light);
-    cursor: pointer; /* Add cursor pointer to indicate it's clickable */
-    transition: transform 0.15s ease, background-color 0.15s ease; /* Smooth transition for feedback */
-}
-
-.navboxes-enabled .navbox:hover {
-    background-color: var(--bg-button-hover-light); /* Use hover style from buttons */
-}
-
-/* Animation for unit change feedback */
-.navboxes-enabled .navbox.unit-change {
-    transform: scale(1.1); /* Slightly enlarge when clicked */
-    background-color: var(--accent-blue); /* Briefly flash with accent color */
-    color: white; /* Change text to white for better contrast */
-}
-
-/* Ensure the value text keeps its color during unit change */
-.navboxes-enabled .navbox.unit-change .navbox-value {
-    color: white;
-}
-
-/* Dark mode hover state */
-@media (prefers-color-scheme: dark) {
-    .navboxes-enabled .navbox:hover {
-        background-color: var(--bg-button-hover-dark);
-    }
+    /* Remove cursor pointer and transition */
 }
 
 .navboxes-enabled .navbox-value {
@@ -969,7 +945,7 @@ h3 {
     align-items: center;
     margin-bottom: 15px;
     padding-bottom: 10px;
-    border-bottom: 1px solid var(--border-subtle-light);
+    border-bottom: none; /* Remove the border that was creating the first divider */
 }
 
 /* Sidebar header title */
@@ -1015,7 +991,7 @@ h3 {
     }
     
     .sidebar-header {
-        border-bottom: 1px solid var(--border-subtle-dark);
+        border-bottom: none; /* Also remove the border in dark mode */
     }
     
     .sidebar-header h2 {

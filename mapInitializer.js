@@ -33,7 +33,8 @@ import {
     getMap,
     getLayerManager,
     getBaseTextSize,
-    setLayersToggleState
+    setLayersToggleState,
+    getGeolocationEnabled
 } from "./state.js";
 
 // Default settings
@@ -71,8 +72,6 @@ export function initializeMap(containerId, onMapReady) {
             map: mapInstance,
             layerManager: layerManagerInstance
         });
-        
-        console.log('Map load event triggered');
         
         // Initialize basic map layers
         await initializeBaseLayers();
@@ -114,8 +113,6 @@ async function initializeBaseLayers() {
         data: 'passes.geojson'
     });
     
-    console.log('Added peaks and passes sources');
-
     // Create triangle icons for peaks and passes
     await createMapIcons();
     
@@ -132,7 +129,7 @@ async function initializeBaseLayers() {
     });
 
     // Add location marker layer
-    getLayerManager().addLayerIfNotExists('location-marker-circle', locationMarkerStyle);
+    getLayerManager().addLayerIfNotExists('location-marker-triangle', locationMarkerStyle);
 
     // Add highlight layer for airspace popups
     getLayerManager().addOrUpdateSource('highlight-airspace-source', {
@@ -149,8 +146,10 @@ async function initializeBaseLayers() {
         data: { type: 'FeatureCollection', features: [] }
     });
     
-    // Setup geolocation tracking if available
-    setupGeolocation();
+    // Setup geolocation tracking only if enabled in settings and on mobile device
+    if (isMobileDevice() && getGeolocationEnabled()) {
+        setupGeolocation();
+    } 
 }
 
 /**
@@ -193,11 +192,9 @@ async function createMapIcons() {
         new Promise(resolve => passImage.onload = resolve)
     ]);
     
-    console.log('Triangle images loaded');
     const map = getMap();
     map.addImage('peak-triangle', peakImage);
     map.addImage('pass-triangle', passImage);
-    console.log('Added triangle images to map');
     
     // Create a copy of the style to update the text-size with the current base text size
     const peaksStyle = { ...peaksSymbolsLayerStyle };
@@ -214,8 +211,6 @@ async function createMapIcons() {
 
     // Add passes layer
     getLayerManager().addLayerIfNotExists('passes-symbols', passesStyle);
-    
-    console.log('Added peaks and passes symbol layers');
 }
 
 /**
@@ -291,11 +286,7 @@ function setupUIElements() {
         mapCacheContainer.style.display = 'flex';
     }
     
-    // Hide zoom buttons on all mobile devices regardless of standalone mode
-    if (isMobileDevice()) {
-        document.getElementById('zoomInBtn').style.display = 'none';
-        document.getElementById('zoomOutBtn').style.display = 'none';
-    }
+    // No longer hiding zoom buttons here, as they will now only be created on desktop
     
     // Setup iOS install prompt if needed
     if (isIOS()) {

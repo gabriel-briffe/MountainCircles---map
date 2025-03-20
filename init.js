@@ -25,11 +25,9 @@ import { getLayerManager } from "./state.js";
 export async function initializeApp(mapContainerId = 'map') {
     // Try to load saved state from Cache API
     const stateLoaded = await loadStateFromLocalStorage();
-    console.log(`Saved state ${stateLoaded ? 'loaded' : 'not found'}`);
     
     // Store the loaded config value to apply later after map initialization
     const savedConfig = getCurrentConfig();
-    console.log(`Config to be applied: ${savedConfig}`);
     
     // Safety check: Make sure savedConfig is valid
     if (!savedConfig || !savedConfig.includes('/')) {
@@ -68,7 +66,6 @@ export async function initializeApp(mapContainerId = 'map') {
     await initializeMap(mapContainerId, async (mapInstance) => {
         // If we have a saved config, apply it
         if (stateLoaded && savedConfig) {
-            console.log(`Applying saved config: ${savedConfig}`);
             switchConfig(savedConfig);
         } else {
             // Otherwise do the normal initialization
@@ -96,7 +93,6 @@ export async function initializeApp(mapContainerId = 'map') {
             if (stateLoaded) {
                 // Apply linestring layers visibility based on toggle state
                 const linestringsToggleState = getLayersToggleState();
-                console.log(`Applying saved linestring toggle state: ${linestringsToggleState ? 'visible' : 'hidden'}`);
                 
                 // Set visibility of main linestring layers according to toggle state
                 getLayerManager().setVisibility('linestrings-layer', linestringsToggleState);
@@ -116,7 +112,6 @@ export async function initializeApp(mapContainerId = 'map') {
                 
                 // Apply the saved airspace visibility state
                 const airspaceVisible = getAirspaceVisible();
-                console.log(`Applying saved airspace visibility: ${airspaceVisible ? 'visible' : 'hidden'}`);
                 
                 // The toggle in the sidebar might not be created yet, so we directly set layer visibility
                 getLayerManager().setVisibility('airspace-fill', airspaceVisible);
@@ -130,7 +125,6 @@ export async function initializeApp(mapContainerId = 'map') {
             }
             
             // Update the config button styles to show which configs are cached
-            console.log('Updating config button cache indicators on initial load');
             await updateSidebarConfigButtonStyles();
         });
     });

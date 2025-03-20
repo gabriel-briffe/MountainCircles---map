@@ -398,7 +398,6 @@ export async function updateApp() {
         try {
             // Fetch the latest coreFiles.js with cache busting
             const timestamp = new Date().getTime();
-            console.log(`[App Update] Fetching coreFiles.js with timestamp ${timestamp}`);
             const coreFilesModule = await import(`./coreFiles.js?v=${timestamp}`);
             console.log(`[App Update] Successfully imported coreFiles.js module`, coreFilesModule);
             
@@ -409,7 +408,6 @@ export async function updateApp() {
             progressText.textContent = `Found ${filesToUpdate.length} files to update...`;
             
             // Step 2: Send the list of files to update to the service worker
-            console.log(`[App Update] Sending update request to service worker with ${filesToUpdate.length} files`);
             navigator.serviceWorker.controller.postMessage({
                 type: 'updateAppFiles',
                 files: filesToUpdate

@@ -13,17 +13,9 @@
     <script>
         // Automatically determine if we're on GitHub Pages or running locally
         function getBasePath() {
-            // Debug information about the current environment
-            console.log('Debug - Location:', {
-                protocol: window.location.protocol,
-                hostname: window.location.hostname,
-                pathname: window.location.pathname,
-                href: window.location.href
-            });
             
             // Check for GitHub Pages project site
             if (window.location.hostname === 'gabriel-briffe.github.io') {
-                console.log('Debug - Detected GitHub Pages site');
                 // Use the exact case for the repository name that matches the URL
                 return '/MountainCircles---map';
             }
@@ -31,24 +23,18 @@
             // Check for repository name in path as fallback
             const pathname = window.location.pathname;
             const pathSegments = pathname.split('/').filter(segment => segment);
-            
-            console.log('Debug - Path segments:', pathSegments);
-            
+                        
             // If path includes our repository name with correct case
             if (pathSegments.length > 0 && pathSegments[0] === 'MountainCircles---map') {
-                console.log('Debug - Detected repository in path');
                 return '/MountainCircles---map';
             }
             
             // Otherwise, we're running locally
-            console.log('Debug - Using local development path');
             return '.';
         }
         
         // Set the base path early and create a base element dynamically
         window.BASE_PATH = getBasePath();
-        console.log('Debug - Final BASE_PATH:', window.BASE_PATH);
-        console.log('Debug - Writing base element with href:', `${window.BASE_PATH}/`);
         document.write(`<base href="${window.BASE_PATH}/">`);
     </script>
     <link href="styles.css" rel="stylesheet" onerror="console.error('Failed to load styles.css')" onload="console.log('Successfully loaded styles.css')"/>
@@ -95,16 +81,13 @@
             <input id="polygonOpacitySlider" type="range" min="0" max="0.5" step="0.01" value="0.1">
         </div>
         
-        <!-- New Zoom Buttons replacing the text size buttons -->
-        <button title="Zoom In" id="zoomInBtn">
-            <span class="material-icons-round">zoom_in</span>
-        </button>
-        <button title="Zoom Out" id="zoomOutBtn">
-            <span class="material-icons-round">zoom_out</span>
-        </button>
+        <!-- Zoom buttons will be added dynamically only for desktop devices -->
+        
+        <!-- More Options Button -->
         <button title="More Options" id="moreOptionsBtn">
             <span class="material-icons-round">menu</span>
         </button>
+        
     </div>
 
     <!-- Popup Menu: For controls not requiring constant map visibility -->

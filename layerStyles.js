@@ -3,6 +3,8 @@
  * Contains style definitions for all map layers
  */
 
+import { isMobileDevice } from "./utils.js";
+
 /**
  * Polygon layer styles
  */
@@ -198,7 +200,7 @@ export const passesSymbolsLayerStyle = {
  * Location Marker styles
  */
 export const locationMarkerStyle = {
-    id: 'location-marker-circle',
+    id: 'location-marker-triangle',
     type: 'symbol',
     source: 'location-marker',
     layout: {
@@ -207,7 +209,7 @@ export const locationMarkerStyle = {
         'icon-allow-overlap': true,
         'icon-rotation-alignment': 'map',
         'icon-ignore-placement': true,
-        'visibility': 'visible'
+        'visibility': isMobileDevice() ? 'visible' : 'none'
     },
     paint: {
         'icon-opacity': 1

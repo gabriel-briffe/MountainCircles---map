@@ -4,7 +4,7 @@
  * Only created and activated on mobile devices
  */
 
-import { getMap } from "./state.js";
+import { getMap, getNavboxesEnabled, getGeolocationEnabled } from "./state.js";
 import { isMobileDevice } from "./utils.js";
 
 // Module state
@@ -33,18 +33,21 @@ const MS_TO_KMH = 3.6;
 
 /**
  * Initializes the navigation boxes on the map
- * Only creates the navboxes if on a mobile device
+ * Only creates the navboxes if on a mobile device and navboxes are enabled
  */
 export function initNavboxes() {
     // Only initialize on mobile devices
     if (!isMobileDevice()) {
-        console.log('Navboxes not initialized - not a mobile device');
+        return;
+    }
+    
+    // Check if both geolocation and navboxes are enabled
+    if (!getGeolocationEnabled() || !getNavboxesEnabled()) {
         return;
     }
     
     // Prevent multiple initializations
     if (initialized) {
-        console.log('Navboxes already initialized');
         return;
     }
     
@@ -56,9 +59,7 @@ export function initNavboxes() {
     navboxContainer.id = 'navbox-container';
     navboxContainer.className = 'navbox-container';
     document.body.appendChild(navboxContainer);
-    
-    console.log('Created navbox container');
-    
+        
     // Create individual navboxes
     createAltitudeBox();
     createSpeedBox();
@@ -93,8 +94,6 @@ function createAltitudeBox() {
     
     // Add box to container
     navboxContainer.appendChild(altitudeBox);
-    
-    console.log('Created altitude navbox');
 }
 
 /**
@@ -111,8 +110,6 @@ function toggleAltitudeUnits() {
     setTimeout(() => {
         altitudeBox.classList.remove('unit-change');
     }, 300);
-    
-    console.log(`Altitude units switched to ${altitudeInMeters ? 'meters' : 'feet'}`);
 }
 
 /**
@@ -173,8 +170,6 @@ function createSpeedBox() {
     
     // Add box to container
     navboxContainer.appendChild(speedBox);
-    
-    console.log('Created speed navbox');
 }
 
 /**
@@ -203,12 +198,12 @@ export function updateSpeed(speed) {
 
 /**
  * Updates navboxes with position data
- * Only processes updates on mobile devices
+ * Only processes updates on mobile devices with navboxes enabled
  * @param {Object} position - The geolocation position object
  */
 export function updateNavboxesWithPosition(position) {
-    // Skip if not initialized or not on mobile
-    if (!initialized || !isMobileDevice() || !position || !position.coords) return;
+    // Skip if not initialized or not on mobile or if navboxes are disabled
+    if (!initialized || !isMobileDevice() || !position || !position.coords || !getNavboxesEnabled()) return;
     
     // Update altitude if available
     if (position.coords.altitude !== null) {
@@ -222,30 +217,55 @@ export function updateNavboxesWithPosition(position) {
 }
 
 /**
- * Clears all navboxes and resets their values
+ * Check if navboxes should be shown and initialize or destroy them
+ * This is called when navboxes or geolocation state changes
  */
-export function clearNavboxes() {
-    // Skip if not initialized or not on mobile
-    if (!initialized || !isMobileDevice()) return;
+export function updateNavboxesState() {
+    const navboxesEnabled = getNavboxesEnabled();
+    const geolocationEnabled = getGeolocationEnabled();
     
+    // Both must be enabled for navboxes to be shown
+    if (navboxesEnabled && geolocationEnabled) {
+        // Initialize if not already done
+        if (!initialized) {
+            initNavboxes();
+        } else {
+            // Show if already initialized
+            setNavboxesVisible(true);
+        }
+    } else {
+        // If either is disabled, destroy/hide navboxes
+        if (initialized) {
+            setNavboxesVisible(false);
+            
+            // If completely removing navboxes when disabled:
+            // destroyNavboxes();
+        }
+    }
+}
+
+/**
+ * Destroys the navboxes completely (optional)
+ */
+export function destroyNavboxes() {
+    if (!initialized) return;
+    
+    // Remove from DOM
+    if (navboxContainer && navboxContainer.parentNode) {
+        navboxContainer.parentNode.removeChild(navboxContainer);
+    }
+    
+    // Remove class from body
+    document.body.classList.remove('navboxes-enabled');
+    
+    // Reset variables
+    navboxContainer = null;
+    altitudeBox = null;
+    speedBox = null;
     currentAltitude = null;
     currentSpeed = null;
+    initialized = false;
     
-    // Reset altitude display
-    if (altitudeBox) {
-        const valueElement = altitudeBox.querySelector('.navbox-value');
-        if (valueElement) {
-            valueElement.textContent = altitudeInMeters ? '---m' : '---ft';
-        }
-    }
-    
-    // Reset speed display
-    if (speedBox) {
-        const valueElement = speedBox.querySelector('.navbox-value');
-        if (valueElement) {
-            valueElement.textContent = '---km/h';
-        }
-    }
 }
 
 /**
@@ -274,6 +294,33 @@ export function toggleNavboxes() {
     const newState = !navboxesVisible;
     setNavboxesVisible(newState);
     return newState;
+}
+
+/**
+ * Clears all navboxes and resets their values
+ */
+export function clearNavboxes() {
+    // Skip if not initialized or not on mobile
+    if (!initialized || !isMobileDevice()) return;
+    
+    currentAltitude = null;
+    currentSpeed = null;
+    
+    // Reset altitude display
+    if (altitudeBox) {
+        const valueElement = altitudeBox.querySelector('.navbox-value');
+        if (valueElement) {
+            valueElement.textContent = altitudeInMeters ? '---m' : '---ft';
+        }
+    }
+    
+    // Reset speed display
+    if (speedBox) {
+        const valueElement = speedBox.querySelector('.navbox-value');
+        if (valueElement) {
+            valueElement.textContent = '---km/h';
+        }
+    }
 }
 
 // Make toggleNavboxes available globally for console access
