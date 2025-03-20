@@ -19,8 +19,10 @@ const PERSISTED_STATE_KEYS = [
     'navboxesEnabled'          // Add navboxes state to persisted keys
 ];
 
-// Position staleness threshold in milliseconds (5 seconds)
-export const POSITION_STALENESS_THRESHOLD = 5000;
+// Threshold for position staleness in milliseconds
+// After this time without a new position, we'll show warning/error
+export const POSITION_WARNING_THRESHOLD = 5000; // 5 seconds for warning (orange)
+export const POSITION_ERROR_THRESHOLD = 10000; // 10 seconds for error (red)
 
 // Possible geolocation error states
 export const GEOLOCATION_STATE = {
@@ -476,9 +478,9 @@ export function checkPositionStaleness() {
     
     // Only update if we're not already in ERROR state (which is manual)
     if (_state.geolocationErrorState !== GEOLOCATION_STATE.ERROR) {
-        if (elapsed > POSITION_STALENESS_THRESHOLD) {
+        if (elapsed > POSITION_ERROR_THRESHOLD) {
             _state.geolocationErrorState = GEOLOCATION_STATE.ERROR;
-        } else if (elapsed > 0) {
+        } else if (elapsed > POSITION_WARNING_THRESHOLD) {
             _state.geolocationErrorState = GEOLOCATION_STATE.WARNING;
         } else {
             _state.geolocationErrorState = GEOLOCATION_STATE.OK;
