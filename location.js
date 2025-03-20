@@ -3,8 +3,9 @@
  * Handles user location tracking, heading calculation, and position history
  */
 
-import { getLayerManager, getMap, getGeolocationEnabled, setGeolocationEnabled, getNavboxesEnabled, setNavboxesEnabled } from "./state.js";
-import { initNavboxes, updateNavboxesWithPosition, updateNavboxesState } from "./navboxManager.js";
+import { getLayerManager, getMap, getGeolocationEnabled, setGeolocationEnabled, getNavboxesEnabled, setNavboxesEnabled, 
+    setLastSuccessfulPositionTime, setGeolocationErrorState, GEOLOCATION_STATE, setLastPositionError, checkPositionStaleness, getLastSuccessfulPositionTime } from "./state.js";
+import { initNavboxes, updateNavboxesWithPosition, updateNavboxesState, updateNavboxesByErrorState } from "./navboxManager.js";
 import { isMobileDevice } from "./utils.js";
 
 
@@ -14,6 +15,9 @@ const MAX_HISTORY_LENGTH = 2; // Store only the last 2 positions
 
 // Last calculated heading (degrees, 0-360, 0 = north)
 let currentHeading = 0;
+
+// Position check interval ID
+let positionCheckIntervalId = null;
 
 /**
  * Debug function to manually set the heading
@@ -122,6 +126,16 @@ export function updateLocation(position) {
         return;
     }
     
+    // Update the last successful position time
+    setLastSuccessfulPositionTime(Date.now());
+    
+    // Reset error state since we got a successful position
+    setGeolocationErrorState(GEOLOCATION_STATE.OK);
+    setLastPositionError(null);
+    
+    // Update the navboxes appearance based on the error state
+    updateNavboxesByErrorState(GEOLOCATION_STATE.OK);
+    
     const coords = [position.coords.longitude, position.coords.latitude];
     
     // Update position history
@@ -138,6 +152,7 @@ export function updateLocation(position) {
         const currentPosition = positionHistory[positionHistory.length - 1];
         
         currentHeading = calculateHeading(prevPosition, currentPosition);
+        console.log(`Heading: ${currentHeading.toFixed(2)}°`);
     }
     
     // Update the marker rotation
@@ -284,16 +299,94 @@ export function initLocationTracker() {
 }
 
 /**
+ * Handles geolocation errors and updates UI accordingly
+ * @param {PositionError} error - The position error object
+ */
+export function handleGeolocationError(error) {
+    console.error('Error getting location:', error);
+    
+    // Save the error
+    setLastPositionError(error);
+    
+    // Handle specific geolocation errors
+    switch(error.code) {
+        case error.PERMISSION_DENIED:
+            // Permission denied is a critical error - disable location features
+            setGeolocationErrorState(GEOLOCATION_STATE.ERROR);
+            
+            // Show alert only if this is a new permission denial, not a recurring check
+            if (getGeolocationEnabled()) {
+                alert('Geolocation permission denied. Please enable location access in your browser/device settings.');
+            }
+            
+            // Reset toggle state to off
+            setGeolocationEnabled(false);
+            
+            // Also turn off navboxes when geolocation is denied
+            if (getNavboxesEnabled()) {
+                setNavboxesEnabled(false);
+            }
+            
+            // Update location toggle appearance
+            const locationToggle = document.getElementById('location-toggle');
+            if (locationToggle) {
+                locationToggle.className = 'toggle-switch';
+                locationToggle.setAttribute('aria-checked', 'false');
+            }
+            
+            // Also update navboxes toggle appearance
+            const navboxesToggle = document.getElementById('navboxes-toggle');
+            if (navboxesToggle) {
+                navboxesToggle.className = 'toggle-switch';
+                navboxesToggle.setAttribute('aria-checked', 'false');
+                navboxesToggle.disabled = true;
+                navboxesToggle.style.opacity = '0.5';
+                navboxesToggle.style.cursor = 'not-allowed';
+            }
+            
+            // Update navboxes state to hide them
+            updateNavboxesState();
+            
+            // Update navboxes appearance - they should show error state
+            updateNavboxesByErrorState(GEOLOCATION_STATE.ERROR);
+            
+            // Clear the position check interval since location is disabled
+            clearPositionCheckInterval();
+            break;
+        
+        case error.POSITION_UNAVAILABLE:
+        case error.TIMEOUT:
+        default:
+            // For other errors, we need to check when the last good position was
+            const lastTime = getLastSuccessfulPositionTime();
+            
+            // Set error state based on whether we've ever had a good position
+            if (!lastTime) {
+                // If we've never had a good position, this is a critical error
+                setGeolocationErrorState(GEOLOCATION_STATE.ERROR);
+                updateNavboxesByErrorState(GEOLOCATION_STATE.ERROR);
+            } else {
+                // Let the position staleness checker determine the state
+                const errorState = checkPositionStaleness();
+                updateNavboxesByErrorState(errorState);
+            }
+            break;
+    }
+}
+
+/**
  * Sets up geolocation tracking if available
  */
 export function setupGeolocation() {
     // Only set up geolocation on mobile devices
     if (!isMobileDevice()) {
+        console.log('Geolocation not set up - not a mobile device');
         return;
     }
     
     // Check if geolocation is enabled in state
     if (!getGeolocationEnabled()) {
+        console.log('Geolocation is disabled in settings');
         return;
     }
     
@@ -314,61 +407,12 @@ export function setupGeolocation() {
         
         navigator.geolocation.watchPosition(
             updateLocation,
-            (error) => {
-                console.error('Error getting location:', error);
-                
-                // Handle specific geolocation errors
-                switch(error.code) {
-                    case error.PERMISSION_DENIED:
-                        // Show alert and reset the toggle - keep ONLY this alert
-                        
-                        // Reset toggle state to off
-                        setGeolocationEnabled(false);
-                        
-                        // Also turn off navboxes when geolocation is denied
-                        if (getNavboxesEnabled()) {
-                            setNavboxesEnabled(false);
-                        }
-                        
-                        // Update location toggle appearance
-                        const locationToggle = document.getElementById('location-toggle');
-                        if (locationToggle) {
-                            locationToggle.className = 'toggle-switch';
-                            locationToggle.setAttribute('aria-checked', 'false');
-                        }
-                        
-                        // Also update navboxes toggle appearance
-                        const navboxesToggle = document.getElementById('navboxes-toggle');
-                        if (navboxesToggle) {
-                            navboxesToggle.className = 'toggle-switch';
-                            navboxesToggle.setAttribute('aria-checked', 'false');
-                            navboxesToggle.disabled = true;
-                            navboxesToggle.style.opacity = '0.5';
-                            navboxesToggle.style.cursor = 'not-allowed';
-                        }
-                        
-                        // Update navboxes state to hide them
-                        updateNavboxesState();
-                        break;
-                    
-                    case error.POSITION_UNAVAILABLE:
-                        // Remove alert
-                        console.warn('Location information is unavailable.');
-                        break;
-                        
-                    case error.TIMEOUT:
-                        // Remove alert
-                        console.warn('The request to get user location timed out.');
-                        break;
-                        
-                    default:
-                        // Remove alert
-                        console.warn('An unknown error occurred while retrieving location.');
-                        break;
-                }
-            },
+            handleGeolocationError,
             options
         );
+        
+        // Set up position staleness checking interval
+        setupPositionCheckInterval();
     } else {
         console.warn('Geolocation is not supported by this browser.');
         // Remove alert
@@ -401,4 +445,54 @@ export function setupGeolocation() {
         // Update navboxes state
         updateNavboxesState();
     }
+}
+
+/**
+ * Sets up an interval to periodically check position staleness
+ */
+function setupPositionCheckInterval() {
+    // Clear any existing interval first
+    clearPositionCheckInterval();
+    
+    // Check position staleness every second
+    positionCheckIntervalId = setInterval(() => {
+        if (getGeolocationEnabled()) {
+            const errorState = checkPositionStaleness();
+            updateNavboxesByErrorState(errorState);
+        }
+    }, 1000);
+}
+
+/**
+ * Clears the position check interval
+ */
+function clearPositionCheckInterval() {
+    if (positionCheckIntervalId !== null) {
+        clearInterval(positionCheckIntervalId);
+        positionCheckIntervalId = null;
+    }
+}
+
+/**
+ * Stop geolocation tracking and clean up
+ */
+export function stopGeolocation() {
+    // Clear the position check interval
+    clearPositionCheckInterval();
+    
+    // Reset states
+    setGeolocationErrorState(GEOLOCATION_STATE.OK);
+    setLastSuccessfulPositionTime(null);
+    setLastPositionError(null);
+    
+    // There's no direct way to stop watchPosition, but we can
+    // prevent its effects by setting geolocationEnabled to false
+    setGeolocationEnabled(false);
+    
+    // Hide the location marker
+    if (getLayerManager() && getLayerManager().hasLayer('location-marker-triangle')) {
+        getLayerManager().setVisibility('location-marker-triangle', false);
+    }
+    
+    console.log('Geolocation tracking stopped');
 } 

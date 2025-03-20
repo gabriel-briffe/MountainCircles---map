@@ -199,6 +199,18 @@ h3 {
     color: inherit;
 }
 
+/* Warning state - orange border for stale data < 5 seconds */
+.navboxes-enabled .navboxes-warning .navbox,
+.navboxes-enabled .navbox.navbox-warning {
+    border: 2px solid #FF8C00; /* Orange border */
+}
+
+/* Error state - red border for stale data > 5 seconds or permission denied */
+.navboxes-enabled .navboxes-error .navbox,
+.navboxes-enabled .navbox.navbox-error {
+    border: 2px solid #FF0000; /* Red border */
+}
+
 /* Dark mode support for navboxes */
 @media (prefers-color-scheme: dark) {
     .navboxes-enabled .navbox {
@@ -209,6 +221,18 @@ h3 {
     
     .navboxes-enabled .navbox-value {
         color: var(--text-dark);
+    }
+    
+    /* Warning state in dark mode */
+    .navboxes-enabled .navboxes-warning .navbox,
+    .navboxes-enabled .navbox.navbox-warning {
+        border: 2px solid #FFA500; /* Brighter orange for dark mode */
+    }
+    
+    /* Error state in dark mode */
+    .navboxes-enabled .navboxes-error .navbox,
+    .navboxes-enabled .navbox.navbox-error {
+        border: 2px solid #FF6347; /* Tomato red for dark mode */
     }
 }
 

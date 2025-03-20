@@ -4,7 +4,7 @@
  * Only created and activated on mobile devices
  */
 
-import { getMap, getNavboxesEnabled, getGeolocationEnabled } from "./state.js";
+import { getMap, getNavboxesEnabled, getGeolocationEnabled, GEOLOCATION_STATE } from "./state.js";
 import { isMobileDevice } from "./utils.js";
 
 // Module state
@@ -321,6 +321,82 @@ export function clearNavboxes() {
             valueElement.textContent = '---km/h';
         }
     }
+}
+
+/**
+ * Updates the navboxes appearance based on geolocation error state
+ * @param {string} errorState - One of the GEOLOCATION_STATE values
+ */
+export function updateNavboxesByErrorState(errorState) {
+    // Skip if not initialized or not on mobile
+    if (!initialized || !isMobileDevice() || !navboxContainer) return;
+    
+    // Make sure navboxes are visible if they should be
+    if (getNavboxesEnabled() && getGeolocationEnabled()) {
+        setNavboxesVisible(true);
+    } else {
+        setNavboxesVisible(false);
+        return;
+    }
+    
+    // Remove any existing state classes
+    navboxContainer.classList.remove('navboxes-warning', 'navboxes-error');
+    
+    if (altitudeBox) {
+        altitudeBox.classList.remove('navbox-warning', 'navbox-error');
+    }
+    
+    if (speedBox) {
+        speedBox.classList.remove('navbox-warning', 'navbox-error');
+    }
+    
+    // Add appropriate state class based on error state
+    switch (errorState) {
+        case GEOLOCATION_STATE.WARNING:
+            navboxContainer.classList.add('navboxes-warning');
+            if (altitudeBox) altitudeBox.classList.add('navbox-warning');
+            if (speedBox) speedBox.classList.add('navbox-warning');
+            break;
+            
+        case GEOLOCATION_STATE.ERROR:
+            navboxContainer.classList.add('navboxes-error');
+            if (altitudeBox) altitudeBox.classList.add('navbox-error');
+            if (speedBox) speedBox.classList.add('navbox-error');
+            
+            // In error state, we should also reset the displayed values
+            resetNavboxValues();
+            break;
+            
+        case GEOLOCATION_STATE.OK:
+        default:
+            // Normal state, no additional classes needed
+            break;
+    }
+}
+
+/**
+ * Resets navbox values to placeholders
+ */
+function resetNavboxValues() {
+    // Reset altitude display
+    if (altitudeBox) {
+        const valueElement = altitudeBox.querySelector('.navbox-value');
+        if (valueElement) {
+            valueElement.textContent = altitudeInMeters ? '---m' : '---ft';
+        }
+    }
+    
+    // Reset speed display
+    if (speedBox) {
+        const valueElement = speedBox.querySelector('.navbox-value');
+        if (valueElement) {
+            valueElement.textContent = '---km/h';
+        }
+    }
+    
+    // Also reset current values
+    currentAltitude = null;
+    currentSpeed = null;
 }
 
 // Make toggleNavboxes available globally for console access

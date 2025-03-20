@@ -65,7 +65,8 @@ import {
 
 // Import from location module
 import {
-    setupGeolocation
+    setupGeolocation,
+    stopGeolocation
 } from "./location.js";
 
 // Import from navboxManager module
@@ -751,6 +752,7 @@ export function toggleSidebar() {
 export function addGeolocationToggle(sidebar) {
     // Only add this toggle on mobile devices
     if (!isMobileDevice()) {
+        console.log('Geolocation toggle not added - not a mobile device');
         return;
     }
     
@@ -828,6 +830,9 @@ export function addGeolocationToggle(sidebar) {
             // Disabling is always allowed
             handleToggle(false);
             
+            // Use the new stopGeolocation function to clean up
+            stopGeolocation();
+            
             // Disable navboxes when geolocation is disabled
             if (getNavboxesEnabled()) {
                 setNavboxesEnabled(false);
@@ -842,7 +847,13 @@ export function addGeolocationToggle(sidebar) {
         setGeolocationEnabled(newState);
         toggleSwitch.className = `toggle-switch ${newState ? 'active' : ''}`;
         toggleSwitch.setAttribute('aria-checked', newState.toString());
-        toggleGeolocationVisibility(newState);
+        
+        if (newState) {
+            toggleGeolocationVisibility(true);
+        } else {
+            // Use stopGeolocation function
+            stopGeolocation();
+        }
         
         // Setup permission listener if enabling
         if (newState && 'permissions' in navigator) {
@@ -911,6 +922,7 @@ function setupPermissionChangeListener(permissionStatus) {
 export function addNavboxesToggle(sidebar) {
     // Only add this toggle on mobile devices
     if (!isMobileDevice()) {
+        console.log('Navboxes toggle not added - not a mobile device');
         return;
     }
     
@@ -975,6 +987,13 @@ export function addNavboxesToggle(sidebar) {
         
         // Update navboxes visibility
         updateNavboxesState();
+        
+        // If turning off navboxes, refresh the geolocation
+        if (!newState) {
+            // Restart geolocation to clean up navboxes
+            stopGeolocation();
+            setupGeolocation();
+        }
     });
 }
 

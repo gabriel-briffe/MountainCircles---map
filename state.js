@@ -15,9 +15,19 @@ const PERSISTED_STATE_KEYS = [
     'currentPolicy',
     'currentConfig',
     'airspaceVisible',
-    'geolocationEnabled',  // Add geolocation state to persisted keys
-    'navboxesEnabled'      // Add navboxes state to persisted keys
+    'geolocationEnabled',      // Add geolocation state to persisted keys
+    'navboxesEnabled'          // Add navboxes state to persisted keys
 ];
+
+// Position staleness threshold in milliseconds (5 seconds)
+export const POSITION_STALENESS_THRESHOLD = 5000;
+
+// Possible geolocation error states
+export const GEOLOCATION_STATE = {
+    OK: 'ok',               // Working normally
+    WARNING: 'warning',     // Stale position < threshold
+    ERROR: 'error'          // Stale position > threshold or permission denied
+};
 
 // Private state object
 const _state = {
@@ -77,6 +87,11 @@ const _state = {
     
     // Navboxes enabled/disabled
     navboxesEnabled: false,  // Default to disabled, depends on geolocation
+    
+    // Geolocation quality tracking
+    lastSuccessfulPositionTime: null,
+    geolocationErrorState: GEOLOCATION_STATE.OK,
+    lastPositionError: null
 };
 
 // State getters
@@ -390,4 +405,85 @@ export function setNavboxesEnabled(enabled) {
     _state.navboxesEnabled = enabled;
     // Save to Cache API whenever we update this
     saveStateToLocalStorage().catch(err => console.error('Error saving navboxes state:', err));
+}
+
+/**
+ * Gets the timestamp of the last successful position update
+ * @returns {number|null} Timestamp in milliseconds or null if no position received yet
+ */
+export function getLastSuccessfulPositionTime() {
+    return _state.lastSuccessfulPositionTime;
+}
+
+/**
+ * Sets the timestamp of the last successful position update
+ * @param {number} timestamp - Timestamp in milliseconds
+ */
+export function setLastSuccessfulPositionTime(timestamp) {
+    _state.lastSuccessfulPositionTime = timestamp;
+}
+
+/**
+ * Gets the current geolocation error state
+ * @returns {string} One of the GEOLOCATION_STATE values
+ */
+export function getGeolocationErrorState() {
+    return _state.geolocationErrorState;
+}
+
+/**
+ * Sets the current geolocation error state
+ * @param {string} state - One of the GEOLOCATION_STATE values
+ */
+export function setGeolocationErrorState(state) {
+    _state.geolocationErrorState = state;
+}
+
+/**
+ * Gets the last position error
+ * @returns {PositionError|null} The last position error or null
+ */
+export function getLastPositionError() {
+    return _state.lastPositionError;
+}
+
+/**
+ * Sets the last position error
+ * @param {PositionError} error - The position error object
+ */
+export function setLastPositionError(error) {
+    _state.lastPositionError = error;
+}
+
+/**
+ * Checks the staleness of the last position and updates the error state
+ * Should be called periodically to update the UI based on position age
+ */
+export function checkPositionStaleness() {
+    const lastTime = getLastSuccessfulPositionTime();
+    
+    // If we've never received a position, return ERROR state
+    if (!lastTime) {
+        // Set the error state if it's not already set
+        if (_state.geolocationErrorState !== GEOLOCATION_STATE.ERROR) {
+            _state.geolocationErrorState = GEOLOCATION_STATE.ERROR;
+        }
+        return GEOLOCATION_STATE.ERROR;
+    }
+    
+    const now = Date.now();
+    const elapsed = now - lastTime;
+    
+    // Only update if we're not already in ERROR state (which is manual)
+    if (_state.geolocationErrorState !== GEOLOCATION_STATE.ERROR) {
+        if (elapsed > POSITION_STALENESS_THRESHOLD) {
+            _state.geolocationErrorState = GEOLOCATION_STATE.ERROR;
+        } else if (elapsed > 0) {
+            _state.geolocationErrorState = GEOLOCATION_STATE.WARNING;
+        } else {
+            _state.geolocationErrorState = GEOLOCATION_STATE.OK;
+        }
+    }
+    
+    return _state.geolocationErrorState;
 } 
