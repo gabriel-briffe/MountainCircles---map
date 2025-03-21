@@ -248,11 +248,10 @@ export function updateHeading(heading) {
 
 /**
  * Updates navboxes with position data
- * Only processes updates on mobile devices with navboxes enabled
+ * Called whenever a new geolocation position is available
  * @param {Object} position - The geolocation position object
  */
 export function updateNavboxesWithPosition(position) {
-    // Skip if not initialized or not on mobile or if navboxes are disabled
     if (!initialized || !isMobileDevice() || !position || !position.coords || !getNavboxesEnabled()) return;
     
     // Update altitude if available
@@ -265,10 +264,9 @@ export function updateNavboxesWithPosition(position) {
         updateSpeed(position.coords.speed);
     }
     
-    // Update heading if available
-    if (position.coords.heading !== null) {
-        updateHeading(position.coords.heading);
-    }
+    // Note: Heading is intentionally NOT updated here
+    // Heading updates are handled separately in location.js to ensure
+    // the navbox shows the same value as the marker direction
 }
 
 /**

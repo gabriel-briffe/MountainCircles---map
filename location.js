@@ -38,7 +38,8 @@ export function heading(degrees) {
     // Update heading in state
     setCurrentHeading(normalizedHeading);
     
-    // Update the marker with the new heading
+    // Update the marker rotation
+    // This also updates the heading navbox
     updateMarkerRotation(normalizedHeading);
     
     return normalizedHeading;
@@ -156,6 +157,9 @@ function updateMarkerRotation(heading) {
         // Add new rotated image
         map.addImage('location-icon-rotated', imageData, { pixelRatio: 1 });
     });
+    
+    // Always update the heading navbox to ensure synchronized values
+    updateHeading(heading);
 }
 
 /**
@@ -205,10 +209,8 @@ export function updateLocation(position) {
         console.log(`Heading: ${newHeading.toFixed(2)}°`);
         
         // Update the marker rotation with throttling
+        // This will also update the heading navbox
         throttledUpdateMarkerRotation(newHeading);
-        
-        // Update the heading navbox
-        updateHeading(newHeading);
     }
     
     // Always update the position
