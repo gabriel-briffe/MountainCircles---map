@@ -4,17 +4,14 @@
  */
 
 import { getLayerManager, getMap, getGeolocationEnabled, setGeolocationEnabled, getNavboxesEnabled, setNavboxesEnabled, 
-    setLastSuccessfulPositionTime, setGeolocationErrorState, GEOLOCATION_STATE, setLastPositionError, checkPositionStaleness, getLastSuccessfulPositionTime } from "./state.js";
-import { initNavboxes, updateNavboxesWithPosition, updateNavboxesState, updateNavboxesByErrorState } from "./navboxManager.js";
+    setLastSuccessfulPositionTime, setGeolocationErrorState, GEOLOCATION_STATE, setLastPositionError, checkPositionStaleness, 
+    getLastSuccessfulPositionTime, getLastPosition, setLastPosition, getCurrentHeading, setCurrentHeading } from "./state.js";
+import { initNavboxes, updateNavboxesWithPosition, updateNavboxesState, updateNavboxesByErrorState, updateHeading } from "./navboxManager.js";
 import { isMobileDevice } from "./utils.js";
 
-
-// Track previous positions to calculate heading
-const positionHistory = [];
-const MAX_HISTORY_LENGTH = 2; // Store only the last 2 positions
-
-// Last calculated heading (degrees, 0-360, 0 = north)
-let currentHeading = 0;
+// Throttle for rotation updates
+let lastRotationUpdateTime = 0;
+const ROTATION_UPDATE_THROTTLE_MS = 250; // Limit updates to 4 per second
 
 // Position check interval ID
 let positionCheckIntervalId = null;
@@ -35,56 +32,53 @@ export function heading(degrees) {
     }
     
     // Normalize to 0-360
-    currentHeading = (newHeading + 360) % 360;
-    console.log(`Heading manually set to: ${currentHeading.toFixed(2)}°`);
+    const normalizedHeading = (newHeading + 360) % 360;
+    console.log(`Heading manually set to: ${normalizedHeading.toFixed(2)}°`);
+    
+    // Update heading in state
+    setCurrentHeading(normalizedHeading);
     
     // Update the marker with the new heading
-    const map = getMap();
-    if (map) {
-        // First, create new rotated icon
-        const imageData = createRotatedLocationIcon(currentHeading);
-        
-        // Remove and re-add the image to force a refresh
-        if (map.hasImage('location-icon-rotated')) {
-            map.removeImage('location-icon-rotated');
-        }
-        map.addImage('location-icon-rotated', imageData, { pixelRatio: 1 });
-        
-        // Update the source to trigger a redraw
-        if (getLayerManager().hasSource('location-marker')) {
-            // Get the current coordinates if they exist
-            let coords = [0, 0];
-            try {
-                const source = map.getSource('location-marker');
-                if (source && source._data && source._data.geometry) {
-                    coords = source._data.geometry.coordinates;
-                }
-            } catch (e) {
-                console.warn('Could not get existing coordinates:', e);
-            }
-            
-            // Update the source with the same coordinates but new heading
-            getLayerManager().addOrUpdateSource('location-marker', {
-                type: 'geojson',
-                data: {
-                    type: 'Feature',
-                    geometry: {
-                        type: 'Point',
-                        coordinates: coords
-                    },
-                    properties: {
-                        heading: currentHeading
-                    }
-                }
-            });
-        }
-    }
+    updateMarkerRotation(normalizedHeading);
     
-    return currentHeading;
+    return normalizedHeading;
 }
 
 // Make the function available globally for console access
 window.heading = heading;
+
+/**
+ * Calculates the distance between two points in meters
+ * Currently not used, but kept for future use when minimum distance checks are re-enabled
+ * @param {Array} start - Start coordinates [longitude, latitude]
+ * @param {Array} end - End coordinates [longitude, latitude]
+ * @returns {number} Distance in meters
+ */
+export function calculateDistance(start, end) {
+    if (!start || !end || start.length < 2 || end.length < 2) {
+        return 0;
+    }
+    
+    // Convert to radians
+    const startLat = start[1] * Math.PI / 180;
+    const startLng = start[0] * Math.PI / 180;
+    const endLat = end[1] * Math.PI / 180;
+    const endLng = end[0] * Math.PI / 180;
+    
+    // Haversine formula
+    const dLat = endLat - startLat;
+    const dLng = endLng - startLng;
+    const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+              Math.cos(startLat) * Math.cos(endLat) * 
+              Math.sin(dLng/2) * Math.sin(dLng/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    
+    // Earth radius in meters
+    const R = 6371000;
+    
+    // Distance in meters
+    return R * c;
+}
 
 /**
  * Calculates the heading between two points in degrees
@@ -117,6 +111,67 @@ export function calculateHeading(start, end) {
 }
 
 /**
+ * Updates the marker position on the map
+ * @param {Array} coords - The coordinates [longitude, latitude]
+ */
+function updateMarkerPosition(coords) {
+    if (!getLayerManager().hasSource('location-marker')) {
+        console.warn('Location marker source not found');
+        return;
+    }
+    
+    // Update the marker with current position and rotation
+    getLayerManager().addOrUpdateSource('location-marker', {
+        type: 'geojson',
+        data: {
+            type: 'Feature',
+            geometry: {
+                type: 'Point',
+                coordinates: coords
+            },
+            properties: {
+                heading: getCurrentHeading() // Use heading from state
+            }
+        }
+    });
+}
+
+/**
+ * Updates the marker rotation based on heading
+ * @param {number} heading - The heading in degrees
+ */
+function updateMarkerRotation(heading) {
+    const map = getMap();
+    if (!map) return;
+    
+    // Create rotated icon
+    const imageData = createRotatedLocationIcon(heading);
+    
+    // Use requestAnimationFrame for smoother updates
+    requestAnimationFrame(() => {
+        // Remove old image
+        if (map.hasImage('location-icon-rotated')) {
+            map.removeImage('location-icon-rotated');
+        }
+        // Add new rotated image
+        map.addImage('location-icon-rotated', imageData, { pixelRatio: 1 });
+    });
+}
+
+/**
+ * Throttled function to update marker rotation
+ * Prevents too frequent updates that could cause performance issues
+ * @param {number} heading - The heading in degrees
+ */
+function throttledUpdateMarkerRotation(heading) {
+    const now = Date.now();
+    if (now - lastRotationUpdateTime > ROTATION_UPDATE_THROTTLE_MS) {
+        updateMarkerRotation(heading);
+        lastRotationUpdateTime = now;
+    }
+}
+
+/**
  * Updates the user's location on the map and calculates heading
  * @param {Object} position - Geolocation position object
  */
@@ -136,52 +191,31 @@ export function updateLocation(position) {
     // Update the navboxes appearance based on the error state
     updateNavboxesByErrorState(GEOLOCATION_STATE.OK);
     
-    const coords = [position.coords.longitude, position.coords.latitude];
+    // Get the new position coordinates
+    const newCoords = [position.coords.longitude, position.coords.latitude];
     
-    // Update position history
-    positionHistory.push(coords);
+    // Get the last position from state
+    const lastCoords = getLastPosition();
     
-    // Keep only the last MAX_HISTORY_LENGTH positions
-    if (positionHistory.length > MAX_HISTORY_LENGTH) {
-        positionHistory.shift();
-    }
-    
-    // Calculate heading if we have enough history points
-    if (positionHistory.length >= 2) {
-        const prevPosition = positionHistory[positionHistory.length - 2];
-        const currentPosition = positionHistory[positionHistory.length - 1];
+    // Calculate heading if we have a previous position
+    if (lastCoords) {
+        // Calculate new heading without checking distance
+        const newHeading = calculateHeading(lastCoords, newCoords);
+        setCurrentHeading(newHeading);
+        console.log(`Heading: ${newHeading.toFixed(2)}°`);
         
-        currentHeading = calculateHeading(prevPosition, currentPosition);
-        console.log(`Heading: ${currentHeading.toFixed(2)}°`);
-    }
-    
-    // Update the marker rotation
-    const map = getMap();
-    if (map) {
-        // First, create new rotated icon
-        const imageData = createRotatedLocationIcon(currentHeading);
+        // Update the marker rotation with throttling
+        throttledUpdateMarkerRotation(newHeading);
         
-        // Remove and re-add the image to force a refresh
-        if (map.hasImage('location-icon-rotated')) {
-            map.removeImage('location-icon-rotated');
-        }
-        map.addImage('location-icon-rotated', imageData, { pixelRatio: 1 });
+        // Update the heading navbox
+        updateHeading(newHeading);
     }
     
-    // Update the marker with current position and rotation
-    getLayerManager().addOrUpdateSource('location-marker', {
-        type: 'geojson',
-        data: {
-            type: 'Feature',
-            geometry: {
-                type: 'Point',
-                coordinates: coords
-            },
-            properties: {
-                heading: currentHeading
-            }
-        }
-    });
+    // Always update the position
+    updateMarkerPosition(newCoords);
+    
+    // Save the new position as the last position
+    setLastPosition(newCoords);
     
     // Update navboxes with position data
     updateNavboxesWithPosition(position);
@@ -268,8 +302,8 @@ export function initLocationTracker() {
                 map.removeImage('location-icon-rotated');
             }
             
-            // Create a fresh icon
-            const imageData = createRotatedLocationIcon(0);
+            // Create a fresh icon with the heading from state
+            const imageData = createRotatedLocationIcon(getCurrentHeading());
             
             // Add the icon
             map.addImage('location-icon-rotated', imageData, { pixelRatio: 1 });
@@ -285,7 +319,7 @@ export function initLocationTracker() {
                             coordinates: [0, 0]
                         },
                         properties: {
-                            heading: 0
+                            heading: getCurrentHeading()
                         }
                     }
                 });
@@ -484,6 +518,13 @@ export function stopGeolocation() {
     setGeolocationErrorState(GEOLOCATION_STATE.OK);
     setLastSuccessfulPositionTime(null);
     setLastPositionError(null);
+    
+    // Reset position and heading
+    setLastPosition(null);
+    setCurrentHeading(0);
+    
+    // Reset the throttle time
+    lastRotationUpdateTime = 0;
     
     // There's no direct way to stop watchPosition, but we can
     // prevent its effects by setting geolocationEnabled to false

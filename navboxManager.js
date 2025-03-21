@@ -16,10 +16,12 @@ let navboxContainer = null;
 // Individual navbox elements
 let altitudeBox = null;
 let speedBox = null;
+let headingBox = null;
 
 // Current values
 let currentAltitude = null;
 let currentSpeed = null;
+let currentHeading = null;
 
 // Visibility state
 let navboxesVisible = true;
@@ -63,6 +65,7 @@ export function initNavboxes() {
     // Create individual navboxes
     createAltitudeBox();
     createSpeedBox();
+    createHeadingBox();
     
     // Mark as initialized
     initialized = true;
@@ -197,6 +200,53 @@ export function updateSpeed(speed) {
 }
 
 /**
+ * Creates the heading navbox
+ */
+function createHeadingBox() {
+    headingBox = document.createElement('div');
+    headingBox.className = 'navbox heading-box';
+    
+    // Create value element
+    const valueElement = document.createElement('div');
+    valueElement.className = 'navbox-value';
+    valueElement.textContent = '---°';
+    
+    // Create label element
+    const labelElement = document.createElement('div');
+    labelElement.className = 'navbox-label';
+    labelElement.textContent = 'Heading';
+    
+    // Add elements to the box
+    headingBox.appendChild(valueElement);
+    headingBox.appendChild(labelElement);
+    
+    // Add box to container
+    navboxContainer.appendChild(headingBox);
+}
+
+/**
+ * Updates the heading navbox with GPS heading
+ * @param {number} heading - The heading in degrees
+ */
+export function updateHeading(heading) {
+    // Skip if not initialized or not on mobile
+    if (!initialized || !isMobileDevice() || !headingBox) return;
+    
+    currentHeading = heading;
+    
+    // Find value element
+    const valueElement = headingBox.querySelector('.navbox-value');
+    if (valueElement) {
+        if (heading !== null && !isNaN(heading)) {
+            valueElement.textContent = `${Math.round(heading)}°`;
+        } else {
+            // No valid heading data
+            valueElement.textContent = '---°';
+        }
+    }
+}
+
+/**
  * Updates navboxes with position data
  * Only processes updates on mobile devices with navboxes enabled
  * @param {Object} position - The geolocation position object
@@ -213,6 +263,11 @@ export function updateNavboxesWithPosition(position) {
     // Update speed if available
     if (position.coords.speed !== null) {
         updateSpeed(position.coords.speed);
+    }
+    
+    // Update heading if available
+    if (position.coords.heading !== null) {
+        updateHeading(position.coords.heading);
     }
 }
 
@@ -262,8 +317,10 @@ export function destroyNavboxes() {
     navboxContainer = null;
     altitudeBox = null;
     speedBox = null;
+    headingBox = null;
     currentAltitude = null;
     currentSpeed = null;
+    currentHeading = null;
     initialized = false;
     
 }
@@ -305,6 +362,7 @@ export function clearNavboxes() {
     
     currentAltitude = null;
     currentSpeed = null;
+    currentHeading = null;
     
     // Reset altitude display
     if (altitudeBox) {
@@ -319,6 +377,14 @@ export function clearNavboxes() {
         const valueElement = speedBox.querySelector('.navbox-value');
         if (valueElement) {
             valueElement.textContent = '---km/h';
+        }
+    }
+    
+    // Reset heading display
+    if (headingBox) {
+        const valueElement = headingBox.querySelector('.navbox-value');
+        if (valueElement) {
+            valueElement.textContent = '---°';
         }
     }
 }
@@ -350,18 +416,24 @@ export function updateNavboxesByErrorState(errorState) {
         speedBox.classList.remove('navbox-warning', 'navbox-error');
     }
     
+    if (headingBox) {
+        headingBox.classList.remove('navbox-warning', 'navbox-error');
+    }
+    
     // Add appropriate state class based on error state
     switch (errorState) {
         case GEOLOCATION_STATE.WARNING:
             navboxContainer.classList.add('navboxes-warning');
             if (altitudeBox) altitudeBox.classList.add('navbox-warning');
             if (speedBox) speedBox.classList.add('navbox-warning');
+            if (headingBox) headingBox.classList.add('navbox-warning');
             break;
             
         case GEOLOCATION_STATE.ERROR:
             navboxContainer.classList.add('navboxes-error');
             if (altitudeBox) altitudeBox.classList.add('navbox-error');
             if (speedBox) speedBox.classList.add('navbox-error');
+            if (headingBox) headingBox.classList.add('navbox-error');
             
             // In error state, we should also reset the displayed values
             resetNavboxValues();
@@ -394,9 +466,18 @@ function resetNavboxValues() {
         }
     }
     
+    // Reset heading display
+    if (headingBox) {
+        const valueElement = headingBox.querySelector('.navbox-value');
+        if (valueElement) {
+            valueElement.textContent = '---°';
+        }
+    }
+    
     // Also reset current values
     currentAltitude = null;
     currentSpeed = null;
+    currentHeading = null;
 }
 
 // Make toggleNavboxes available globally for console access
