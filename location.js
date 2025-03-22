@@ -7,7 +7,6 @@ import { getLayerManager, getMap, getGeolocationEnabled, setGeolocationEnabled, 
     setLastSuccessfulPositionTime, setGeolocationErrorState, GEOLOCATION_STATE, setLastPositionError, checkPositionStaleness, 
     getLastSuccessfulPositionTime, getLastPosition, setLastPosition, getCurrentHeading, setCurrentHeading } from "./state.js";
 import { initNavboxes, updateNavboxesWithPosition, updateNavboxesState, updateNavboxesByErrorState, updateHeading } from "./navboxManager.js";
-import { isMobileDevice } from "./utils.js";
 
 // Throttle for rotation updates
 let lastRotationUpdateTime = 0;
@@ -116,13 +115,17 @@ export function calculateHeading(start, end) {
  * @param {Array} coords - The coordinates [longitude, latitude]
  */
 function updateMarkerPosition(coords) {
-    if (!getLayerManager().hasSource('location-marker')) {
+    const layerManager = getLayerManager();
+    if (!layerManager.hasSource('location-marker')) {
         console.warn('Location marker source not found');
         return;
     }
     
+    // Get current heading once from state
+    const currentHeading = getCurrentHeading();
+    
     // Update the marker with current position and rotation
-    getLayerManager().addOrUpdateSource('location-marker', {
+    layerManager.addOrUpdateSource('location-marker', {
         type: 'geojson',
         data: {
             type: 'Feature',
@@ -131,7 +134,7 @@ function updateMarkerPosition(coords) {
                 coordinates: coords
             },
             properties: {
-                heading: getCurrentHeading() // Use heading from state
+                heading: currentHeading // Use heading from state
             }
         }
     });
@@ -150,6 +153,8 @@ function updateMarkerRotation(heading) {
     
     // Use requestAnimationFrame for smoother updates
     requestAnimationFrame(() => {
+        if (!map) return; // Safety check in case map becomes unavailable
+        
         // Remove old image
         if (map.hasImage('location-icon-rotated')) {
             map.removeImage('location-icon-rotated');
@@ -180,7 +185,10 @@ function throttledUpdateMarkerRotation(heading) {
  * @param {Object} position - Geolocation position object
  */
 export function updateLocation(position) {
-    if (!getLayerManager().hasSource('location-marker')) {
+    // Get frequently accessed functions and objects once
+    const layerManager = getLayerManager();
+    
+    if (!layerManager.hasSource('location-marker')) {
         console.warn('Location marker source not found');
         return;
     }
@@ -414,11 +422,7 @@ export function handleGeolocationError(error) {
  * Sets up geolocation tracking if available
  */
 export function setupGeolocation() {
-    // Only set up geolocation on mobile devices
-    if (!isMobileDevice()) {
-        console.log('Geolocation not set up - not a mobile device');
-        return;
-    }
+    // App only calls this function on mobile devices, so we don't need to check again
     
     // Check if geolocation is enabled in state
     if (!getGeolocationEnabled()) {

@@ -147,7 +147,7 @@ async function initializeBaseLayers() {
     });
     
     // Setup geolocation tracking only if enabled in settings and on mobile device
-    if (isMobileDevice() && getGeolocationEnabled()) {
+    if ((window.APP_CONFIG?.isMobile || isMobileDevice()) && getGeolocationEnabled()) {
         setupGeolocation();
     } 
 }

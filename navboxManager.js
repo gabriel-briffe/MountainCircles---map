@@ -7,6 +7,9 @@
 import { getMap, getNavboxesEnabled, getGeolocationEnabled, GEOLOCATION_STATE } from "./state.js";
 import { isMobileDevice } from "./utils.js";
 
+// Check mobile status once at module level
+const isMobile = window.APP_CONFIG?.isMobile ?? isMobileDevice();
+
 // Module state
 let initialized = false;
 
@@ -39,7 +42,7 @@ const MS_TO_KMH = 3.6;
  */
 export function initNavboxes() {
     // Only initialize on mobile devices
-    if (!isMobileDevice()) {
+    if (!isMobile) {
         return;
     }
     
@@ -121,7 +124,7 @@ function toggleAltitudeUnits() {
  */
 export function updateAltitude(altitude) {
     // Skip if not initialized or not on mobile
-    if (!initialized || !isMobileDevice() || !altitudeBox) return;
+    if (!initialized || !isMobile || !altitudeBox) return;
     
     currentAltitude = altitude;
     
@@ -181,7 +184,7 @@ function createSpeedBox() {
  */
 export function updateSpeed(speed) {
     // Skip if not initialized or not on mobile
-    if (!initialized || !isMobileDevice() || !speedBox) return;
+    if (!initialized || !isMobile || !speedBox) return;
     
     currentSpeed = speed;
     
@@ -230,7 +233,7 @@ function createHeadingBox() {
  */
 export function updateHeading(heading) {
     // Skip if not initialized or not on mobile
-    if (!initialized || !isMobileDevice() || !headingBox) return;
+    if (!initialized || !isMobile || !headingBox) return;
     
     currentHeading = heading;
     
@@ -252,7 +255,7 @@ export function updateHeading(heading) {
  * @param {Object} position - The geolocation position object
  */
 export function updateNavboxesWithPosition(position) {
-    if (!initialized || !isMobileDevice() || !position || !position.coords || !getNavboxesEnabled()) return;
+    if (!initialized || !isMobile || !position || !position.coords || !getNavboxesEnabled()) return;
     
     // Update altitude if available
     if (position.coords.altitude !== null) {
@@ -329,7 +332,7 @@ export function destroyNavboxes() {
  */
 export function setNavboxesVisible(visible) {
     // Skip if not initialized or not on mobile
-    if (!initialized || !isMobileDevice()) return;
+    if (!initialized || !isMobile) return;
     
     navboxesVisible = visible;
     
@@ -344,7 +347,7 @@ export function setNavboxesVisible(visible) {
  */
 export function toggleNavboxes() {
     // Skip if not initialized or not on mobile
-    if (!initialized || !isMobileDevice()) return false;
+    if (!initialized || !isMobile) return false;
     
     const newState = !navboxesVisible;
     setNavboxesVisible(newState);
@@ -356,7 +359,7 @@ export function toggleNavboxes() {
  */
 export function clearNavboxes() {
     // Skip if not initialized or not on mobile
-    if (!initialized || !isMobileDevice()) return;
+    if (!initialized || !isMobile) return;
     
     currentAltitude = null;
     currentSpeed = null;
@@ -393,7 +396,7 @@ export function clearNavboxes() {
  */
 export function updateNavboxesByErrorState(errorState) {
     // Skip if not initialized or not on mobile
-    if (!initialized || !isMobileDevice() || !navboxContainer) return;
+    if (!initialized || !isMobile || !navboxContainer) return;
     
     // Make sure navboxes are visible if they should be
     if (getNavboxesEnabled() && getGeolocationEnabled()) {

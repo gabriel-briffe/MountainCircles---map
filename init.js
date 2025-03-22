@@ -16,6 +16,7 @@ import { setupIGCEventListeners } from "./igc.js";
 import { setupInstallEventListeners } from "./install.js";
 import { setupMenuEventListeners } from "./menu.js";
 import { getLayerManager } from "./state.js";
+import { isMobileDevice } from "./utils.js";
 
 /**
  * Initializes the application
@@ -23,6 +24,11 @@ import { getLayerManager } from "./state.js";
  * @returns {Promise<void>}
  */
 export async function initializeApp(mapContainerId = 'map') {
+    // Determine if running on mobile device ONCE at startup
+    window.APP_CONFIG = {
+        isMobile: isMobileDevice()
+    };
+    
     // Try to load saved state from Cache API
     const stateLoaded = await loadStateFromLocalStorage();
     
