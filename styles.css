@@ -52,6 +52,13 @@
     --airspace-popup-header: 18px;
     --airspace-popup-content: 16px;
     --airspace-popup-label: 14px;
+
+    /* Default/maximum sizes for dock elements */
+    --dock-button-size: 48px;
+    --dock-slider-length: 150px;
+
+    /* Parameters Box styling */
+    --parameters-font-size: 24px; /* Default size for parameters box, will be dynamically adjusted */
 }
 
 /* Global font settings */
@@ -144,16 +151,28 @@ h3 {
 /* --------------- MAP DOCK (apple-dock style) --------------- */
 #mapDock {
     position: fixed;
-    left: 10px;
+    left: calc(var(--dock-button-size) * 0.2); /* Proportional to button size instead of fixed 10px */
     top: 50%;
     transform: translateY(-50%);
     display: flex;
     align-items: center;
     flex-direction: column;
     max-height: 100%;
-    flex-wrap: wrap;
-    gap: 10px;
+    flex-wrap: nowrap; /* Prevent wrapping */
+    gap: calc(var(--dock-button-size) * 0.2); /* Scale gap with button size */
     z-index: 1100;
+    /* Allow items to shrink to any size */
+    min-width: 0;
+    min-height: 0;
+}
+
+/* Ensure icons can shrink properly */
+#mapDock .material-icons-round {
+    font-size: calc(var(--dock-button-size) * 0.5); /* 50% of button size */
+    height: calc(var(--dock-button-size) * 0.5);
+    min-width: 0;
+    min-height: 0;
+    overflow: hidden;
 }
 
 /* --------------- NAVBOXES --------------- */
@@ -256,11 +275,11 @@ h3 {
     transform: translateX(-50%); /* Center horizontally */
     z-index: 1000;
     background: rgba(255, 255, 255, 0.5);
-    padding: 5px 10px; /* Add more horizontal padding */
+    padding: 5px; /* Add more horizontal padding */
     border-radius: 5px;
     font-family: var(--font-family);
     font-weight: var(--font-weight-bold);
-    font-size: 24px;
+    font-size: var(--parameters-font-size); /* Use the variable instead of hardcoded value */
     color: var(--text-light);
     text-align: center;
     width: auto; /* Allow content to determine width */
@@ -284,61 +303,149 @@ h3 {
 /* Slider Container (Dock Box) */
 /* -------------------------- */
 .dock-slider {
-    width: 48px;       /* Same as other button width */
-    height: 150px;     /* Give enough room for the rotated slider */
+    width: var(--dock-button-size); /* Same as button width */
+    height: var(--dock-slider-length); /* Flexible height */
     display: flex;
     align-items: center;
     justify-content: center;
     background: var(--bg-light);
     border-radius: var(--border-radius-large);
-    padding: 8px;
+    /* Scale padding with button size */
+    padding: calc(var(--dock-button-size) * 0.1);
     box-sizing: border-box;
+    flex: 3; /* Take 3x space of a button */
+    position: relative;
+    max-height: calc(var(--dock-slider-length) + var(--dock-button-size) * 0.2); /* Add max-height constraint (slider length + proportional padding) */
+    /* Allow unlimited shrinking */
+    min-width: 0;
+    min-height: 0;
 }
 
-/* Slider styling remains the same in landscape mode */
+/* Slider styling for landscape mode (vertical) */
 #polygonOpacitySlider {
-    width: 150px;  /* Length of the slider track */
-    -webkit-transform: rotate(-90deg);
-    -ms-transform: rotate(-90deg);
-    transform: rotate(-90deg);
-    -webkit-appearance: none; /* Remove default styling */
-    background: transparent;  /* Needed for custom pseudo-elements */
+    width: calc(var(--dock-slider-length) - var(--dock-button-size) * 0.2); /* Account for proportional padding */
+    -webkit-appearance: none;
+    appearance: none;
+    height: 6px;
+    background: var(--slider-track-light);
+    opacity: 0.9;
+    border-radius: 3px;
+    border: none;
+    outline: none;
+    box-shadow: none;
+}
+
+/* Thumb styling */
+#polygonOpacitySlider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    height: calc(var(--dock-button-size) * 0.4); /* Scale with button size */
+    width: calc(var(--dock-button-size) * 0.4); /* Scale with button size */
+    border-radius: 50%;
+    background: var(--text-light);
+    margin-top: calc(-1 * (var(--dock-button-size) * 0.4 - var(--dock-button-size) * 0.1) / 2); /* Dynamically center thumb on track */
+    cursor: pointer;
+}
+
+#polygonOpacitySlider::-moz-range-thumb {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: var(--bg-lighter);
+    cursor: pointer;
+    border: none;
 }
 
 /* Portrait mode: dock is horizontal, so the slider must be horizontal */
 @media (orientation: portrait) {
     #mapDock {
         position: fixed;
-        top: 10px;
+        top: calc(var(--dock-button-size) * 0.2); /* Proportional to button size */
         left: 0;
         right: 0;
         width: 100%;
-        padding: 0 0; /* Optional: Add some horizontal spacing */
+        padding: 0;
         display: flex;
         flex-direction: row;
-        flex-wrap: wrap;
-        justify-content: center; /* Center items in each row */
-        gap: 10px;
-        transform: translateY(0);
-    }
-    .dock-slider {
-        /* Adjust container to have the same height as other buttons */
-        width: 150px;
-        height: 48px;
-        background: var(--bg-light);
-        border-radius: var(--border-radius-large);
-        padding: 8px;
-        box-sizing: border-box;
-        display: flex;
-        align-items: center;
+        flex-wrap: nowrap; /* Prevent wrapping to multiple lines */
         justify-content: center;
+        gap: calc(var(--dock-button-size) * 0.2); /* Scale gap with button size */
+        transform: translateY(0);
+        overflow-x: auto; /* Allow horizontal scrolling if needed */
+        scrollbar-width: none; /* Firefox */
+        -ms-overflow-style: none; /* IE and Edge */
     }
-    /* Force the slider to be horizontal by resetting its rotation */
-    .dock-slider #polygonOpacitySlider {
-        -webkit-transform: rotate(0deg) !important;
-        -ms-transform: rotate(0deg) !important;
-        transform: rotate(0deg) !important;
-        width: 100% !important;
+    
+    /* Hide scrollbar for Chrome, Safari and Opera */
+    #mapDock::-webkit-scrollbar {
+        display: none;
+    }
+    
+    .dock-slider {
+        /* Adjust for horizontal orientation */
+        width: var(--dock-slider-length);
+        height: var(--dock-button-size);
+        flex: 3; /* Take 3x space of a button */
+        max-width: calc(var(--dock-slider-length) + var(--dock-button-size) * 0.2); /* Proportional padding */
+    }
+    
+    #polygonOpacitySlider {
+        transform: none; /* No rotation in portrait mode */
+        width: calc(var(--dock-slider-length) - var(--dock-button-size) * 0.2); /* Proportional padding */
+        position: relative;  /* Reset position for portrait */
+        top: auto;
+        left: auto;
+        margin: 0;  /* Reset margins */
+        z-index: 2; /* Ensure the slider is visible */
+    }
+}
+
+/* Landscape mode: dock is vertical */
+@media (orientation: landscape) {
+    #mapDock {
+        position: fixed;
+        left: calc(var(--dock-button-size) * 0.2); /* Proportional to button size */
+        top: 0;
+        bottom: 0;
+        height: 100%;
+        width: auto;
+        padding: 0;
+        display: flex;
+        flex-direction: column;
+        flex-wrap: nowrap; /* Prevent wrapping to multiple columns */
+        justify-content: center;
+        gap: calc(var(--dock-button-size) * 0.2); /* Scale gap with button size */
+        transform: translateX(0);
+    }
+    
+    .dock-slider {
+        /* Adjust for vertical orientation */
+        height: var(--dock-slider-length); /* Must use the length for height */
+        width: var(--dock-button-size); /* Width is button size */
+        flex: 3; /* Take 3x space of a button */
+        /* Allow proportionally smaller padding */
+        padding: calc(var(--dock-button-size) * 0.1);
+    }
+    
+    #polygonOpacitySlider {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translateX(-50%) translateY(-50%) rotate(-90deg); /* Center and rotate */
+        width: calc(var(--dock-slider-length) - var(--dock-button-size) * 0.2); /* Account for proportional padding */
+        margin: 0; /* Reset any margins */
+        z-index: 2; /* Ensure the slider is visible */
+    }
+    
+    /* Special handling for slider and thumb in landscape mode */
+    #polygonOpacitySlider::-webkit-slider-thumb {
+        /* Ensure the thumb appears correctly after rotation */
+        margin-top: calc(-1 * (var(--dock-button-size) * 0.4) / 2);
+    }
+    
+    /* Override default slider properties to prevent rendering issues */
+    #polygonOpacitySlider {
+        transform-origin: center center;
+        background: var(--slider-track-light);
     }
 }
 
@@ -356,30 +463,30 @@ h3 {
 /* For Webkit Browsers (Chrome, Safari, Opera) */
 #polygonOpacitySlider::-webkit-slider-runnable-track {
     width: 100%;
-    height: 6px;
+    height: calc(var(--dock-button-size) * 0.1); /* Scale track height with button size */
     background: var(--slider-track-light);
-    border-radius: 3px;
+    border-radius: calc(var(--dock-button-size) * 0.05); /* Half of the track height */
 }
 #polygonOpacitySlider::-webkit-slider-thumb {
     -webkit-appearance: none;
-    height: 20px;
-    width: 20px;
+    height: calc(var(--dock-button-size) * 0.4); /* Scale with button size */
+    width: calc(var(--dock-button-size) * 0.4); /* Scale with button size */
     border-radius: 50%;
     background: var(--text-light);
-    margin-top: -7px; /* Center the thumb on the track */
+    margin-top: calc(-1 * (var(--dock-button-size) * 0.4 - var(--dock-button-size) * 0.1) / 2); /* Dynamically center thumb on track */
     cursor: pointer;
 }
 
 /* For Firefox */
 #polygonOpacitySlider::-moz-range-track {
     width: 100%;
-    height: 6px;
+    height: calc(var(--dock-button-size) * 0.1); /* Scale track height with button size */
     background: var(--slider-track-light);
-    border-radius: 3px;
+    border-radius: calc(var(--dock-button-size) * 0.05); /* Half of the track height */
 }
 #polygonOpacitySlider::-moz-range-thumb {
-    height: 20px;
-    width: 20px;
+    height: calc(var(--dock-button-size) * 0.4); /* Scale with button size */
+    width: calc(var(--dock-button-size) * 0.4); /* Scale with button size */
     border-radius: 50%;
     background: var(--text-light);
     cursor: pointer;
@@ -402,8 +509,8 @@ h3 {
     border-radius: 3px;
 }
 #polygonOpacitySlider::-ms-thumb {
-    height: 20px;
-    width: 20px;
+    height: calc(var(--dock-button-size) * 0.4); /* Scale with button size */
+    width: calc(var(--dock-button-size) * 0.4); /* Scale with button size */
     border-radius: 50%;
     background: var(--text-light);
     cursor: pointer;
@@ -413,23 +520,48 @@ h3 {
 @media (prefers-color-scheme: dark) {
     #polygonOpacitySlider::-webkit-slider-runnable-track {
         background: var(--slider-track-dark);
+        border: none; /* Remove any default border */
+        outline: none; /* Remove any outline */
+        box-shadow: none; /* Remove any box shadow */
     }
     #polygonOpacitySlider::-moz-range-track {
         background: var(--slider-track-dark);
+        border: none; /* Remove any default border */
+        outline: none; /* Remove any outline */
+        box-shadow: none; /* Remove any box shadow */
     }
     #polygonOpacitySlider::-ms-fill-lower,
     #polygonOpacitySlider::-ms-fill-upper {
         background: var(--slider-track-dark);
+        border: none; /* Remove any default border */
+        outline: none; /* Remove any outline */
+        box-shadow: none; /* Remove any box shadow */
     }
     /* Add dark mode slider thumb color to keep it white */
     #polygonOpacitySlider::-webkit-slider-thumb {
         background: var(--text-dark);
+        border: none; /* Remove any default border */
+        outline: none; /* Remove any outline */
+        box-shadow: none; /* Remove any box shadow */
     }
     #polygonOpacitySlider::-moz-range-thumb {
         background: var(--text-dark);
+        border: none; /* Remove any default border */
+        outline: none; /* Remove any outline */
+        box-shadow: none; /* Remove any box shadow */
     }
     #polygonOpacitySlider::-ms-thumb {
         background: var(--text-dark);
+        border: none; /* Remove any default border */
+        outline: none; /* Remove any outline */
+        box-shadow: none; /* Remove any box shadow */
+    }
+    
+    /* Make sure the slider itself doesn't have any outline or border */
+    #polygonOpacitySlider {
+        border: none;
+        outline: none;
+        box-shadow: none;
     }
 }
 
@@ -440,19 +572,26 @@ h3 {
     border: none;
     outline: none;
     border-radius: var(--border-radius-large);
-    padding: 8px;
+    /* Scale padding with button size */
+    padding: calc(var(--dock-button-size) * 0.1);
     cursor: pointer;
-    transition: none;  /* Disabled transition for scaling and background changes */
-    width: 48px;
-    height: 48px;
+    transition: none;
+    width: var(--dock-button-size); /* Use variable instead of fixed size */
+    height: var(--dock-button-size); /* Use variable instead of fixed size */
     display: flex;
     align-items: center;
     justify-content: center;
+    flex: 1; /* Equal flex distribution */
+    max-width: calc(var(--dock-button-size) + var(--dock-button-size) * 0.2); /* Add max-width constraint (button size + proportional padding) */
+    max-height: calc(var(--dock-button-size) + var(--dock-button-size) * 0.2); /* Add max-height constraint (button size + proportional padding) */
+    /* Remove minimum width and height constraints to allow unlimited shrinking */
+    min-width: 0;
+    min-height: 0;
 }
 
 #mapDock button:hover {
-    transform: none;   /* Disable zooming (scaling) */
-    background: var(--bg-light);  /* Keep same background */
+    transform: none;
+    background: var(--bg-light);
 }
 
 /* Dark mode adjustments */
@@ -809,17 +948,10 @@ h3 {
     color: var(--text-light);
 }
 
-/* Override font weight for specific elements that need to be bold */
-#airspace-sidebar h3,
-.sidebar-policy-title,
-.sidebar-section-title {
-    /* font-weight already bold in parent */
-}
-
 /* Portrait mode positioning (width < height) */
 @media (orientation: portrait) {
     #airspace-sidebar {
-        top: 70px;
+        top: calc(var(--dock-button-size) * 1.5); /* Positioned below the dock with some additional space */
         left: 0; /* No margin in portrait mode */
         bottom: 0px; /* Keep a small margin at the bottom */
         height: auto; /* Allow height to be determined by top and bottom */
@@ -832,7 +964,7 @@ h3 {
     #airspace-sidebar {
         top: 0px; /* Small margin from the top */
         bottom: 0px; /* Small margin from the bottom */
-        left: 70px; /* 70px from left to provide space for the dock */
+        left: calc(var(--dock-button-size) * 1.5);
         height: auto; /* Allow height to be determined by top and bottom */
         max-height: none; /* Remove max-height constraint */
         transform: none; /* Remove transform since we're using explicit positioning */
@@ -1215,4 +1347,28 @@ h3 {
 
 #installPrompt #cancelInstall:hover {
     background: #555;
+}
+
+/* Material icons in the dock should scale with button size */
+#mapDock .material-icons-round {
+    font-size: calc(var(--dock-button-size) * 0.5); /* 50% of button size */
+    height: calc(var(--dock-button-size) * 0.5);
+}
+
+@media (prefers-color-scheme: dark) {
+    /* Override base slider styling in dark mode */
+    #polygonOpacitySlider {
+        background: var(--slider-track-dark);
+        border: none !important; /* Force no border */
+        outline: none !important; /* Force no outline */
+        box-shadow: none !important; /* Force no box shadow */
+    }
+    
+    /* Also apply to the .dock-slider container in dark mode */
+    .dock-slider {
+        background: var(--bg-dark);
+        border: none;
+        outline: none;
+        box-shadow: none;
+    }
 }

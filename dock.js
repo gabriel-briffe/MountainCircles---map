@@ -32,6 +32,122 @@ function debounce(func, wait) {
 }
 
 /**
+ * Calculates and sets optimal button and slider sizes based on available space
+ */
+function updateDockElementSizes() {
+    // Get the map dock element
+    const mapDock = document.getElementById('mapDock');
+    if (!mapDock) return;
+
+    // Count number of buttons in the dock
+    const buttons = mapDock.querySelectorAll('button:not(.dock-slider)');
+    const buttonCount = buttons.length;
+    
+    // Check if we have a slider
+    const slider = mapDock.querySelector('.dock-slider');
+    const hasSlider = slider !== null;
+    
+    // Determine effective count (slider counts as 3 buttons)
+    const effectiveCount = buttonCount + (hasSlider ? 3 : 0);
+    
+    // Determine available space based on orientation
+    const isLandscape = window.innerWidth > window.innerHeight;
+    const availableSpace = isLandscape ? 
+        window.innerHeight - 40 : // 20px padding on each side in landscape
+        window.innerWidth - 40;   // 20px padding on each side in portrait
+    
+    // Allow unlimited shrinking by setting minButtonSize to 0
+    const minButtonSize = 0;
+    const maxButtonSize = 48;
+    
+    // We need to calculate the button size taking into account that gaps are proportional to button size
+    // This requires solving for buttonSize in the equation:
+    // availableSpace = buttonSize * effectiveCount + (effectiveCount - 1) * (buttonSize * 0.2)
+    // Simplifying:
+    // availableSpace = buttonSize * effectiveCount + buttonSize * 0.2 * (effectiveCount - 1)
+    // availableSpace = buttonSize * (effectiveCount + 0.2 * (effectiveCount - 1))
+    // Therefore: buttonSize = availableSpace / (effectiveCount + 0.2 * (effectiveCount - 1))
+    
+    const gapMultiplier = 0.2; // Gap is 20% of button size
+    const buttonSizeFactor = effectiveCount + gapMultiplier * (effectiveCount - 1);
+    let calculatedButtonSize = availableSpace / buttonSizeFactor;
+    
+    // Constrain to min/max
+    const buttonSize = Math.min(Math.max(calculatedButtonSize, minButtonSize), maxButtonSize);
+    
+    // Slider is 3x a button
+    const sliderLength = buttonSize * 3;
+    
+    // Update CSS variables
+    document.documentElement.style.setProperty('--dock-button-size', `${buttonSize}px`);
+    document.documentElement.style.setProperty('--dock-slider-length', `${sliderLength}px`);
+    
+    // Log all sizes for debugging
+    logDockSizes(buttonCount, hasSlider, effectiveCount, availableSpace, buttonSize, sliderLength, !isLandscape); // Inverted for UI orientation
+}
+
+/**
+ * Logs all dock element sizes for debugging purposes
+ */
+function logDockSizes(buttonCount, hasSlider, effectiveCount, totalSpace, buttonSize, sliderLength, isPortrait) {
+    console.log('=== DOCK SIZES ===');
+    console.log(`Orientation: ${isPortrait ? 'Portrait' : 'Landscape'}`);
+    console.log(`Window dimensions: ${window.innerWidth}px × ${window.innerHeight}px`);
+    console.log(`Button count: ${buttonCount}`);
+    console.log(`Has slider: ${hasSlider}`);
+    console.log(`Effective element count: ${effectiveCount}`);
+    console.log(`Total space: ${totalSpace}px`);
+    
+    // Calculate margin
+    const margin = buttonSize * 0.2;
+    console.log(`Screen margin: ${margin}px (${(margin*2).toFixed(1)}px total)`);
+    console.log(`Available space: ${totalSpace - (margin*2)}px`);
+    
+    console.log(`Button size: ${buttonSize}px`);
+    console.log(`Slider length: ${sliderLength}px`);
+    console.log(`Gap size: ${(buttonSize * 0.2).toFixed(1)}px`);
+    
+    // Get computed styles for more detailed information
+    const slider = document.querySelector('.dock-slider');
+    const button = document.querySelector('#mapDock button');
+    
+    if (slider) {
+        const sliderStyle = window.getComputedStyle(slider);
+        console.log('Slider container:');
+        console.log(`  Width: ${sliderStyle.width}`);
+        console.log(`  Height: ${sliderStyle.height}`);
+        console.log(`  Padding: ${sliderStyle.padding}`);
+        console.log(`  Max-width: ${sliderStyle.maxWidth}`);
+        console.log(`  Max-height: ${sliderStyle.maxHeight}`);
+        
+        // Get the actual range input
+        const rangeInput = document.querySelector('#polygonOpacitySlider');
+        if (rangeInput) {
+            const rangeStyle = window.getComputedStyle(rangeInput);
+            console.log('Range input:');
+            console.log(`  Width: ${rangeStyle.width}`);
+            console.log(`  Transform: ${rangeStyle.transform}`);
+            console.log(`  Position: ${rangeStyle.position}`);
+            
+            // Get thumb size
+            const thumbSize = buttonSize * 0.4;
+            console.log(`  Thumb size: ${thumbSize}px`);
+        }
+    }
+    
+    if (button) {
+        const buttonStyle = window.getComputedStyle(button);
+        console.log('Button:');
+        console.log(`  Width: ${buttonStyle.width}`);
+        console.log(`  Height: ${buttonStyle.height}`);
+        console.log(`  Padding: ${buttonStyle.padding}`);
+        console.log(`  Max-width: ${buttonStyle.maxWidth}`);
+    }
+    
+    console.log('=================');
+}
+
+/**
  * Updates the visibility icon based on layer toggle state
  */
 export function updateVisibilityIcon() {
@@ -120,6 +236,14 @@ export function setupDockEventListeners() {
     
     // Ensure visibility icon matches the current state
     updateVisibilityIcon();
+    
+    // Initial size calculation
+    updateDockElementSizes();
+    
+    // Add resize listener
+    const debouncedResize = debounce(updateDockElementSizes, 150);
+    window.addEventListener('resize', debouncedResize);
+    window.addEventListener('orientationchange', updateDockElementSizes);
 }
 
 /**
@@ -159,6 +283,9 @@ function createZoomButtonsIfNeeded() {
             zoomOutBtn.addEventListener('click', () => {
                 getMap().zoomOut();
             });
+            
+            // Recalculate sizes after adding new buttons
+            updateDockElementSizes();
         } 
     }).catch(err => {
         console.error('Error importing utils module:', err);

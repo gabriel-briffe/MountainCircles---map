@@ -74,6 +74,8 @@ import {
     updateNavboxesState
 } from "./navboxManager.js";
 
+import { toggleGeolocation, toggleNavboxes, initToggleManager, updateToggleStates, toggleGeolocationVisibility } from "./toggleManager.js";
+
 
 /**
  * Creates a checkbox option with label for the sidebar
@@ -141,7 +143,7 @@ export function createTypeCheckboxes(features) {
         addSidebarDivider(sidebar);
         
         // Add geolocation toggle
-        addGeolocationToggle(sidebar);
+        addLocationToggle(sidebar);
     }
     
     // Add a divider
@@ -645,8 +647,212 @@ export function updateParametersBox(cfg) {
     const parts = configOnly.split('-');
     if (parts.length >= 3) {
         const labelText = "L/D " + parts[0] + "-ground " + parts[1] + "m-circuit " + parts[2] + "m";
-        document.getElementById('parametersBox').textContent = labelText;
+        const parametersBox = document.getElementById('parametersBox');
+        
+        // Check if text content has changed
+        const contentChanged = parametersBox.textContent !== labelText;
+        parametersBox.textContent = labelText;
+        
+        // If content changed, we need to clear the cache and recalculate
+        if (contentChanged) {
+            clearFontSizeCache();
+        }
+        
+        // After updating text, adjust font size to fit
+        adjustParametersFontSize();
     }
+}
+
+// Cache for font sizes by dimensions
+const fontSizeCache = loadFontSizeCache();
+
+/**
+ * Gets cached font size for specific window dimensions
+ * @param {string} dimensionKey - String key in format "widthxheight"
+ * @returns {number|null} - Cached font size or null if not found
+ */
+function getFontSizeForDimensions(dimensionKey) {
+    return fontSizeCache[dimensionKey] || null;
+}
+
+/**
+ * Saves font size for specific window dimensions
+ * @param {string} dimensionKey - String key in format "widthxheight"
+ * @param {number} fontSize - Font size to cache
+ */
+function saveFontSizeForDimensions(dimensionKey, fontSize) {
+    fontSizeCache[dimensionKey] = fontSize;
+    
+    // Persist the updated cache to localStorage
+    persistFontSizeCache();
+}
+
+/**
+ * Loads the font size cache from localStorage
+ * @returns {Object} The loaded cache or an empty object
+ */
+function loadFontSizeCache() {
+    try {
+        const cachedData = localStorage.getItem('parametersFontSizeCache');
+        return cachedData ? JSON.parse(cachedData) : {};
+    } catch (error) {
+        console.warn('Error loading font size cache:', error);
+        return {};
+    }
+}
+
+/**
+ * Persists the font size cache to localStorage
+ */
+function persistFontSizeCache() {
+    try {
+        localStorage.setItem('parametersFontSizeCache', JSON.stringify(fontSizeCache));
+    } catch (error) {
+        console.warn('Error persisting font size cache:', error);
+    }
+}
+
+/**
+ * Clears the font size cache
+ */
+function clearFontSizeCache() {
+    for (const key in fontSizeCache) {
+        delete fontSizeCache[key];
+    }
+    // Also clear from localStorage
+    try {
+        localStorage.removeItem('parametersFontSizeCache');
+    } catch (error) {
+        console.warn('Error removing font size cache from localStorage:', error);
+    }
+    console.log('Font size cache cleared due to content change');
+}
+
+/**
+ * Adjusts the font size of the parameters box to ensure text fits
+ * without overflowing or being truncated
+ */
+export function adjustParametersFontSize() {
+    const parametersBox = document.getElementById('parametersBox');
+    if (!parametersBox) return;
+    
+    // Get current dimensions
+    const currentWidth = window.innerWidth;
+    const currentHeight = window.innerHeight;
+    const dimensionKey = `${currentWidth}x${currentHeight}`;
+    
+    // Check if we already have a cached font size for these dimensions
+    const cachedFontSize = getFontSizeForDimensions(dimensionKey);
+    if (cachedFontSize) {
+        // Use cached value if available
+        document.documentElement.style.setProperty('--parameters-font-size', cachedFontSize + 'px');
+        console.log(`Using cached font size ${cachedFontSize}px for dimensions ${dimensionKey}`);
+        return;
+    }
+    
+    // Store the original text content
+    const text = parametersBox.textContent;
+    
+    // Create a temporary span to measure text width
+    const tempSpan = document.createElement('span');
+    tempSpan.style.visibility = 'hidden';
+    tempSpan.style.position = 'absolute';
+    tempSpan.style.whiteSpace = 'nowrap';
+    tempSpan.style.fontFamily = getComputedStyle(parametersBox).fontFamily;
+    tempSpan.style.fontWeight = getComputedStyle(parametersBox).fontWeight;
+    tempSpan.textContent = text;
+    document.body.appendChild(tempSpan);
+    
+    // Use the full window width directly - allow the box to take 100% width on small screens
+    const availableWidth = window.innerWidth-10;
+    
+    // Get current font size from CSS variable or use 24px as default
+    let fontSize = parseFloat(getComputedStyle(document.documentElement)
+        .getPropertyValue('--parameters-font-size')) || 24;
+    
+    tempSpan.style.fontSize = fontSize + 'px';
+    
+    // If content is too wide, reduce font size until it fits
+    while (tempSpan.offsetWidth > availableWidth && fontSize > 0) {
+        fontSize -= 0.5; // Decrease by 0.5px each iteration for smooth scaling
+        tempSpan.style.fontSize = fontSize + 'px';
+    }
+    
+    // If content is much narrower than the available width, try increasing font size
+    // but don't exceed the default maximum of 24px
+    while (tempSpan.offsetWidth < availableWidth && fontSize < 24) {
+        fontSize += 0.5;
+        tempSpan.style.fontSize = fontSize + 'px';
+        
+        // Stop increasing if we would exceed the available width
+        if (tempSpan.offsetWidth > availableWidth) {
+            fontSize -= 0.5; // Go back to the last size that fit
+            break;
+        }
+    }
+    
+    // Remove the temporary element
+    document.body.removeChild(tempSpan);
+    
+    // Apply the calculated font size
+    document.documentElement.style.setProperty('--parameters-font-size', fontSize + 'px');
+    
+    // Cache the calculated font size for these dimensions
+    saveFontSizeForDimensions(dimensionKey, fontSize);
+    
+    console.log(`Parameters box font size calculated and cached: ${fontSize}px for dimensions ${dimensionKey}`);
+}
+
+// Add orientation change listener to adjust font size
+window.addEventListener('orientationchange', () => {
+    // Use setTimeout to ensure the new dimensions are available after orientation change
+    setTimeout(() => {
+        // Check if we have a cached value for the new dimensions
+        const currentWidth = window.innerWidth;
+        const currentHeight = window.innerHeight;
+        const dimensionKey = `${currentWidth}x${currentHeight}`;
+        
+        // Apply cached value if available, otherwise recalculate
+        if (fontSizeCache[dimensionKey]) {
+            console.log(`Orientation changed to dimensions ${dimensionKey}, using cached value: ${fontSizeCache[dimensionKey]}px`);
+            document.documentElement.style.setProperty('--parameters-font-size', fontSizeCache[dimensionKey] + 'px');
+        } else {
+            console.log(`Orientation changed to dimensions ${dimensionKey}, calculating new font size`);
+            adjustParametersFontSize();
+        }
+    }, 150);
+});
+
+// Add window resize listener to adjust font size when screen size changes
+// This is mostly for desktop browsers - on mobile, orientation change is the main trigger
+window.addEventListener('resize', debounce(() => {
+    // Check if dimensions have changed since last calculation
+    const currentWidth = window.innerWidth;
+    const currentHeight = window.innerHeight;
+    const dimensionKey = `${currentWidth}x${currentHeight}`;
+    
+    // Only recalculate if we don't have a cached value for these dimensions
+    if (!fontSizeCache[dimensionKey]) {
+        console.log(`Resize detected, dimensions ${dimensionKey} not in cache. Recalculating.`);
+        adjustParametersFontSize();
+    } else {
+        console.log(`Resize detected, but dimensions ${dimensionKey} already in cache. Skipping recalculation.`);
+    }
+}, 150));
+
+/**
+ * Debounce function to limit how often a function is called
+ * @param {Function} func - The function to debounce
+ * @param {number} wait - The debounce wait time in milliseconds
+ * @return {Function} - The debounced function
+ */
+function debounce(func, wait) {
+    let timeout;
+    return function(...args) {
+        const context = this;
+        clearTimeout(timeout);
+        timeout = setTimeout(() => func.apply(context, args), wait);
+    };
 }
 
 /**
@@ -746,13 +952,12 @@ export function toggleSidebar() {
 }
 
 /**
- * Adds geolocation toggle to the sidebar
+ * Adds location tracking toggle to the sidebar
  * @param {HTMLElement} sidebar - The sidebar element
  */
-export function addGeolocationToggle(sidebar) {
-    // Only add this toggle on mobile devices
+export function addLocationToggle(sidebar) {
+    // Only add location tracking on mobile devices
     if (!isMobileDevice()) {
-        console.log('Geolocation toggle not added - not a mobile device');
         return;
     }
     
@@ -766,7 +971,7 @@ export function addGeolocationToggle(sidebar) {
     
     // Create label
     const label = document.createElement('span');
-    label.textContent = 'Location';
+    label.textContent = 'Location Tracking';
     label.style.marginRight = '10px';
     
     // Get current state from settings (might have been updated during load)
@@ -792,127 +997,19 @@ export function addGeolocationToggle(sidebar) {
     sidebar.appendChild(toggleContainer);
     
     // Add click handler
-    toggleSwitch.addEventListener('click', () => {
+    toggleSwitch.addEventListener('click', async () => {
         const currentState = getGeolocationEnabled();
         const newState = !currentState;
         
-        if (newState === true) {
-            // If trying to enable, check permissions first
-            if ('permissions' in navigator) {
-                navigator.permissions.query({name: 'geolocation'}).then(permissionStatus => {
-                    if (permissionStatus.state === 'denied') {
-                        // Show alert if permission is denied
-                        alert('Geolocation permission is denied. Please enable location access in your browser/device settings.');
-                        return; // Don't update state or appearance
-                    }
-                    
-                    // Permission is granted or prompt, update state and appearance
-                    setGeolocationEnabled(true);
-                    toggleSwitch.className = 'toggle-switch active';
-                    toggleSwitch.setAttribute('aria-checked', 'true');
-                    toggleGeolocationVisibility(true);
-                    
-                    // Also update navboxes toggle state
-                    updateNavboxesToggleState();
-                    
-                    // Add permission change listener
-                    setupPermissionChangeListener(permissionStatus);
-                }).catch(error => {
-                    console.error('Error checking geolocation permission:', error);
-                    // Fall back to traditional approach
-                    handleToggle(true);
-                });
-            } else {
-                // Permissions API not available, use traditional approach
-                handleToggle(true);
-            }
-        } else {
-            // Disabling is always allowed
-            handleToggle(false);
-            
-            // Use the new stopGeolocation function to clean up
-            stopGeolocation();
-            
-            // Disable navboxes when geolocation is disabled
-            if (getNavboxesEnabled()) {
-                setNavboxesEnabled(false);
-                updateNavboxesToggleState();
-                updateNavboxesState();
-            }
-        }
+        // Use toggleManager to handle the toggle
+        await toggleGeolocation(newState);
     });
-    
-    // Helper function to handle the toggle state change
-    function handleToggle(newState) {
-        setGeolocationEnabled(newState);
-        toggleSwitch.className = `toggle-switch ${newState ? 'active' : ''}`;
-        toggleSwitch.setAttribute('aria-checked', newState.toString());
-        
-        if (newState) {
-            toggleGeolocationVisibility(true);
-        } else {
-            // Use stopGeolocation function
-            stopGeolocation();
-        }
-        
-        // Setup permission listener if enabling
-        if (newState && 'permissions' in navigator) {
-            navigator.permissions.query({name: 'geolocation'})
-                .then(setupPermissionChangeListener)
-                .catch(err => console.error('Error setting up permission listener:', err));
-        }
-    }
-    
-    // Check if permission is already granted and set up listener
-    if (isEnabled && 'permissions' in navigator) {
-        navigator.permissions.query({name: 'geolocation'})
-            .then(setupPermissionChangeListener)
-            .catch(err => console.error('Error setting up initial permission listener:', err));
-    }
     
     // Now add the Navboxes toggle
     addNavboxesToggle(sidebar);
-}
-
-/**
- * Sets up a listener for permission status changes
- * @param {PermissionStatus} permissionStatus - The permission status object
- */
-function setupPermissionChangeListener(permissionStatus) {
-    // Remove any existing listener first to avoid duplicates
-    permissionStatus.onchange = null;
     
-    // Add new listener
-    permissionStatus.onchange = function() {
-        
-        if (this.state === 'denied') {            
-            // Turn off location
-            setGeolocationEnabled(false);
-            
-            // Also turn off navboxes
-            if (getNavboxesEnabled()) {
-                setNavboxesEnabled(false);
-            }
-            
-            // Update location toggle
-            const locationToggle = document.getElementById('location-toggle');
-            if (locationToggle) {
-                locationToggle.className = 'toggle-switch';
-                locationToggle.setAttribute('aria-checked', 'false');
-            }
-            
-            // Update navboxes toggle
-            updateNavboxesToggleState();
-            
-            // Update navboxes visibility
-            updateNavboxesState();
-            
-            // Hide location marker
-            if (getLayerManager() && getLayerManager().hasLayer('location-marker-triangle')) {
-                getLayerManager().setVisibility('location-marker-triangle', false);
-            }
-        }
-    };
+    // Initialize the toggle manager after both toggles are created
+    initToggleManager();
 }
 
 /**
@@ -972,123 +1069,12 @@ export function addNavboxesToggle(sidebar) {
     
     // Add click handler
     toggleSwitch.addEventListener('click', () => {
-        // Only allow toggle if geolocation is enabled
-        if (!getGeolocationEnabled()) {
-            return;
-        }
-        
         const currentState = getNavboxesEnabled();
         const newState = !currentState;
         
-        // Update state and toggle appearance
-        setNavboxesEnabled(newState);
-        toggleSwitch.className = `toggle-switch ${newState ? 'active' : ''}`;
-        toggleSwitch.setAttribute('aria-checked', newState.toString());
-        
-        // Update navboxes visibility
-        updateNavboxesState();
-        
-        // If turning off navboxes, refresh the geolocation
-        if (!newState) {
-            // Restart geolocation to clean up navboxes
-            stopGeolocation();
-            setupGeolocation();
-        }
+        // Use toggleManager to handle the toggle
+        toggleNavboxes(newState);
     });
-}
-
-/**
- * Updates the navboxes toggle state based on geolocation state
- */
-export function updateNavboxesToggleState() {
-    const navboxesToggle = document.getElementById('navboxes-toggle');
-    const navboxesToggleContainer = document.getElementById('navboxes-toggle-container');
-    
-    if (!navboxesToggle || !navboxesToggleContainer) return;
-    
-    const geolocationEnabled = getGeolocationEnabled();
-    const navboxesEnabled = getNavboxesEnabled();
-    
-    // Update toggle state
-    if (geolocationEnabled) {
-        // Enable the toggle
-        navboxesToggle.disabled = false;
-        navboxesToggle.style.opacity = '1';
-        navboxesToggle.style.cursor = 'pointer';
-    } else {
-        // Disable the toggle and ensure it's off
-        navboxesToggle.disabled = true;
-        navboxesToggle.style.opacity = '0.5';
-        navboxesToggle.style.cursor = 'not-allowed';
-        
-        // Force the visual state to be off
-        navboxesToggle.className = 'toggle-switch';
-        navboxesToggle.setAttribute('aria-checked', 'false');
-    }
-}
-
-/**
- * Toggles the visibility of the geolocation marker
- * @param {boolean} isVisible - Whether the geolocation marker should be visible
- */
-export function toggleGeolocationVisibility(isVisible) {
-    // Only perform geolocation operations on mobile devices
-    if (!isMobileDevice()) return;
-    
-    if (!getLayerManager()) return;
-    
-    // Toggle visibility of location marker
-    if (getLayerManager().hasLayer('location-marker-triangle')) {
-        getLayerManager().setVisibility('location-marker-triangle', isVisible);
-    }
-    
-    // If not visible, make sure navboxes are also updated
-    if (!isVisible) {
-        updateNavboxesState();
-    }
-    
-    // If enabling, check if we need to set up geolocation
-    if (isVisible && navigator.geolocation) {
-        // Check if geolocation permissions are available before proceeding
-        navigator.permissions.query({name: 'geolocation'}).then(permissionStatus => {
-            if (permissionStatus.state === 'denied') {
-                // Geolocation is denied by the browser/system
-                // Only show alert if we're trying to enable location
-                // if (isVisible) {
-                //     alert('Geolocation permission is denied. Please enable location access in your browser/device settings.');
-                // }
-                
-                // Reset toggle state to off
-                setGeolocationEnabled(false);
-                
-                // Update toggle appearance (find the toggle in the sidebar)
-                const toggleSwitch = document.querySelector('.toggle-switch[role="switch"][aria-checked]');
-                if (toggleSwitch) {
-                    toggleSwitch.className = 'toggle-switch';
-                    toggleSwitch.setAttribute('aria-checked', 'false');
-                }
-                
-                // Update navboxes state
-                updateNavboxesState();
-                
-                return;
-            }
-            
-            // Proceed with enabling geolocation if permission is granted or prompt
-            setupGeolocation();
-            
-            // Update navboxes state
-            updateNavboxesState();
-        }).catch(error => {
-            console.error('Error checking geolocation permission:', error);
-            
-            // Fallback to traditional approach if permissions API is not available
-            setupGeolocation();
-            
-            // Update navboxes state
-            updateNavboxesState();
-        });
-    }
 }
 
 // Note: These functions are referenced but defined elsewhere

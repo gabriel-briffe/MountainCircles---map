@@ -87,6 +87,7 @@ const INITIAL_CACHE_RESOURCES = [
     `${BASE_PATH}/layerStyles.js`,
     `${BASE_PATH}/navboxManager.js`,
     `${BASE_PATH}/location.js`,
+    `${BASE_PATH}/toggleManager.js`,
     
     // GeoJSON data files
     `${BASE_PATH}/peaks.geojson`,

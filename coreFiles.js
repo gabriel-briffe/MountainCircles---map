@@ -72,6 +72,7 @@ export function getCoreFiles() {
         `${BASE_PATH}/layerStyles.js`,
         `${BASE_PATH}/navboxManager.js`,
         `${BASE_PATH}/location.js`,
+        `${BASE_PATH}/toggleManager.js`,
         `${BASE_PATH}/coreFiles.js`, // Include this file itself
         `${BASE_PATH}/sw.js`,
         
