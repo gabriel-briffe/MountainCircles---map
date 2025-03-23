@@ -41,6 +41,8 @@ import {
     clearRefs
 } from "./state.js";
 
+import { getCurrentAltitude } from "./location.js";
+
 /**
  * Utility function to filter map features based on checkbox state
  * This function is intentionally kept as a pure function that takes features as a parameter
@@ -369,15 +371,66 @@ export function createAirspacePopup() {
     // Build cross-section visualization
     if (features.length) {
         buildCrossSectionVisualization();
+        
+        // Check if we have altitude data to highlight relevant airspace
+        highlightAirspaceAtCurrentAltitude();
+    }
+}
+
+/**
+ * Highlights the airspace section that contains the current altitude
+ */
+export function highlightAirspaceAtCurrentAltitude() {
+    // Get current altitude from GPS or debug settings
+    const currentAltitude = getCurrentAltitude();
+    
+    if (currentAltitude === null) {
+        return; // No altitude data available
     }
     
-    // Restore highlighting if a feature was highlighted
-    if (highlightedFeatureKey) {
-        // Find the feature with the matching key
-        const highlightedFeature = features.find(f => f.properties.AN === highlightedFeatureKey);
-        if (highlightedFeature) {
-            toggleFeatureHighlight(highlightedFeature, highlightedFeature.originalIndex);
-        }
+    const features = getFeatures();
+    if (!features || !features.length) return;
+    
+    // Find the airspace that contains the current altitude
+    const relevantFeatureIndex = features.findIndex(feature => {
+        const upperLimit = feature.properties.upperLimitMeters || Infinity;
+        const lowerLimit = feature.properties.lowerLimitMeters || 0;
+        return (currentAltitude <= upperLimit && currentAltitude >= lowerLimit);
+    });
+    
+    // If a relevant airspace is found, highlight it
+    if (relevantFeatureIndex >= 0) {
+        // Use setTimeout to let the DOM render first
+        setTimeout(() => {
+            const sectionRefs = getSectionRefs();
+            const section = sectionRefs.get(relevantFeatureIndex);
+            
+            if (section) {
+                // Get the content container which should be the parent or ancestor of the section
+                const contentContainer = document.querySelector('.popup-content');
+                
+                if (contentContainer) {
+                    // Calculate where to scroll within the content container
+                    const containerRect = contentContainer.getBoundingClientRect();
+                    const sectionRect = section.getBoundingClientRect();
+                    
+                    // Calculate the scroll position needed to show the section
+                    // This is the section's offsetTop relative to the container
+                    const scrollTop = section.offsetTop - 
+                        (contentContainer.offsetHeight / 2) + (section.offsetHeight / 2);
+                    
+                    // Scroll the content container, not the whole popup
+                    contentContainer.scrollTop = Math.max(0, scrollTop);
+                }
+                
+                // Highlight the section
+                toggleFeatureHighlight(features[relevantFeatureIndex], relevantFeatureIndex);
+                
+                console.log(`Highlighted airspace at altitude ${currentAltitude}m: ${features[relevantFeatureIndex].properties.AN || features[relevantFeatureIndex].properties.type}`);
+            }
+        }, 100);
+    } else {
+        console.log(`No airspace found containing altitude ${currentAltitude}m`);
     }
 }
 

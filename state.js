@@ -90,6 +90,9 @@ const _state = {
     // Geolocation enabled/disabled
     geolocationEnabled: false,  // Default to disabled for privacy reasons
     
+    // Debug altitude (for testing altitude-based features)
+    debugAltitude: null,
+    
     // Navboxes enabled/disabled
     navboxesEnabled: false,  // Default to disabled, depends on geolocation
     
@@ -570,4 +573,21 @@ export function getTracklogEnabled() {
 export function setTracklogEnabled(enabled) {
     _state.tracklogEnabled = enabled;
     saveStateToLocalStorage();
+}
+
+/**
+ * Gets the debug altitude
+ * @returns {number|null} The debug altitude in meters, or null if not set
+ */
+export function getDebugAltitude() {
+    return _state.debugAltitude;
+}
+
+/**
+ * Sets the debug altitude
+ * @param {number|null} altitude - The debug altitude in meters, or null to clear
+ */
+export function setDebugAltitude(altitude) {
+    _state.debugAltitude = altitude;
+    console.log(`Debug altitude set to ${altitude !== null ? altitude + 'm' : 'null'}`);
 } 

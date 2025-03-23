@@ -5,7 +5,8 @@
 
 import { getLayerManager, getMap, getGeolocationEnabled, setGeolocationEnabled, getNavboxesEnabled, setNavboxesEnabled, 
     setLastSuccessfulPositionTime, setGeolocationErrorState, GEOLOCATION_STATE, setLastPositionError, checkPositionStaleness, 
-    getLastSuccessfulPositionTime, getLastPosition, setLastPosition, getCurrentTrack, setCurrentTrack } from "./state.js";
+    getLastSuccessfulPositionTime, getLastPosition, setLastPosition, getCurrentTrack, setCurrentTrack, getTracklogEnabled, 
+    getDebugAltitude } from "./state.js";
 import { initNavboxes, updateNavboxesWithPosition, updateNavboxesState, updateNavboxesByErrorState, updateTrack } from "./navboxManager.js";
 import { updateToggleStates, setGeolocationStateAndSlider, setNavboxesStateAndSlider } from "./toggleManager.js";
 
@@ -515,4 +516,25 @@ export function stopGeolocation() {
     }
     
     console.log('Geolocation tracking stopped');
+}
+
+/**
+ * Gets the current altitude from GPS or debug settings
+ * @returns {number|null} The altitude in meters, or null if not available
+ */
+export function getCurrentAltitude() {
+    // First check for debug altitude
+    const debugAltitude = getDebugAltitude();
+    if (debugAltitude !== null) {
+        return debugAltitude;
+    }
+    
+    // Otherwise try to get from GPS
+    const lastPosition = getLastPosition();
+    if (lastPosition && lastPosition.coords && typeof lastPosition.coords.altitude === 'number') {
+        return lastPosition.coords.altitude;
+    }
+    
+    // No altitude available
+    return null;
 } 
