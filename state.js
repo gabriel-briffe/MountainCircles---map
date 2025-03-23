@@ -102,7 +102,7 @@ const _state = {
     lastPositionError: null,
     
     // Location tracking for track calculation
-    lastPosition: null,          // Last valid position coordinates [lng, lat]
+    lastPosition: null,          // Full position object including coords with altitude
     currentTrack: 0,           // Current track in degrees (0-360, 0 = north)
     
     // Tracklog related properties

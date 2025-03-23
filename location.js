@@ -209,7 +209,8 @@ export function updateLocation(position) {
     const newCoords = [position.coords.longitude, position.coords.latitude];
     
     // Get the last position from state
-    const lastCoords = getLastPosition();
+    const lastPosition = getLastPosition();
+    const lastCoords = lastPosition ? [lastPosition.coords.longitude, lastPosition.coords.latitude] : null;
     
     // Calculate track if we have a previous position
     if (lastCoords) {
@@ -226,8 +227,8 @@ export function updateLocation(position) {
     // Always update the position
     updateMarkerPosition(newCoords);
     
-    // Save the new position as the last position
-    setLastPosition(newCoords);
+    // Save the new position as the last position (store full position object)
+    setLastPosition(position);
     
     // Update navboxes with position data
     updateNavboxesWithPosition(position);
@@ -532,6 +533,7 @@ export function getCurrentAltitude() {
     // Otherwise try to get from GPS
     const lastPosition = getLastPosition();
     if (lastPosition && lastPosition.coords && typeof lastPosition.coords.altitude === 'number') {
+        console.log(`Using GPS altitude: ${lastPosition.coords.altitude}m`);
         return lastPosition.coords.altitude;
     }
     
