@@ -95,9 +95,9 @@ const _state = {
     geolocationErrorState: GEOLOCATION_STATE.OK,
     lastPositionError: null,
     
-    // Location tracking for heading calculation
+    // Location tracking for track calculation
     lastPosition: null,          // Last valid position coordinates [lng, lat]
-    currentHeading: 0            // Current heading in degrees (0-360, 0 = north)
+    currentTrack: 0            // Current track in degrees (0-360, 0 = north)
 };
 
 // State getters
@@ -511,17 +511,17 @@ export function setLastPosition(coords) {
 }
 
 /**
- * Gets the current heading
- * @returns {number} Heading in degrees (0-360, 0 = north)
+ * Gets the current track
+ * @returns {number} Track in degrees (0-360, 0 = north)
  */
-export function getCurrentHeading() {
-    return _state.currentHeading;
+export function getCurrentTrack() {
+    return _state.currentTrack;
 }
 
 /**
- * Sets the current heading
- * @param {number} heading - Heading in degrees (0-360, 0 = north)
+ * Sets the current track
+ * @param {number} track - Track in degrees (0-360, 0 = north)
  */
-export function setCurrentHeading(heading) {
-    _state.currentHeading = heading;
+export function setCurrentTrack(track) {
+    _state.currentTrack = track;
 } 

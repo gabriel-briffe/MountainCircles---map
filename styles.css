@@ -1219,6 +1219,18 @@ button .material-icons-round {
     color: var(--text-light);
 }
 
+/* Style for units in navbox values */
+.navboxes-enabled .navbox-value span.unit {
+    font-size: var(--font-size-small); /* Same size as navbox labels */
+    font-weight: var(--font-weight-normal);
+    margin-left: 2px; /* Add space between value and unit */
+}
+
+/* No margin for degree symbol */
+.navboxes-enabled .navbox-value span.unit.degree {
+    margin-left: 0;
+}
+
 .navboxes-enabled .navbox-label {
     font-size: var(--font-size-small);
     margin-top: 4px;
@@ -1246,6 +1258,24 @@ button .material-icons-round {
         left: 50%; /* Center horizontally in portrait */
         transform: translateX(-50%); /* Center horizontally in portrait */
         flex-direction: row; /* Horizontal layout in portrait */
+        flex-wrap: nowrap; /* Prevent wrapping to multiple lines */
+        width: auto; /* Let content determine width */
+        max-width: 90%; /* Allow some margin on very narrow screens */
+        overflow-x: auto; /* Enable horizontal scrolling if needed */
+        scrollbar-width: none; /* Hide scrollbar in Firefox */
+        -ms-overflow-style: none; /* Hide scrollbar in IE/Edge */
+        padding: 0 4px; /* Add a small horizontal padding */
+    }
+    
+    /* Hide scrollbar for Chrome, Safari and Opera */
+    .navboxes-enabled .navbox-container::-webkit-scrollbar {
+        display: none;
+    }
+    
+    /* Ensure navboxes don't shrink too much in portrait mode */
+    .navboxes-enabled .navbox {
+        flex: 1 0 auto; /* Don't shrink, grow if space available */
+        min-width: 80px; /* Minimum width to prevent excessive shrinking */
     }
 }
 

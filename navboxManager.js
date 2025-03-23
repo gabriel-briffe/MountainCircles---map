@@ -19,12 +19,12 @@ let navboxContainer = null;
 // Individual navbox elements
 let altitudeBox = null;
 let speedBox = null;
-let headingBox = null;
+let trackBox = null;
 
 // Current values
 let currentAltitude = null;
 let currentSpeed = null;
-let currentHeading = null;
+let currentTrack = null;
 
 // Visibility state
 let navboxesVisible = true;
@@ -68,7 +68,7 @@ export function initNavboxes() {
     // Create individual navboxes
     createAltitudeBox();
     createSpeedBox();
-    createHeadingBox();
+    createTrackBox();
     
     // Mark as initialized
     initialized = true;
@@ -84,7 +84,7 @@ function createAltitudeBox() {
     // Create value element
     const valueElement = document.createElement('div');
     valueElement.className = 'navbox-value';
-    valueElement.textContent = '---m';
+    valueElement.innerHTML = '---<span class="unit">m</span>';
     
     // Create label element
     const labelElement = document.createElement('div');
@@ -145,10 +145,10 @@ export function updateAltitude(altitude) {
                 unit = 'ft';
             }
             
-            valueElement.textContent = `${displayValue}${unit}`;
+            valueElement.innerHTML = `${displayValue}<span class="unit">${unit}</span>`;
         } else {
             // No valid altitude data
-            valueElement.textContent = altitudeInMeters ? '---m' : '---ft';
+            valueElement.innerHTML = altitudeInMeters ? '---<span class="unit">m</span>' : '---<span class="unit">ft</span>';
         }
     }
 }
@@ -163,7 +163,7 @@ function createSpeedBox() {
     // Create value element
     const valueElement = document.createElement('div');
     valueElement.className = 'navbox-value';
-    valueElement.textContent = '---km/h';
+    valueElement.innerHTML = '---<span class="unit">km/h</span>';
     
     // Create label element
     const labelElement = document.createElement('div');
@@ -194,57 +194,57 @@ export function updateSpeed(speed) {
         if (speed !== null && !isNaN(speed)) {
             // Display in km/h
             const displayValue = Math.round(speed * MS_TO_KMH);
-            valueElement.textContent = `${displayValue}km/h`;
+            valueElement.innerHTML = `${displayValue}<span class="unit">km/h</span>`;
         } else {
             // No valid speed data
-            valueElement.textContent = '---km/h';
+            valueElement.innerHTML = '---<span class="unit">km/h</span>';
         }
     }
 }
 
 /**
- * Creates the heading navbox
+ * Creates the track navbox
  */
-function createHeadingBox() {
-    headingBox = document.createElement('div');
-    headingBox.className = 'navbox heading-box';
+function createTrackBox() {
+    trackBox = document.createElement('div');
+    trackBox.className = 'navbox track-box';
     
     // Create value element
     const valueElement = document.createElement('div');
     valueElement.className = 'navbox-value';
-    valueElement.textContent = '---°';
+    valueElement.innerHTML = '---<span class="unit degree">°</span>';
     
     // Create label element
     const labelElement = document.createElement('div');
     labelElement.className = 'navbox-label';
-    labelElement.textContent = 'Heading';
+    labelElement.textContent = 'Track';
     
     // Add elements to the box
-    headingBox.appendChild(valueElement);
-    headingBox.appendChild(labelElement);
+    trackBox.appendChild(valueElement);
+    trackBox.appendChild(labelElement);
     
     // Add box to container
-    navboxContainer.appendChild(headingBox);
+    navboxContainer.appendChild(trackBox);
 }
 
 /**
- * Updates the heading navbox with GPS heading
- * @param {number} heading - The heading in degrees
+ * Updates the track navbox with GPS track
+ * @param {number} track - The track in degrees
  */
-export function updateHeading(heading) {
+export function updateTrack(track) {
     // Skip if not initialized or not on mobile
-    if (!initialized || !isMobile || !headingBox) return;
+    if (!initialized || !isMobile || !trackBox) return;
     
-    currentHeading = heading;
+    currentTrack = track;
     
     // Find value element
-    const valueElement = headingBox.querySelector('.navbox-value');
+    const valueElement = trackBox.querySelector('.navbox-value');
     if (valueElement) {
-        if (heading !== null && !isNaN(heading)) {
-            valueElement.textContent = `${Math.round(heading)}°`;
+        if (track !== null && !isNaN(track)) {
+            valueElement.innerHTML = `${Math.round(track)}<span class="unit degree">°</span>`;
         } else {
-            // No valid heading data
-            valueElement.textContent = '---°';
+            // No valid track data
+            valueElement.innerHTML = '---<span class="unit degree">°</span>';
         }
     }
 }
@@ -267,8 +267,8 @@ export function updateNavboxesWithPosition(position) {
         updateSpeed(position.coords.speed);
     }
     
-    // Note: Heading is intentionally NOT updated here
-    // Heading updates are handled separately in location.js to ensure
+    // Note: Track is intentionally NOT updated here
+    // Track updates are handled separately in location.js to ensure
     // the navbox shows the same value as the marker direction
 }
 
@@ -318,10 +318,10 @@ export function destroyNavboxes() {
     navboxContainer = null;
     altitudeBox = null;
     speedBox = null;
-    headingBox = null;
+    trackBox = null;
     currentAltitude = null;
     currentSpeed = null;
-    currentHeading = null;
+    currentTrack = null;
     initialized = false;
     
 }
@@ -363,13 +363,13 @@ export function clearNavboxes() {
     
     currentAltitude = null;
     currentSpeed = null;
-    currentHeading = null;
+    currentTrack = null;
     
     // Reset altitude display
     if (altitudeBox) {
         const valueElement = altitudeBox.querySelector('.navbox-value');
         if (valueElement) {
-            valueElement.textContent = altitudeInMeters ? '---m' : '---ft';
+            valueElement.innerHTML = altitudeInMeters ? '---<span class="unit">m</span>' : '---<span class="unit">ft</span>';
         }
     }
     
@@ -377,15 +377,15 @@ export function clearNavboxes() {
     if (speedBox) {
         const valueElement = speedBox.querySelector('.navbox-value');
         if (valueElement) {
-            valueElement.textContent = '---km/h';
+            valueElement.innerHTML = '---<span class="unit">km/h</span>';
         }
     }
     
-    // Reset heading display
-    if (headingBox) {
-        const valueElement = headingBox.querySelector('.navbox-value');
+    // Reset track display
+    if (trackBox) {
+        const valueElement = trackBox.querySelector('.navbox-value');
         if (valueElement) {
-            valueElement.textContent = '---°';
+            valueElement.innerHTML = '---<span class="unit degree">°</span>';
         }
     }
 }
@@ -417,8 +417,8 @@ export function updateNavboxesByErrorState(errorState) {
         speedBox.classList.remove('navbox-warning', 'navbox-error');
     }
     
-    if (headingBox) {
-        headingBox.classList.remove('navbox-warning', 'navbox-error');
+    if (trackBox) {
+        trackBox.classList.remove('navbox-warning', 'navbox-error');
     }
     
     // Add appropriate state class based on error state
@@ -427,14 +427,14 @@ export function updateNavboxesByErrorState(errorState) {
             navboxContainer.classList.add('navboxes-warning');
             if (altitudeBox) altitudeBox.classList.add('navbox-warning');
             if (speedBox) speedBox.classList.add('navbox-warning');
-            if (headingBox) headingBox.classList.add('navbox-warning');
+            if (trackBox) trackBox.classList.add('navbox-warning');
             break;
             
         case GEOLOCATION_STATE.ERROR:
             navboxContainer.classList.add('navboxes-error');
             if (altitudeBox) altitudeBox.classList.add('navbox-error');
             if (speedBox) speedBox.classList.add('navbox-error');
-            if (headingBox) headingBox.classList.add('navbox-error');
+            if (trackBox) trackBox.classList.add('navbox-error');
             
             // In error state, we should also reset the displayed values
             resetNavboxValues();
@@ -455,7 +455,7 @@ function resetNavboxValues() {
     if (altitudeBox) {
         const valueElement = altitudeBox.querySelector('.navbox-value');
         if (valueElement) {
-            valueElement.textContent = altitudeInMeters ? '---m' : '---ft';
+            valueElement.innerHTML = altitudeInMeters ? '---<span class="unit">m</span>' : '---<span class="unit">ft</span>';
         }
     }
     
@@ -463,22 +463,22 @@ function resetNavboxValues() {
     if (speedBox) {
         const valueElement = speedBox.querySelector('.navbox-value');
         if (valueElement) {
-            valueElement.textContent = '---km/h';
+            valueElement.innerHTML = '---<span class="unit">km/h</span>';
         }
     }
     
-    // Reset heading display
-    if (headingBox) {
-        const valueElement = headingBox.querySelector('.navbox-value');
+    // Reset track display
+    if (trackBox) {
+        const valueElement = trackBox.querySelector('.navbox-value');
         if (valueElement) {
-            valueElement.textContent = '---°';
+            valueElement.innerHTML = '---<span class="unit degree">°</span>';
         }
     }
     
     // Also reset current values
     currentAltitude = null;
     currentSpeed = null;
-    currentHeading = null;
+    currentTrack = null;
 }
 
 // Make toggleNavboxes available globally for console access

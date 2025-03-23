@@ -1,12 +1,12 @@
 /**
  * Location tracking module for MountainCircles Map
- * Handles user location tracking, heading calculation, and position history
+ * Handles user location tracking, track calculation, and position history
  */
 
 import { getLayerManager, getMap, getGeolocationEnabled, setGeolocationEnabled, getNavboxesEnabled, setNavboxesEnabled, 
     setLastSuccessfulPositionTime, setGeolocationErrorState, GEOLOCATION_STATE, setLastPositionError, checkPositionStaleness, 
-    getLastSuccessfulPositionTime, getLastPosition, setLastPosition, getCurrentHeading, setCurrentHeading } from "./state.js";
-import { initNavboxes, updateNavboxesWithPosition, updateNavboxesState, updateNavboxesByErrorState, updateHeading } from "./navboxManager.js";
+    getLastSuccessfulPositionTime, getLastPosition, setLastPosition, getCurrentTrack, setCurrentTrack } from "./state.js";
+import { initNavboxes, updateNavboxesWithPosition, updateNavboxesState, updateNavboxesByErrorState, updateTrack } from "./navboxManager.js";
 import { updateToggleStates, setGeolocationStateAndSlider, setNavboxesStateAndSlider } from "./toggleManager.js";
 
 // Throttle for rotation updates
@@ -17,36 +17,36 @@ const ROTATION_UPDATE_THROTTLE_MS = 250; // Limit updates to 4 per second
 let positionCheckIntervalId = null;
 
 /**
- * Debug function to manually set the heading
- * Can be called from the console like: heading(45)
- * @param {number} degrees - The heading in degrees (0-360)
+ * Debug function to manually set the track
+ * Can be called from the console like: track(45)
+ * @param {number} degrees - The track in degrees (0-360)
  */
-export function heading(degrees) {
+export function track(degrees) {
     // Ensure degrees is a number
-    const newHeading = Number(degrees);
+    const newTrack = Number(degrees);
     
     // Check if valid number
-    if (isNaN(newHeading)) {
-        console.error('Heading must be a number (0-360)');
+    if (isNaN(newTrack)) {
+        console.error('Track must be a number (0-360)');
         return;
     }
     
     // Normalize to 0-360
-    const normalizedHeading = (newHeading + 360) % 360;
-    console.log(`Heading manually set to: ${normalizedHeading.toFixed(2)}°`);
+    const normalizedTrack = (newTrack + 360) % 360;
+    console.log(`Track manually set to: ${normalizedTrack.toFixed(2)}°`);
     
-    // Update heading in state
-    setCurrentHeading(normalizedHeading);
+    // Update track in state
+    setCurrentTrack(normalizedTrack);
     
     // Update the marker rotation
-    // This also updates the heading navbox
-    updateMarkerRotation(normalizedHeading);
+    // This also updates the track navbox
+    updateMarkerRotation(normalizedTrack);
     
-    return normalizedHeading;
+    return normalizedTrack;
 }
 
 // Make the function available globally for console access
-window.heading = heading;
+window.track = track;
 
 /**
  * Calculates the distance between two points in meters
@@ -82,12 +82,12 @@ export function calculateDistance(start, end) {
 }
 
 /**
- * Calculates the heading between two points in degrees
+ * Calculates the track between two points in degrees
  * @param {Array} start - Start coordinates [longitude, latitude]
  * @param {Array} end - End coordinates [longitude, latitude]
- * @returns {number} Heading in degrees (0-360, 0 = north, clockwise)
+ * @returns {number} Track in degrees (0-360, 0 = north, clockwise)
  */
-export function calculateHeading(start, end) {
+export function calculateTrack(start, end) {
     if (!start || !end || start.length < 2 || end.length < 2) {
         return 0;
     }
@@ -98,17 +98,17 @@ export function calculateHeading(start, end) {
     const endLat = end[1] * Math.PI / 180;
     const endLng = end[0] * Math.PI / 180;
     
-    // Calculate heading
+    // Calculate track
     const y = Math.sin(endLng - startLng) * Math.cos(endLat);
     const x = Math.cos(startLat) * Math.sin(endLat) -
               Math.sin(startLat) * Math.cos(endLat) * Math.cos(endLng - startLng);
     
-    let heading = Math.atan2(y, x) * 180 / Math.PI;
+    let track = Math.atan2(y, x) * 180 / Math.PI;
     
     // Normalize to 0-360
-    heading = (heading + 360) % 360;
+    track = (track + 360) % 360;
     
-    return heading;
+    return track;
 }
 
 /**
@@ -122,8 +122,8 @@ function updateMarkerPosition(coords) {
         return;
     }
     
-    // Get current heading once from state
-    const currentHeading = getCurrentHeading();
+    // Get current track once from state
+    const currentTrack = getCurrentTrack();
     
     // Update the marker with current position and rotation
     layerManager.addOrUpdateSource('location-marker', {
@@ -135,22 +135,22 @@ function updateMarkerPosition(coords) {
                 coordinates: coords
             },
             properties: {
-                heading: currentHeading // Use heading from state
+                track: currentTrack // Use track from state
             }
         }
     });
 }
 
 /**
- * Updates the marker rotation based on heading
- * @param {number} heading - The heading in degrees
+ * Updates the marker rotation based on track
+ * @param {number} track - The track in degrees
  */
-function updateMarkerRotation(heading) {
+function updateMarkerRotation(track) {
     const map = getMap();
     if (!map) return;
     
     // Create rotated icon
-    const imageData = createRotatedLocationIcon(heading);
+    const imageData = createRotatedLocationIcon(track);
     
     // Use requestAnimationFrame for smoother updates
     requestAnimationFrame(() => {
@@ -164,25 +164,25 @@ function updateMarkerRotation(heading) {
         map.addImage('location-icon-rotated', imageData, { pixelRatio: 1 });
     });
     
-    // Always update the heading navbox to ensure synchronized values
-    updateHeading(heading);
+    // Always update the track navbox to ensure synchronized values
+    updateTrack(track);
 }
 
 /**
  * Throttled function to update marker rotation
  * Prevents too frequent updates that could cause performance issues
- * @param {number} heading - The heading in degrees
+ * @param {number} track - The track in degrees
  */
-function throttledUpdateMarkerRotation(heading) {
+function throttledUpdateMarkerRotation(track) {
     const now = Date.now();
     if (now - lastRotationUpdateTime > ROTATION_UPDATE_THROTTLE_MS) {
-        updateMarkerRotation(heading);
+        updateMarkerRotation(track);
         lastRotationUpdateTime = now;
     }
 }
 
 /**
- * Updates the user's location on the map and calculates heading
+ * Updates the user's location on the map and calculates track
  * @param {Object} position - Geolocation position object
  */
 export function updateLocation(position) {
@@ -210,16 +210,16 @@ export function updateLocation(position) {
     // Get the last position from state
     const lastCoords = getLastPosition();
     
-    // Calculate heading if we have a previous position
+    // Calculate track if we have a previous position
     if (lastCoords) {
-        // Calculate new heading without checking distance
-        const newHeading = calculateHeading(lastCoords, newCoords);
-        setCurrentHeading(newHeading);
-        console.log(`Heading: ${newHeading.toFixed(2)}°`);
+        // Calculate new track without checking distance
+        const newTrack = calculateTrack(lastCoords, newCoords);
+        setCurrentTrack(newTrack);
+        console.log(`Track: ${newTrack.toFixed(2)}°`);
         
         // Update the marker rotation with throttling
-        // This will also update the heading navbox
-        throttledUpdateMarkerRotation(newHeading);
+        // This will also update the track navbox
+        throttledUpdateMarkerRotation(newTrack);
     }
     
     // Always update the position
@@ -233,11 +233,11 @@ export function updateLocation(position) {
 }
 
 /**
- * Creates a rotated location icon based on the current heading
- * @param {number} heading - The heading in degrees
+ * Creates a rotated location icon based on the current track
+ * @param {number} track - The track in degrees
  * @returns {ImageData} The rotated icon image data
  */
-export function createRotatedLocationIcon(heading) {
+export function createRotatedLocationIcon(track) {
     // Increase the size for better resolution
     const size = 64; // Increased from 15
     const canvas = document.createElement('canvas');
@@ -255,8 +255,8 @@ export function createRotatedLocationIcon(heading) {
     // Translate to center
     ctx.translate(size/2, size/2);
     
-    // Rotate based on heading
-    ctx.rotate(heading * Math.PI / 180);
+    // Rotate based on track
+    ctx.rotate(track * Math.PI / 180);
     
     // Draw elongated triangle pointing north (up in the canvas)
     // Make the triangle proportionally sized to the canvas
@@ -313,8 +313,8 @@ export function initLocationTracker() {
                 map.removeImage('location-icon-rotated');
             }
             
-            // Create a fresh icon with the heading from state
-            const imageData = createRotatedLocationIcon(getCurrentHeading());
+            // Create a fresh icon with the track from state
+            const imageData = createRotatedLocationIcon(getCurrentTrack());
             
             // Add the icon
             map.addImage('location-icon-rotated', imageData, { pixelRatio: 1 });
@@ -330,7 +330,7 @@ export function initLocationTracker() {
                             coordinates: [0, 0]
                         },
                         properties: {
-                            heading: getCurrentHeading()
+                            track: getCurrentTrack()
                         }
                     }
                 });
@@ -485,9 +485,9 @@ export function stopGeolocation() {
     setLastSuccessfulPositionTime(null);
     setLastPositionError(null);
     
-    // Reset position and heading
+    // Reset position and track
     setLastPosition(null);
-    setCurrentHeading(0);
+    setCurrentTrack(0);
     
     // Reset the throttle time
     lastRotationUpdateTime = 0;
