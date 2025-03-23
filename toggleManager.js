@@ -69,7 +69,7 @@ export function initToggleManager() {
     // Set initial states
     updateToggleStates();
     
-    logToggleDebug('Initialize Toggle Manager');
+    // logToggleDebug('Initialize Toggle Manager');
 }
 
 /**
@@ -149,12 +149,12 @@ export function setGeolocationStateAndSlider(enabled) {
     updateNavboxesToggleState();
     
     // Log debug info about the state change
-    logToggleDebug('Geolocation State Change', { 
-        action: 'setGeolocationStateAndSlider',
-        previousState,
-        newState: enabled,
-        isToggleInDOM: !!locationToggle
-    });
+    // logToggleDebug('Geolocation State Change', { 
+    //     action: 'setGeolocationStateAndSlider',
+    //     previousState,
+    //     newState: enabled,
+    //     isToggleInDOM: !!locationToggle
+    // });
 }
 
 /**
@@ -166,9 +166,9 @@ export function setNavboxesStateAndSlider(enabled) {
     
     // Don't enable navboxes if geolocation is disabled
     if (enabled && !getGeolocationEnabled()) {
-        logToggleDebug('Navboxes Enable Blocked', { 
-            reason: 'Geolocation is disabled'
-        });
+        // logToggleDebug('Navboxes Enable Blocked', { 
+        //     reason: 'Geolocation is disabled'
+        // });
         return;
     }
     
@@ -182,13 +182,13 @@ export function setNavboxesStateAndSlider(enabled) {
     }
     
     // Log debug info about the state change
-    logToggleDebug('Navboxes State Change', { 
-        action: 'setNavboxesStateAndSlider',
-        previousState,
-        newState: enabled,
-        isToggleInDOM: !!navboxesToggle,
-        geolocationState: getGeolocationEnabled()
-    });
+    // logToggleDebug('Navboxes State Change', { 
+    //     action: 'setNavboxesStateAndSlider',
+    //     previousState,
+    //     newState: enabled,
+    //     isToggleInDOM: !!navboxesToggle,
+    //     geolocationState: getGeolocationEnabled()
+    // });
 }
 
 /**
@@ -197,10 +197,10 @@ export function setNavboxesStateAndSlider(enabled) {
  * @returns {Promise<boolean>} Whether the toggle was successful
  */
 export async function toggleGeolocation(newState) {
-    logToggleDebug('Toggling Geolocation', { 
-        requestedState: newState,
-        source: 'toggleGeolocation function'
-    });
+    // logToggleDebug('Toggling Geolocation', { 
+    //     requestedState: newState,
+    //     source: 'toggleGeolocation function'
+    // });
     
     // If trying to enable, check permissions first
     if (newState === true) {
@@ -211,22 +211,22 @@ export async function toggleGeolocation(newState) {
                 if (permissionStatus.state === 'denied') {
                     // Show alert if permission is denied
                     alert('Geolocation permission is denied. Please enable location access in your browser/device settings.');
-                    logToggleDebug('Geolocation Permission Denied', { 
-                        permissionState: permissionStatus.state 
-                    });
+                    // logToggleDebug('Geolocation Permission Denied', { 
+                    //     permissionState: permissionStatus.state 
+                    // });
                     return false;
                 }
                 
                 // Set up permission change listener
                 setupPermissionChangeListener(permissionStatus);
                 
-                logToggleDebug('Geolocation Permission Check', { 
-                    permissionState: permissionStatus.state 
-                });
+                // logToggleDebug('Geolocation Permission Check', { 
+                //     permissionState: permissionStatus.state 
+                // });
             }
         } catch (error) {
             console.error('Error checking geolocation permission:', error);
-            logToggleDebug('Geolocation Permission Error', { error: error.message });
+            // logToggleDebug('Geolocation Permission Error', { error: error.message });
         }
     } else {
         // Use the stopGeolocation function to clean up
@@ -251,16 +251,16 @@ export async function toggleGeolocation(newState) {
  * @returns {boolean} Whether the toggle was successful
  */
 export function toggleNavboxes(newState) {
-    logToggleDebug('Toggling Navboxes', { 
-        requestedState: newState,
-        source: 'toggleNavboxes function'
-    });
+    // logToggleDebug('Toggling Navboxes', { 
+    //     requestedState: newState,
+    //     source: 'toggleNavboxes function'
+    // });
     
     // Only allow toggle if geolocation is enabled
     if (!getGeolocationEnabled()) {
-        logToggleDebug('Navboxes Toggle Blocked', { 
-            reason: 'Geolocation is disabled'
-        });
+        // logToggleDebug('Navboxes Toggle Blocked', { 
+        //     reason: 'Geolocation is disabled'
+        // });
         return false;
     }
     
@@ -289,10 +289,10 @@ export function toggleNavboxes(newState) {
             // Restart geolocation
             setupGeolocation();
             
-            logToggleDebug('Fixed Geolocation State', {
-                action: 'toggleNavboxes recovery',
-                geolocationRestored: true
-            });
+            // logToggleDebug('Fixed Geolocation State', {
+            //     action: 'toggleNavboxes recovery',
+            //     geolocationRestored: true
+            // });
         }
     }
     
@@ -309,9 +309,9 @@ export function setupPermissionChangeListener(permissionStatus) {
     
     // Add new listener
     permissionStatus.onchange = function() {
-        logToggleDebug('Geolocation Permission Change', { 
-            newPermissionState: this.state 
-        });
+        // logToggleDebug('Geolocation Permission Change', { 
+        //     newPermissionState: this.state 
+        // });
         
         if (this.state === 'denied') {            
             // Turn off location AND update slider using our helper function
@@ -342,9 +342,9 @@ export function toggleGeolocationVisibility(isVisible) {
     if (getLayerManager().hasLayer('location-marker-triangle')) {
         getLayerManager().setVisibility('location-marker-triangle', isVisible);
         
-        logToggleDebug('Location Marker Visibility', { 
-            visible: isVisible 
-        });
+        // logToggleDebug('Location Marker Visibility', { 
+        //     visible: isVisible 
+        // });
     }
     
     // If enabling, set up geolocation

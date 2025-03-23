@@ -83,7 +83,7 @@ function updateDockElementSizes() {
     document.documentElement.style.setProperty('--dock-slider-length', `${sliderLength}px`);
     
     // Log all sizes for debugging
-    logDockSizes(buttonCount, hasSlider, effectiveCount, availableSpace, buttonSize, sliderLength, !isLandscape); // Inverted for UI orientation
+    // logDockSizes(buttonCount, hasSlider, effectiveCount, availableSpace, buttonSize, sliderLength, !isLandscape); // Inverted for UI orientation
 }
 
 /**
