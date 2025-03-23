@@ -66,7 +66,7 @@ function logSimulationInstructions() {
 }
 
 // Create the tracklog layer on the map
-function createTracklogLayer() {
+export function createTracklogLayer() {
   console.log('Creating tracklog layer...');
   const layerManager = getLayerManager();
   const map = getMap();

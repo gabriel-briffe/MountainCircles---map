@@ -79,7 +79,7 @@ import {
 } from "./navboxManager.js";
 
 import { toggleGeolocation, toggleNavboxes, initToggleManager, updateToggleStates, toggleGeolocationVisibility } from "./toggleManager.js";
-
+import { createTracklogLayer } from "./tracking.js";
 
 /**
  * Creates a checkbox option with label for the sidebar
@@ -1131,17 +1131,36 @@ export function addTracklogControls(sidebar) {
         
         // If enabling tracklog, clear existing tracklog and start fresh
         if (isActive) {
+            // Clear the existing tracklog data
             setTracklog([]);
-        }
-        
-        // Toggle the tracklog layer visibility
-        if (map) {
-            try {
-                if (map.getLayer('tracklog-full-line')) {
-                    map.setLayoutProperty('tracklog-full-line', 'visibility', isActive ? 'visible' : 'none');
+            
+            // Create/recreate the tracklog layer if needed
+            if (map) {
+                // Check if the tracklog layer exists, create it if not
+                try {
+                    if (!map.getLayer('tracklog-full-line')) {
+                        console.log('Tracklog layer not found, creating it now');
+                        createTracklogLayer();
+                    } else {
+                        // Layer exists, update its visibility
+                        map.setLayoutProperty('tracklog-full-line', 'visibility', 'visible');
+                        
+                        // Clear any existing data in the source
+                        if (map.getSource('tracklog-full-source')) {
+                            map.getSource('tracklog-full-source').setData({
+                                type: 'FeatureCollection',
+                                features: []
+                            });
+                        }
+                    }
+                } catch (err) {
+                    console.error('Error handling tracklog layer:', err);
                 }
-            } catch (err) {
-                console.error('Error toggling tracklog visibility:', err);
+            }
+        } else {
+            // Just hide the layer if disabling
+            if (map && map.getLayer('tracklog-full-line')) {
+                map.setLayoutProperty('tracklog-full-line', 'visibility', 'none');
             }
         }
     });
@@ -1152,45 +1171,6 @@ export function addTracklogControls(sidebar) {
     
     // Add to sidebar
     sidebar.appendChild(toggleContainer);
-    
-    // Add clear button
-    const clearButton = document.createElement('button');
-    clearButton.textContent = 'Clear Track';
-    clearButton.className = 'sidebar-button';
-    clearButton.style.width = '100%';
-    clearButton.style.padding = '8px';
-    clearButton.style.marginTop = '8px';
-    clearButton.style.backgroundColor = '#f44336';
-    clearButton.style.color = 'white';
-    clearButton.style.border = 'none';
-    clearButton.style.borderRadius = '4px';
-    clearButton.style.cursor = 'pointer';
-    
-    // Add clear button click handler
-    clearButton.addEventListener('click', () => {
-        if (confirm('Are you sure you want to clear the track?')) {
-            // Clear the tracklog from state
-            setTracklog([]);
-            
-            // Only attempt to clear the layer if it exists and tracklog is enabled
-            const map = getMap();
-            if (map && getTracklogEnabled()) {
-                try {
-                    // Update source with empty data
-                    if (map.getSource('tracklog-full-source')) {
-                        map.getSource('tracklog-full-source').setData({
-                            type: 'FeatureCollection',
-                            features: []
-                        });
-                    }
-                } catch (err) {
-                    console.error('Error clearing tracklog:', err);
-                }
-            }
-        }
-    });
-    
-    sidebar.appendChild(clearButton);
 }
 
 // Note: These functions are referenced but defined elsewhere
