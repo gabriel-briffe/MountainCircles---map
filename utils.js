@@ -29,6 +29,62 @@ export function isIOS() {
 }
 
 /**
+ * Requests and maintains a wake lock to prevent screen from sleeping
+ * @returns {Promise<Object|null>} The wake lock object or null if not supported/failed
+ */
+export async function requestWakeLock() {
+    if ('wakeLock' in navigator) {
+        try {
+            // Request a screen wake lock
+            const wakeLock = await navigator.wakeLock.request('screen');
+            
+            console.log('Wake lock activated');
+            
+            // Create a reacquisition function that doesn't cause infinite recursion
+            const reacquireWakeLock = async () => {
+                if (document.visibilityState === 'visible') {
+                    try {
+                        // Try to reacquire the wake lock
+                        const newWakeLock = await navigator.wakeLock.request('screen');
+                        console.log('Wake lock reacquired');
+                        
+                        // Update the wake lock in the app config if it exists
+                        if (window.APP_CONFIG) {
+                            window.APP_CONFIG.wakeLock = newWakeLock;
+                        }
+                        
+                        return newWakeLock;
+                    } catch (err) {
+                        console.error('Failed to reacquire wake lock:', err);
+                        return null;
+                    }
+                }
+            };
+            
+            // Add a listener to reacquire the wake lock if it's released
+            document.addEventListener('visibilitychange', reacquireWakeLock);
+            
+            // Also listen for the page becoming visible again
+            wakeLock.addEventListener('release', () => {
+                console.log('Wake lock released');
+                // Try to reacquire when released (only if page is visible)
+                if (document.visibilityState === 'visible') {
+                    reacquireWakeLock();
+                }
+            });
+            
+            return wakeLock;
+        } catch (err) {
+            console.error('Failed to request wake lock:', err);
+            return null;
+        }
+    } else {
+        console.warn('Wake lock API not supported in this browser');
+        return null;
+    }
+}
+
+/**
  * Converts latitude and longitude to tile coordinates
  * @param {number} lat - Latitude
  * @param {number} lng - Longitude

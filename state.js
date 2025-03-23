@@ -16,7 +16,10 @@ const PERSISTED_STATE_KEYS = [
     'currentConfig',
     'airspaceVisible',
     'geolocationEnabled',      // Add geolocation state to persisted keys
-    'navboxesEnabled'          // Add navboxes state to persisted keys
+    'navboxesEnabled',         // Add navboxes state to persisted keys
+    'tracklog',                // Add tracklog state to persisted keys
+    'lastTracklogDate',         // Add last tracklog date to persisted keys
+    'tracklogEnabled'          // Add tracklog enabled state to persisted keys
 ];
 
 // Threshold for position staleness in milliseconds
@@ -97,7 +100,13 @@ const _state = {
     
     // Location tracking for track calculation
     lastPosition: null,          // Last valid position coordinates [lng, lat]
-    currentTrack: 0            // Current track in degrees (0-360, 0 = north)
+    currentTrack: 0,           // Current track in degrees (0-360, 0 = north)
+    
+    // Tracklog related properties
+    tracklog: [],               // Array of recorded points
+    lastTracklogDate: null,     // Last recording date (for daily reset)
+    lastRecordedTime: null,      // Last time a point was recorded (for 1s interval)
+    tracklogEnabled: false      // Whether tracklog recording is enabled
 };
 
 // State getters
@@ -524,4 +533,41 @@ export function getCurrentTrack() {
  */
 export function setCurrentTrack(track) {
     _state.currentTrack = track;
+}
+
+// Tracklog related getters/setters
+export function getTracklog() {
+    return _state.tracklog;
+}
+
+export function setTracklog(tracklog) {
+    _state.tracklog = tracklog;
+    saveStateToLocalStorage();
+}
+
+export function getLastTracklogDate() {
+    return _state.lastTracklogDate;
+}
+
+export function setLastTracklogDate(date) {
+    _state.lastTracklogDate = date;
+    saveStateToLocalStorage();
+}
+
+export function getLastRecordedTime() {
+    return _state.lastRecordedTime;
+}
+
+export function setLastRecordedTime(time) {
+    _state.lastRecordedTime = time;
+}
+
+// Tracklog enabled state getter/setter
+export function getTracklogEnabled() {
+    return _state.tracklogEnabled;
+}
+
+export function setTracklogEnabled(enabled) {
+    _state.tracklogEnabled = enabled;
+    saveStateToLocalStorage();
 } 

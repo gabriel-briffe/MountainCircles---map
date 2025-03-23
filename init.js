@@ -16,7 +16,8 @@ import { setupIGCEventListeners } from "./igc.js";
 import { setupInstallEventListeners } from "./install.js";
 import { setupMenuEventListeners } from "./menu.js";
 import { getLayerManager } from "./state.js";
-import { isMobileDevice } from "./utils.js";
+import { isMobileDevice, requestWakeLock } from "./utils.js";
+import { initializeTracking } from "./tracking.js";
 
 /**
  * Initializes the application
@@ -58,6 +59,14 @@ export async function initializeApp(mapContainerId = 'map') {
     // Set up menu event listeners
     setupMenuEventListeners();
     
+    // Request wake lock to prevent screen from sleeping
+    try {
+        const wakeLock = await requestWakeLock();
+        window.APP_CONFIG.wakeLock = wakeLock;
+    } catch (error) {
+        console.error('Error requesting wake lock:', error);
+    }
+    
     // Update sidebar config button styles to show which configs are cached
     // This needs to be done after the sidebar is created, so we'll do it after map initialization
     
@@ -70,68 +79,76 @@ export async function initializeApp(mapContainerId = 'map') {
     
     // Initialize the map and set up event handlers
     await initializeMap(mapContainerId, async (mapInstance) => {
-        // If we have a saved config, apply it
-        if (stateLoaded && savedConfig) {
-            switchConfig(savedConfig);
-        } else {
-            // Otherwise do the normal initialization
-            addGeoJSONLayers();
-        }
-        
-        // Set up layer event handlers
-        setupLayerEventHandlers();
-        
-        // Initialize airspace data
-        await initializeAirspaceData();
-        
-        // Set up airspace popup handler
-        setupAirspacePopupHandler(mapInstance);
-        
-        // Set up dock event listeners
-        setupDockEventListeners();
-        
-        // Set up IGC event listeners
-        setupIGCEventListeners();
-        
-        // After all initialization is done, ensure visibility states match saved state
-        mapInstance.once('idle', async () => {
-            // Apply the saved linestring layer toggle state
-            if (stateLoaded) {
-                // Apply linestring layers visibility based on toggle state
-                const linestringsToggleState = getLayersToggleState();
-                
-                // Set visibility of main linestring layers according to toggle state
-                getLayerManager().setVisibility('linestrings-layer', linestringsToggleState);
-                getLayerManager().setVisibility('linestrings-labels', linestringsToggleState);
-                
-                // Hide any dynamic layers if toggle is off
-                if (!linestringsToggleState) {
-                    const style = mapInstance.getStyle();
-                    if (style && style.layers) {
-                        style.layers.forEach(layer => {
-                            if (layer.id.startsWith('dynamic-lines-')) {
-                                getLayerManager().setVisibility(layer.id, false);
-                            }
-                        });
-                    }
-                }
-                
-                // Apply the saved airspace visibility state
-                const airspaceVisible = getAirspaceVisible();
-                
-                // The toggle in the sidebar might not be created yet, so we directly set layer visibility
-                getLayerManager().setVisibility('airspace-fill', airspaceVisible);
-                getLayerManager().setVisibility('airspace-outline', airspaceVisible);
-                
-                // Update any checkbox states once the sidebar is ready
-                const airspaceCheckboxes = document.querySelectorAll('#airspace-sidebar input[type="checkbox"][id^="toggle-"]');
-                airspaceCheckboxes.forEach(cb => {
-                    cb.disabled = !airspaceVisible;
-                });
+        try {
+            // If we have a saved config, apply it
+            if (stateLoaded && savedConfig) {
+                switchConfig(savedConfig);
+            } else {
+                // Otherwise do the normal initialization
+                addGeoJSONLayers();
             }
             
-            // Update the config button styles to show which configs are cached
-            await updateSidebarConfigButtonStyles();
-        });
+            // Set up layer event handlers
+            setupLayerEventHandlers();
+            
+            // Initialize airspace data
+            await initializeAirspaceData();
+            
+            // Set up airspace popup handler
+            setupAirspacePopupHandler(mapInstance);
+            
+            // Set up dock event listeners
+            setupDockEventListeners();
+            
+            // Set up IGC event listeners
+            setupIGCEventListeners();
+
+            // Initialize the tracklog recording functionality
+            initializeTracking();
+            
+            // After all initialization is done, ensure visibility states match saved state
+            mapInstance.once('idle', async () => {
+                // Apply the saved linestring layer toggle state
+                if (stateLoaded) {
+                    // Apply linestring layers visibility based on toggle state
+                    const linestringsToggleState = getLayersToggleState();
+                    
+                    // Set visibility of main linestring layers according to toggle state
+                    getLayerManager().setVisibility('linestrings-layer', linestringsToggleState);
+                    getLayerManager().setVisibility('linestrings-labels', linestringsToggleState);
+                    
+                    // Hide any dynamic layers if toggle is off
+                    if (!linestringsToggleState) {
+                        const style = mapInstance.getStyle();
+                        if (style && style.layers) {
+                            style.layers.forEach(layer => {
+                                if (layer.id.startsWith('dynamic-lines-')) {
+                                    getLayerManager().setVisibility(layer.id, false);
+                                }
+                            });
+                        }
+                    }
+                    
+                    // Apply the saved airspace visibility state
+                    const airspaceVisible = getAirspaceVisible();
+                    
+                    // The toggle in the sidebar might not be created yet, so we directly set layer visibility
+                    getLayerManager().setVisibility('airspace-fill', airspaceVisible);
+                    getLayerManager().setVisibility('airspace-outline', airspaceVisible);
+                    
+                    // Update any checkbox states once the sidebar is ready
+                    const airspaceCheckboxes = document.querySelectorAll('#airspace-sidebar input[type="checkbox"][id^="toggle-"]');
+                    airspaceCheckboxes.forEach(cb => {
+                        cb.disabled = !airspaceVisible;
+                    });
+                }
+                
+                // Update the config button styles to show which configs are cached
+                await updateSidebarConfigButtonStyles();
+            });
+        } catch (error) {
+            console.error('Error during map initialization:', error);
+            alert('There was an error initializing the map: ' + error.message);
+        }
     });
 } 

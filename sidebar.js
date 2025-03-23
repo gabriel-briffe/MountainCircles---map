@@ -36,7 +36,11 @@ import {
     getGeolocationEnabled,
     setGeolocationEnabled,
     getNavboxesEnabled,
-    setNavboxesEnabled
+    setNavboxesEnabled,
+    getTracklog,
+    setTracklog,
+    getTracklogEnabled,
+    setTracklogEnabled
 } from "./state.js";
 
 // Import from utils
@@ -145,6 +149,10 @@ export function createTypeCheckboxes(features) {
         // Add geolocation toggle
         addLocationToggle(sidebar);
     }
+    
+    // Add tracklog section
+    addSidebarDivider(sidebar);
+    addTracklogControls(sidebar);
     
     // Add a divider
     addSidebarDivider(sidebar);
@@ -1075,6 +1083,114 @@ export function addNavboxesToggle(sidebar) {
         // Use toggleManager to handle the toggle
         toggleNavboxes(newState);
     });
+}
+
+/**
+ * Adds tracklog controls to the sidebar
+ * @param {HTMLElement} sidebar - The sidebar element
+ */
+export function addTracklogControls(sidebar) {
+    // Create toggle container
+    const toggleContainer = document.createElement('div');
+    toggleContainer.className = 'toggle-container';
+    toggleContainer.style.display = 'flex';
+    toggleContainer.style.justifyContent = 'space-between';
+    toggleContainer.style.alignItems = 'center';
+    toggleContainer.style.padding = '5px 0';
+    
+    // Create label
+    const label = document.createElement('span');
+    label.textContent = 'Track';
+    label.style.marginRight = '10px';
+    
+    // Create toggle switch (default to active)
+    const toggleSwitch = document.createElement('button');
+    toggleSwitch.className = 'toggle-switch active';
+    toggleSwitch.setAttribute('aria-checked', 'true');
+    toggleSwitch.setAttribute('role', 'switch');
+    toggleSwitch.id = 'tracklog-toggle';
+    
+    // Set initial state based on stored preference
+    const isTracklogEnabled = getTracklogEnabled();
+    toggleSwitch.className = isTracklogEnabled ? 'toggle-switch active' : 'toggle-switch';
+    toggleSwitch.setAttribute('aria-checked', isTracklogEnabled.toString());
+    
+    // Create toggle slider
+    const toggleSlider = document.createElement('span');
+    toggleSlider.className = 'toggle-slider';
+    toggleSwitch.appendChild(toggleSlider);
+    
+    // Add click event listener to toggle tracklog visibility
+    toggleSwitch.addEventListener('click', () => {
+        const isActive = toggleSwitch.classList.toggle('active');
+        toggleSwitch.setAttribute('aria-checked', isActive.toString());
+        const map = getMap();
+        
+        // Update tracklog enabled state
+        setTracklogEnabled(isActive);
+        
+        // If enabling tracklog, clear existing tracklog and start fresh
+        if (isActive) {
+            setTracklog([]);
+        }
+        
+        // Toggle the tracklog layer visibility
+        if (map) {
+            try {
+                if (map.getLayer('tracklog-full-line')) {
+                    map.setLayoutProperty('tracklog-full-line', 'visibility', isActive ? 'visible' : 'none');
+                }
+            } catch (err) {
+                console.error('Error toggling tracklog visibility:', err);
+            }
+        }
+    });
+    
+    // Append elements to container
+    toggleContainer.appendChild(label);
+    toggleContainer.appendChild(toggleSwitch);
+    
+    // Add to sidebar
+    sidebar.appendChild(toggleContainer);
+    
+    // Add clear button
+    const clearButton = document.createElement('button');
+    clearButton.textContent = 'Clear Track';
+    clearButton.className = 'sidebar-button';
+    clearButton.style.width = '100%';
+    clearButton.style.padding = '8px';
+    clearButton.style.marginTop = '8px';
+    clearButton.style.backgroundColor = '#f44336';
+    clearButton.style.color = 'white';
+    clearButton.style.border = 'none';
+    clearButton.style.borderRadius = '4px';
+    clearButton.style.cursor = 'pointer';
+    
+    // Add clear button click handler
+    clearButton.addEventListener('click', () => {
+        if (confirm('Are you sure you want to clear the track?')) {
+            // Clear the tracklog from state
+            setTracklog([]);
+            
+            // Only attempt to clear the layer if it exists and tracklog is enabled
+            const map = getMap();
+            if (map && getTracklogEnabled()) {
+                try {
+                    // Update source with empty data
+                    if (map.getSource('tracklog-full-source')) {
+                        map.getSource('tracklog-full-source').setData({
+                            type: 'FeatureCollection',
+                            features: []
+                        });
+                    }
+                } catch (err) {
+                    console.error('Error clearing tracklog:', err);
+                }
+            }
+        }
+    });
+    
+    sidebar.appendChild(clearButton);
 }
 
 // Note: These functions are referenced but defined elsewhere

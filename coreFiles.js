@@ -73,7 +73,8 @@ export function getCoreFiles() {
         `${BASE_PATH}/navboxManager.js`,
         `${BASE_PATH}/location.js`,
         `${BASE_PATH}/toggleManager.js`,
-        `${BASE_PATH}/coreFiles.js`, // Include this file itself
+        `${BASE_PATH}/tracking.js`,
+        `${BASE_PATH}/coreFiles.js`,
         `${BASE_PATH}/sw.js`,
         
         // GeoJSON files
