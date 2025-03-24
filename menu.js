@@ -8,7 +8,6 @@ import { latLngToTile } from "./utils.js";
 
 // Import from state management
 import { 
-    getCurrentConfig, 
     clearSavedState 
 } from "./state.js";
 
@@ -20,146 +19,19 @@ import {
     CACHE_TIMEOUT
 } from "./config.js";
 
-// Import from sidebar
-import {
-    updateSidebarConfigButtonStyles
-} from "./sidebar.js";
-
 // Import from appUpdate
 import { updateApp } from "./appUpdate.js";
 
-/**
- * Caches configuration files for offline use
- * @returns {Promise<Object>} - Result of the caching operation
- */
-export async function cacheConfigurationFiles() {
-    // Setup UI elements
-    const uiElements = setupCacheProgressUI();
-    
-    try {
-        // Get configuration details
-        const configDetails = getConfigDetails();
-        
-        // Fetch main GeoJSON and prepare file list
-        const files = await prepareFilesToCache(configDetails);
-        
-        // Update total files count in UI
-        uiElements.totalFiles.textContent = files.length;
-        
-        // Send message to service worker to cache files
-        await sendCacheRequestToServiceWorker(files, configDetails.fullConfig);
-        
-        // Update cache indicators for sidebar config buttons
-        await updateSidebarConfigButtonStyles();
-        
-        return { success: true, fileCount: files.length };
-    } catch (error) {
-        handleCacheError(error, uiElements);
-        return { success: false, error: error.message };
-    }
-}
-
-/**
- * Sets up the UI elements for cache progress
- * @returns {Object} - UI elements for progress tracking
- */
-export function setupCacheProgressUI() {
-    const progressElement = document.getElementById('cacheProgress');
-    const progressBar = document.getElementById('progressBar');
-    const cacheCount = document.getElementById('cacheCount');
-    const totalFiles = document.getElementById('totalFiles');
-    
-    progressElement.style.display = 'block';
-    
-    return { progressElement, progressBar, cacheCount, totalFiles };
-}
-
-/**
- * Extracts configuration details from current config
- * @returns {Object} Object with policy, config, configPrefix, and fullConfig
- */
-export function getConfigDetails() {
-    const fullConfig = getCurrentConfig();
-    const configParts = fullConfig.split('/');
-    const policy = configParts[0];
-    const config = configParts.length > 1 ? configParts[1] : '';
-    const configPrefix = config.split('-').slice(0, 3).join('-');
-    
-    return { policy, config, configPrefix, fullConfig };
-}
-
-/**
- * Builds list of files to cache based on configuration
- * @param {Object} configDetails - Configuration details from getConfigDetails()
- * @returns {Promise<Array>} Array of file paths to cache
- */
-export async function prepareFilesToCache(configDetails) {
-    try {
-        const { policy, configPrefix, fullConfig } = configDetails;
-        const mainGeojsonUrl = `./${fullConfig}/aa_${policy}_${configPrefix}.geojson`;
-        
-        // Fetch main GeoJSON
-        const response = await fetch(mainGeojsonUrl);
-        if (!response.ok) {
-            throw new Error(`Failed to fetch main GeoJSON: ${response.status} ${response.statusText}`);
-        }
-        
-        const data = await response.json();
-        
-        // Filter point features with filenames
-        const pointFeatures = data.features.filter(f => 
-            f.geometry.type === 'Point' && f.properties.filename);
-        
-        // Create list of files to cache
-        return [
-            `${fullConfig}/aa_${policy}_${configPrefix}.geojson`,
-            `${fullConfig}/aa_${policy}_${configPrefix}_sectors1.geojson`,
-            ...pointFeatures.map(f => `${fullConfig}/${f.properties.filename}`)
-        ];
-    } catch (error) {
-        console.error('Error preparing files to cache:', error);
-        throw error;
-    }
-}
-
-/**
- * Sends a cache request to the service worker
- * @param {Array} files - List of files to cache
- * @param {string} config - Configuration string
- * @returns {Promise<void>}
- */
-export async function sendCacheRequestToServiceWorker(files, config) {
-    const registration = await navigator.serviceWorker.ready;
-    if (!registration || !registration.active) {
-        throw new Error('Service worker not ready or active');
-    }
-    
-    registration.active.postMessage({
-        type: 'cacheFiles',
-        files: files,
-        config: config
-    });
-}
-
-/**
- * Handles errors during caching
- * @param {Error} error - The error that occurred
- * @param {Object} uiElements - UI elements for progress tracking
- */
-export function handleCacheError(error, uiElements) {
-    console.error('Error caching configuration:', error);
-    uiElements.progressElement.style.display = 'none';
-    uiElements.progressBar.style.width = '0%';
-    
-    // Show error to user
-    alert(`Failed to cache configuration: ${error.message}`);
-}
+// Import from cacheConfig
+import { cacheConfigurationFiles } from "./cacheConfig.js";
 
 /**
  * Caches map tiles for offline use
  * @returns {Promise<Object>} - Result of the tile caching operation
  */
 export async function cacheTiles() {
+    console.debug('[Menu] Starting tile cache process');
+    
     const progressElement = document.getElementById('mapCacheProgress');
     const progressBar = document.getElementById('mapProgressBar');
     const cacheCount = document.getElementById('mapCacheCount');
@@ -169,19 +41,35 @@ export async function cacheTiles() {
     progressBar.style.width = '0%';
 
     try {
+        console.debug('[Menu] Getting map bounds and tile settings');
+        console.debug(`[Menu] MAP_BOUNDS: ${JSON.stringify(MAP_BOUNDS)}`);
+        console.debug(`[Menu] TILE_CACHE_SETTINGS: ${JSON.stringify(TILE_CACHE_SETTINGS)}`);
+        
         const bounds = MAP_BOUNDS;
         const minZoom = TILE_CACHE_SETTINGS.minZoom;
         const maxZoom = TILE_CACHE_SETTINGS.maxZoom;
+        
+        console.debug(`[Menu] Using zoom levels from ${minZoom} to ${maxZoom}`);
 
         const tiles = [];
         for (let z = minZoom; z <= maxZoom; z++) {
+            console.debug(`[Menu] Calculating tiles for zoom level ${z}`);
+            
             const northwest = latLngToTile(bounds[0][1], bounds[0][0], z);
             const southeast = latLngToTile(bounds[1][1], bounds[1][0], z);
+            
+            console.debug(`[Menu] Northwest tile at zoom ${z}: x=${northwest.x}, y=${northwest.y}`);
+            console.debug(`[Menu] Southeast tile at zoom ${z}: x=${southeast.x}, y=${southeast.y}`);
 
             const minX = Math.min(northwest.x, southeast.x);
             const maxX = Math.max(northwest.x, southeast.x);
             const minY = Math.min(northwest.y, southeast.y);
             const maxY = Math.max(northwest.y, southeast.y);
+            
+            console.debug(`[Menu] Tile range at zoom ${z}: x=${minX}-${maxX}, y=${minY}-${maxY}`);
+            
+            const levelTileCount = (maxX - minX + 1) * (maxY - minY + 1);
+            console.debug(`[Menu] Total tiles at zoom ${z}: ${levelTileCount}`);
 
             for (let x = minX; x <= maxX; x++) {
                 for (let y = minY; y <= maxY; y++) {
@@ -190,12 +78,14 @@ export async function cacheTiles() {
             }
         }
 
+        console.debug(`[Menu] Total tiles to cache: ${tiles.length}`);
         totalTiles.textContent = tiles.length;
 
         let completedTiles = 0;
         let timeoutId;
         
         // Create a promise that resolves when all tiles are cached
+        console.debug('[Menu] Setting up tile caching promise');
         const cachingComplete = new Promise((resolve, reject) => {
             const messageHandler = (event) => {
                 if (event.data.type === 'cacheTileComplete') {
@@ -204,29 +94,42 @@ export async function cacheTiles() {
                     const percentage = (completedTiles / tiles.length) * 100;
                     progressBar.style.width = `${percentage}%`;
 
+                    if (completedTiles % 50 === 0) {
+                        console.debug(`[Menu] Cached ${completedTiles}/${tiles.length} tiles (${percentage.toFixed(1)}%)`);
+                    }
+
                     if (completedTiles === tiles.length) {
+                        console.debug('[Menu] All tiles cached successfully');
                         navigator.serviceWorker.removeEventListener('message', messageHandler);
                         resolve();
                     }
                 } else if (event.data.type === 'cacheTileError') {
-                    console.error('Error caching tile:', event.data.error);
+                    console.error(`[Menu] Error caching tile: ${event.data.error}`, event.data.tileInfo);
                     // Continue caching other tiles, but log the error
                 }
             };
 
+            console.debug('[Menu] Adding service worker message listener');
             navigator.serviceWorker.addEventListener('message', messageHandler);
             
             // Set a timeout to reject the promise if it takes too long
+            console.debug(`[Menu] Setting timeout for ${CACHE_TIMEOUT}ms`);
             timeoutId = setTimeout(() => {
+                console.error(`[Menu] Tile caching timed out after ${CACHE_TIMEOUT}ms`);
                 navigator.serviceWorker.removeEventListener('message', messageHandler);
                 reject(new Error('Tile caching timed out after 5 minutes'));
             }, CACHE_TIMEOUT); // Use timeout from config
         });
 
+        console.debug('[Menu] Getting service worker registration');
         const registration = await navigator.serviceWorker.ready;
         if (!registration || !registration.active) {
+            console.error('[Menu] Service worker not ready or active');
             throw new Error('Service worker not ready or active');
         }
+        
+        console.debug(`[Menu] Sending cacheTiles message to service worker with ${tiles.length} tiles`);
+        console.debug(`[Menu] Tile base path: ${TILE_CACHE_SETTINGS.basePath}`);
         
         registration.active.postMessage({
             type: 'cacheTiles',
@@ -235,6 +138,7 @@ export async function cacheTiles() {
         });
 
         // Wait for caching to complete
+        console.debug('[Menu] Waiting for caching to complete');
         await cachingComplete;
         
         // Clear the timeout if it exists
@@ -242,12 +146,13 @@ export async function cacheTiles() {
             clearTimeout(timeoutId);
         }
         
+        console.debug('[Menu] Tile caching completed successfully');
         progressElement.style.display = 'none';
         progressBar.style.width = '0%';
         
         return { success: true, tileCount: tiles.length };
     } catch (error) {
-        console.error('Error caching tiles:', error);
+        console.error('[Menu] Error caching tiles:', error);
         progressElement.style.display = 'none';
         progressBar.style.width = '0%';
         

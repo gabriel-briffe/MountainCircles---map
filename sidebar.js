@@ -886,31 +886,50 @@ export function addGeoJSONLayers() {
  * @param {string} policyName - The policy name
  */
 export function addGeoJSONSources(configPrefix, policyName) {
+    console.debug(`[Sidebar] Adding GeoJSON sources - configPrefix: ${configPrefix}, policyName: ${policyName}`);
+    
+    const currentConfig = getCurrentConfig();
+    console.debug(`[Sidebar] Current config: ${currentConfig}`);
+    
+    const mainGeojsonPath = `${currentConfig}/aa_${policyName}_${configPrefix}.geojson`;
+    const sectorsGeojsonPath = `${currentConfig}/aa_${policyName}_${configPrefix}_sectors1.geojson`;
+    
+    console.debug(`[Sidebar] Main GeoJSON path: ${mainGeojsonPath}`);
+    console.debug(`[Sidebar] Sectors GeoJSON path: ${sectorsGeojsonPath}`);
+    
     // Add or update geojson-data source
     getLayerManager().addOrUpdateSource('geojson-data', {
         type: 'geojson',
-        data: getCurrentConfig() + '/aa_' + policyName + '_' + configPrefix + '.geojson'
+        data: mainGeojsonPath
     });
     
     // Add or update polygons source
     getLayerManager().addOrUpdateSource('polygons', {
         type: 'geojson',
-        data: getCurrentConfig() + '/aa_' + policyName + '_' + configPrefix + '_sectors1.geojson'
+        data: sectorsGeojsonPath
     });
+    
+    console.debug(`[Sidebar] GeoJSON sources added to map`);
 }
 
 /**
  * Adds polygon layer to the map
  */
 export function addPolygonLayer() {
+    console.debug(`[Sidebar] Adding polygon layer to map`);
+    
     // Add polygons layer if it doesn't exist
     getLayerManager().addLayerIfNotExists('polygons-layer', polygonLayerStyle);
+    
+    console.debug(`[Sidebar] Polygon layer added`);
 }
 
 /**
  * Adds line string layers to the map
  */
 export function addLineStringLayers() {
+    console.debug(`[Sidebar] Adding line string layers to map`);
+    
     // Add linestrings layer if it doesn't exist
     getLayerManager().addLayerIfNotExists('linestrings-layer', lineStringLayerStyle);
     
@@ -928,17 +947,23 @@ export function addLineStringLayers() {
     const linestringsToggleState = getLayersToggleState();
     getLayerManager().setVisibility('linestrings-layer', linestringsToggleState);
     getLayerManager().setVisibility('linestrings-labels', linestringsToggleState);
+    
+    console.debug(`[Sidebar] Line string layers added with visibility: ${linestringsToggleState}`);
 }
 
 /**
  * Adds point layers to the map
  */
 export function addPointLayers() {
+    console.debug(`[Sidebar] Adding point layers to map`);
+    
     // Add points layer if it doesn't exist
     getLayerManager().addLayerIfNotExists('points-layer', pointLayerStyle);
+    console.debug(`[Sidebar] Point layer added`);
     
     // Add clickable points layer if it doesn't exist
     getLayerManager().addLayerIfNotExists('points-layer-clickable', pointLayerClickableStyle);
+    console.debug(`[Sidebar] Clickable point layer added`);
     
     // Create a copy of the style to update the text-size with the current base text size
     const labelsStyle = { ...pointLabelsLayerStyle };
@@ -947,6 +972,22 @@ export function addPointLayers() {
     
     // Add points labels layer if it doesn't exist
     getLayerManager().addLayerIfNotExists('points-labels', labelsStyle);
+    console.debug(`[Sidebar] Point labels layer added`);
+    
+    // Get source information to verify data paths
+    try {
+        const layerManager = getLayerManager();
+        const map = getMap();
+        const geojsonData = map.getSource('geojson-data');
+        
+        if (geojsonData) {
+            console.debug(`[Sidebar] Points GeoJSON data source URL: ${geojsonData._options.data}`);
+        } else {
+            console.debug(`[Sidebar] GeoJSON data source not found`);
+        }
+    } catch (error) {
+        console.error(`[Sidebar] Error accessing source information: ${error.message}`);
+    }
 }
 
 /**

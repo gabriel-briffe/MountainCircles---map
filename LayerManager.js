@@ -58,41 +58,71 @@ export class LayerManager {
 
     // Add a source if it doesn't exist, or update it if it does
     addOrUpdateSource(sourceId, options) {
+        console.debug(`[LayerManager] Adding or updating source: ${sourceId}`);
+        console.debug(`[LayerManager] Source options:`, options);
+        
         if (!this.hasSource(sourceId)) {
+            console.debug(`[LayerManager] Source doesn't exist yet, adding new source`);
             this.map.addSource(sourceId, options);
         } else {
+            console.debug(`[LayerManager] Source already exists, updating data`);
             this.map.getSource(sourceId).setData(options.data);
         }
+        
+        console.debug(`[LayerManager] Source ${sourceId} added/updated successfully`);
     }
 
     // Add a layer if it doesn't exist
     addLayerIfNotExists(layerId, layerOptions) {
+        console.debug(`[LayerManager] Checking if layer exists: ${layerId}`);
+        
         if (!this.hasLayer(layerId)) {
-            this.map.addLayer(layerOptions);
+            console.debug(`[LayerManager] Layer doesn't exist, adding: ${layerId}`);
+            console.debug(`[LayerManager] Layer options:`, layerOptions);
+            
+            // Ensure layer has an id
+            const options = { ...layerOptions, id: layerId };
+            this.map.addLayer(options);
+            
+            console.debug(`[LayerManager] Layer added: ${layerId}`);
             
             // After adding a layer, ensure proper z-order
             this.redrawLayersInOrder();
             
             return true;
         }
+        
+        console.debug(`[LayerManager] Layer already exists: ${layerId}`);
         return false;
     }
 
     // Remove a layer if it exists
     removeLayerIfExists(layerId) {
+        console.debug(`[LayerManager] Attempting to remove layer: ${layerId}`);
+        
         if (this.hasLayer(layerId)) {
+            console.debug(`[LayerManager] Layer exists, removing: ${layerId}`);
             this.map.removeLayer(layerId);
+            console.debug(`[LayerManager] Layer removed: ${layerId}`);
             return true;
         }
+        
+        console.debug(`[LayerManager] Layer doesn't exist, nothing to remove: ${layerId}`);
         return false;
     }
 
     // Remove a source if it exists
     removeSourceIfExists(sourceId) {
+        console.debug(`[LayerManager] Attempting to remove source: ${sourceId}`);
+        
         if (this.hasSource(sourceId)) {
+            console.debug(`[LayerManager] Source exists, removing: ${sourceId}`);
             this.map.removeSource(sourceId);
+            console.debug(`[LayerManager] Source removed: ${sourceId}`);
             return true;
         }
+        
+        console.debug(`[LayerManager] Source doesn't exist, nothing to remove: ${sourceId}`);
         return false;
     }
 

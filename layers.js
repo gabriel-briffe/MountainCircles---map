@@ -120,6 +120,8 @@ function toggleExistingDynamicLayer(dynamicLayerId, dynamicLabelId) {
  * @param {string} dynamicLabelId - ID for the new dynamic label layer
  */
 function createNewDynamicLayer(filePath, dynamicLayerId, dynamicSourceId, dynamicLabelId) {
+    console.log('Creating new dynamic layer:', filePath, dynamicLayerId, dynamicSourceId, dynamicLabelId);
+    
     // Hide main layers
     getLayerManager().setVisibility('linestrings-layer', false);
     getLayerManager().setVisibility('linestrings-labels', false);

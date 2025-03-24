@@ -73,6 +73,7 @@ const INITIAL_CACHE_RESOURCES = [
     `${BASE_PATH}/airspace.js`,
     `${BASE_PATH}/airspaceStyle.js`,
     `${BASE_PATH}/appUpdate.js`,
+    `${BASE_PATH}/cacheConfig.js`,
     `${BASE_PATH}/dock.js`,
     `${BASE_PATH}/igc.js`,
     `${BASE_PATH}/init.js`,
@@ -270,46 +271,69 @@ async function handleTileRequest(request) {
 async function handleGeoJSONRequest(request) {
   try {
     const url = new URL(request.url);
+    console.debug(`[SW] Handling GeoJSON request: ${url.pathname}`);
     
     // Special handling for airspace.geojson
     if (url.pathname.endsWith('airspace.geojson')) {
+      console.debug(`[SW] Special handling for airspace.geojson`);
       const airspaceCache = await caches.open(AIRSPACE_CACHE_NAME);
+      console.debug(`[SW] Opened airspace cache: ${AIRSPACE_CACHE_NAME}`);
+      
       let response = await airspaceCache.match(request);
       if (response) {
+        console.debug(`[SW] Found airspace.geojson in cache`);
         return response;
       }
       
+      console.debug(`[SW] airspace.geojson not in cache, fetching from network`);
       // If not in cache, fetch from network
       response = await fetch(request);
       if (response.ok) {
+        console.debug(`[SW] Successfully fetched airspace.geojson, caching`);
         await airspaceCache.put(request, response.clone());
+      } else {
+        console.error(`[SW] Failed to fetch airspace.geojson: ${response.status} ${response.statusText}`);
       }
       return response;
     }
     
     // For other GeoJSON files, use the existing caching logic
+    console.debug(`[SW] Regular GeoJSON handling for: ${url.pathname}`);
+    
     // Check dynamic cache first
     const dynamicCache = await caches.open(DYNAMIC_CACHE_NAME);
+    console.debug(`[SW] Checking dynamic cache: ${DYNAMIC_CACHE_NAME}`);
+    
     let response = await dynamicCache.match(request);
     if (response) {
+      console.debug(`[SW] Found GeoJSON in dynamic cache: ${url.pathname}`);
       return response;
     }
+    console.debug(`[SW] GeoJSON not found in dynamic cache`);
 
     // Then check regular GeoJSON cache
     const cache = await caches.open(GEOJSON_CACHE_NAME);
+    console.debug(`[SW] Checking GeoJSON cache: ${GEOJSON_CACHE_NAME}`);
+    
     response = await cache.match(request);
     if (response) {
+      console.debug(`[SW] Found GeoJSON in regular cache: ${url.pathname}`);
       return response;
     }
+    console.debug(`[SW] GeoJSON not found in regular cache`);
 
     // If not in cache, fetch from network
+    console.debug(`[SW] Fetching GeoJSON from network: ${url.pathname}`);
     response = await fetch(request);
     if (response.ok) {
+      console.debug(`[SW] Successfully fetched GeoJSON, caching in: ${GEOJSON_CACHE_NAME}`);
       await cache.put(request, response.clone());
+    } else {
+      console.error(`[SW] Failed to fetch GeoJSON: ${response.status} ${response.statusText}`);
     }
     return response;
   } catch (error) {
-    console.error('GeoJSON fetch failed:', error);
+    console.error('[SW] GeoJSON fetch failed:', error);
     return new Response('GeoJSON not available offline', { status: 404 });
   }
 }
@@ -372,7 +396,12 @@ async function handleGlyphRequest(request) {
 // Handle messages from the client
 self.addEventListener('message', async (event) => {
   if (event.data.type === 'cacheFiles') {
+    console.debug('[SW] Received cacheFiles message with', event.data.files.length, 'files');
+    console.debug('[SW] Config:', event.data.config);
+    
     const cache = await caches.open(DYNAMIC_CACHE_NAME);
+    console.debug('[SW] Opened dynamic cache:', DYNAMIC_CACHE_NAME);
+    
     let completed = 0;
     const total = event.data.files.length;
     
@@ -381,9 +410,13 @@ self.addEventListener('message', async (event) => {
       message: `Starting to cache ${total} files`
     });
     
+    console.debug('[SW] Files to cache:', event.data.files);
+    
     for (const file of event.data.files) {
       try {
         const url = new URL(`${BASE_PATH}/${file}`, self.location.origin).href;
+        console.debug(`[SW] Attempting to fetch from URL: ${url}, original file path: ${file}`);
+        
         sendMessageToClients({
           type: 'cacheProgress',
           message: `Attempting to fetch: ${url}`,
@@ -392,30 +425,49 @@ self.addEventListener('message', async (event) => {
           currentFile: file
         });
         
-        const response = await fetch(url);
-        if (response.ok) {
-          await cache.put(url, response);
-          completed++;
-          sendMessageToClients({
-            type: 'cacheProgress',
-            message: `Successfully cached: ${file}`,
-            completed: completed,
-            total: total,
-            currentFile: file
-          });
-        } else {
+        try {
+          const response = await fetch(url);
+          console.debug(`[SW] Fetch response for ${file}: status=${response.status}, ok=${response.ok}`);
+          
+          if (response.ok) {
+            await cache.put(url, response);
+            completed++;
+            console.debug(`[SW] Successfully cached file: ${file}`);
+            
+            sendMessageToClients({
+              type: 'cacheProgress',
+              message: `Successfully cached: ${file}`,
+              completed: completed,
+              total: total,
+              currentFile: file
+            });
+          } else {
+            console.error(`[SW] Failed to fetch ${file}: ${response.status} ${response.statusText}`);
+            
+            sendMessageToClients({
+              type: 'cacheError',
+              message: `Failed to fetch ${file}: ${response.status} ${response.statusText}`
+            });
+          }
+        } catch (fetchError) {
+          console.error(`[SW] Fetch error for ${file}:`, fetchError);
+          
           sendMessageToClients({
             type: 'cacheError',
-            message: `Failed to fetch ${file}: ${response.status} ${response.statusText}`
+            message: `Failed to fetch ${file}: ${fetchError.message}`
           });
         }
       } catch (error) {
+        console.error(`[SW] General error caching ${file}:`, error);
+        
         sendMessageToClients({
           type: 'cacheError',
           message: `Failed to cache ${file}: ${error.message}`
         });
       }
     }
+    
+    console.debug(`[SW] Completed caching: ${completed} of ${total} files`);
     
     sendMessageToClients({
       type: 'cacheComplete',
@@ -424,30 +476,52 @@ self.addEventListener('message', async (event) => {
   }
 
   if (event.data.type === 'cacheTiles') {
+    console.debug('[SW] Received cacheTiles message');
+    
     const cache = await caches.open(TILE_CACHE_NAME);
+    console.debug('[SW] Opened tile cache:', TILE_CACHE_NAME);
+    
     const tiles = event.data.tiles;
     const basePath = event.data.basePath;
+    console.debug(`[SW] Tile caching - total tiles: ${tiles.length}, basePath: ${basePath}`);
+    
     const BATCH_SIZE = 50;
 
     for (let i = 0; i < tiles.length; i += BATCH_SIZE) {
       const batch = tiles.slice(i, i + BATCH_SIZE);
+      console.debug(`[SW] Processing tile batch ${Math.floor(i/BATCH_SIZE) + 1}/${Math.ceil(tiles.length/BATCH_SIZE)}, batch size: ${batch.length}`);
+      
       await Promise.all(batch.map(async (tile) => {
         try {
           const url = `${basePath}/${tile.z}/${tile.x}/${tile.y}.png`;
+          console.debug(`[SW] Checking tile at: ${url}`);
+          
           const cachedResponse = await cache.match(url);
           if (cachedResponse) {
+            console.debug(`[SW] Tile already cached: ${url}`);
             event.source.postMessage({ type: 'cacheTileComplete' });
             return;
           }
           
+          console.debug(`[SW] Fetching tile: ${url}`);
           const response = await fetch(url);
+          
           if (response.ok) {
+            console.debug(`[SW] Successfully fetched tile: ${url}`);
             await cache.put(url, response.clone());
+            console.debug(`[SW] Cached tile: ${url}`);
+          } else {
+            console.error(`[SW] Failed to fetch tile: ${url}, status: ${response.status}`);
           }
+          
           event.source.postMessage({ type: 'cacheTileComplete' });
         } catch (error) {
-          console.error('Error caching tile:', error);
-          event.source.postMessage({ type: 'cacheTileComplete' });
+          console.error('[SW] Error caching tile:', error, 'for tile:', tile);
+          event.source.postMessage({ 
+            type: 'cacheTileError', 
+            error: error.message,
+            tileInfo: `z:${tile.z}/x:${tile.x}/y:${tile.y}`
+          });
         }
       }));
     }
