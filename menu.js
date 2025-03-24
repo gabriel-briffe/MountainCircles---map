@@ -25,6 +25,9 @@ import { updateApp } from "./appUpdate.js";
 // Import from cacheConfig
 import { cacheConfigurationFiles } from "./cacheConfig.js";
 
+// Import clean install functionality
+import { cleanInstall, createCleanInstallButton } from "./cleanInstall.js";
+
 /**
  * Caches map tiles for offline use
  * @returns {Promise<Object>} - Result of the tile caching operation
@@ -188,7 +191,12 @@ export function setupMenuEventListeners() {
     document.getElementById('cacheBackgroundMapBtn').addEventListener('click', cacheTiles);
     
     // App update button
-    document.getElementById('appUpdateBtn').addEventListener('click', updateApp);
+    const appUpdateBtn = document.getElementById('appUpdateBtn');
+    appUpdateBtn.addEventListener('click', updateApp);
+    
+    // Create and add clean install button after app update button
+    const cleanInstallBtn = createCleanInstallButton(appUpdateBtn);
+    cleanInstallBtn.addEventListener('click', cleanInstall);
 
     // Add a hidden emergency reset function
     // This can be triggered by clicking a specific sequence or from the console
