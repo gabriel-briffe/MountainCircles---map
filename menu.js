@@ -225,29 +225,32 @@ export function handleCacheError(error, uiElements) {
 }
 
 /**
- * Extracts MBTiles for offline use (replacement for original cacheTiles function)
- * @returns {Promise<Object>} - Result of the MBTiles extraction operation
+ * Handles importing a user-provided MBTiles file
+ * @returns {Promise<Object>} - Result of the MBTiles import operation
  */
 export async function cacheTiles() {
-    console.log('[DEBUG] Cache Background Map button clicked - starting MBTiles extraction');
+    console.log('[DEBUG] Cache Background Map button clicked - prompting for MBTiles file');
     
     // Show progress container for map cache
     const progressElement = document.getElementById('mapCacheProgress');
     const progressBar = document.getElementById('mapProgressBar');
     const cacheCount = document.getElementById('mapCacheCount');
     const totalTiles = document.getElementById('mapTotalTiles');
+    const statusText = progressElement.querySelector('.status-text');
 
-    progressElement.style.display = 'block';
-    progressBar.style.width = '0%';
+    if (statusText) {
+        statusText.textContent = 'Select an MBTiles file to import';
+    }
     
-    // Do NOT close the popup menu to show progress
-    // const popupMenu = document.getElementById('popupMenu');
-    // if (popupMenu) {
-    //     popupMenu.style.display = 'none';
-    // }
-
+    // Create file input element
+    const fileInput = document.createElement('input');
+    fileInput.type = 'file';
+    fileInput.accept = '.mbtiles';
+    fileInput.style.display = 'none';
+    document.body.appendChild(fileInput);
+    
     try {
-        // Clear any existing regular tile cache to avoid redundancy with MBTiles
+        // Clear any existing tile cache to avoid redundancy
         if ('caches' in window) {
             const tileCacheNames = await caches.keys();
             const tileCaches = tileCacheNames.filter(name => 
@@ -264,27 +267,74 @@ export async function cacheTiles() {
             }
         }
         
-        // Import the mbtilesUI module for handleMBTilesExtraction function
+        // Prompt the user to select a file
+        const fileSelected = new Promise((resolve) => {
+            fileInput.onchange = (event) => {
+                if (event.target.files.length > 0) {
+                    resolve(event.target.files[0]);
+                } else {
+                    resolve(null);
+                }
+                document.body.removeChild(fileInput);
+            };
+            
+            // Cancel button handler
+            document.addEventListener('click', function cancelHandler(e) {
+                if (e.target !== fileInput && !fileInput.contains(e.target)) {
+                    document.removeEventListener('click', cancelHandler);
+                    if (document.body.contains(fileInput)) {
+                        document.body.removeChild(fileInput);
+                        resolve(null);
+                    }
+                }
+            }, { once: true, capture: true });
+        });
+        
+        // Click the file input to open file dialog
+        fileInput.click();
+        
+        // Wait for file selection
+        const selectedFile = await fileSelected;
+        
+        if (!selectedFile) {
+            console.log('[DEBUG] No MBTiles file selected');
+            progressElement.style.display = 'none';
+            return { success: false, canceled: true };
+        }
+        
+        // Display file information
+        progressElement.style.display = 'block';
+        progressBar.style.width = '0%';
+        if (statusText) {
+            statusText.textContent = `Processing: ${selectedFile.name} (${(selectedFile.size / (1024 * 1024)).toFixed(2)} MB)`;
+        }
+        
+        // Import the mbtilesUI module
         const mbtilesUI = await import('./mbtilesUI.js');
         
-        // Directly call the handleMBTilesExtraction function
-        // This avoids the issue of trying to access mbtilesHandler.initialize() directly
-        if (typeof mbtilesUI.handleMBTilesExtraction === 'function') {
-            console.log('[DEBUG] Calling handleMBTilesExtraction function directly');
-            await mbtilesUI.handleMBTilesExtraction();
+        // Call the MBTiles file processing function
+        if (typeof mbtilesUI.processUploadedMBTilesFile === 'function') {
+            console.log('[DEBUG] Calling processUploadedMBTilesFile function');
+            await mbtilesUI.processUploadedMBTilesFile(selectedFile, {
+                progressElement,
+                progressBar,
+                cacheCount,
+                totalTiles,
+                statusText
+            });
             
             // Return success after extraction completes
             return { success: true };
         } else {
-            throw new Error('MBTiles extraction function not found in mbtilesUI.js');
+            throw new Error('MBTiles processing function not found in mbtilesUI.js');
         }
     } catch (error) {
-        console.error('[DEBUG] Error during MBTiles extraction:', error);
+        console.error('[DEBUG] Error during MBTiles processing:', error);
         progressElement.style.display = 'none';
         progressBar.style.width = '0%';
         
         // Show error to user
-        alert(`Failed to extract map tiles: ${error.message}`);
+        alert(`Failed to process MBTiles file: ${error.message}`);
         
         return { success: false, error: error.message };
     }

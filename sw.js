@@ -252,6 +252,25 @@ async function handleTileRequest(request) {
   const url = new URL(request.url);
   console.log(`[DEBUG-SW] Handling tile request: ${url.pathname}`);
   
+  // Normalize tile paths by removing index.html if present
+  let normalizedPath = url.pathname;
+  if (normalizedPath.includes('/index.html/tiles/')) {
+    normalizedPath = normalizedPath.replace('/index.html', '');
+    console.log(`[DEBUG-SW] Normalized tile path to: ${normalizedPath}`);
+    
+    // Create a new request with the normalized path
+    const normalizedUrl = new URL(url.origin + normalizedPath);
+    const normalizedRequest = new Request(normalizedUrl, request);
+    
+    // Check if we have this normalized path in the cache
+    const mbtilesCache = await caches.open('mbtiles-cache');
+    const normalizedCachedResponse = await mbtilesCache.match(normalizedRequest);
+    if (normalizedCachedResponse) {
+      console.log(`[DEBUG-SW] Found normalized tile in MBTiles cache: ${normalizedPath}`);
+      return normalizedCachedResponse;
+    }
+  }
+  
   // First check the MBTiles cache for this tile
   const mbtilesCache = await caches.open('mbtiles-cache');
   const cachedMbtilesResponse = await mbtilesCache.match(request);
@@ -273,33 +292,36 @@ async function handleTileRequest(request) {
     }
     
     // Try to extract path components that match tile pattern: /tiles/{z}/{x}/{y}.png
-    const pathMatch = url.pathname.match(/\/tiles\/(\d+)\/(\d+)\/(\d+)\.png$/);
+    // or any variation like /index.html/tiles/{z}/{x}/{y}.png or just /{z}/{x}/{y}.png
+    const pathMatch = url.pathname.match(/\/?(?:.*\/)?tiles\/(\d+)\/(\d+)\/(\d+)\.png$/) || 
+                      url.pathname.match(/\/(\d+)\/(\d+)\/(\d+)\.png$/);
+    
     if (pathMatch) {
-      const z = parseInt(pathMatch[1], 10);
-      const x = parseInt(pathMatch[2], 10);
-      const y = parseInt(pathMatch[3], 10);
-      console.log(`[DEBUG-SW] Tile coordinates: z=${z}, x=${x}, y=${y}`);
-      
-      // Try to fetch the tile from the network
-      try {
-        console.log(`[DEBUG-SW] Fetching tile from network: ${url.pathname}`);
-        const response = await fetch(request, { cache: 'no-store' });
-        if (response.ok) {
-          // Cache the successful response
-          console.log(`[DEBUG-SW] Network fetch successful, caching tile: ${url.pathname}`);
-          await cache.put(request, response.clone());
-          return response;
+        const z = parseInt(pathMatch[1], 10);
+        const x = parseInt(pathMatch[2], 10);
+        const y = parseInt(pathMatch[3], 10);
+        console.log(`[DEBUG-SW] Tile coordinates: z=${z}, x=${x}, y=${y}`);
+        
+        // Try to fetch the tile from the network
+        try {
+          console.log(`[DEBUG-SW] Fetching tile from network: ${url.pathname}`);
+          const response = await fetch(request, { cache: 'no-store' });
+          if (response.ok) {
+            // Cache the successful response
+            console.log(`[DEBUG-SW] Network fetch successful, caching tile: ${url.pathname}`);
+            await cache.put(request, response.clone());
+            return response;
+          }
+          console.log(`[DEBUG-SW] Network fetch failed with status: ${response.status}`);
+        } catch (networkError) {
+          console.warn(`[DEBUG-SW] Network fetch failed for tile z=${z}, x=${x}, y=${y}:`, networkError);
+          // Fall through to transparent tile
         }
-        console.log(`[DEBUG-SW] Network fetch failed with status: ${response.status}`);
-      } catch (networkError) {
-        console.warn(`[DEBUG-SW] Network fetch failed for tile z=${z}, x=${x}, y=${y}:`, networkError);
-        // Fall through to transparent tile
-      }
-      
-      // If we get here, the network fetch failed or returned non-ok status
-      // Return a transparent tile instead of a 404
-      console.log(`[DEBUG-SW] Returning transparent tile for: ${url.pathname}`);
-      return createTransparentTile();
+        
+        // If we get here, the network fetch failed or returned non-ok status
+        // Return a transparent tile instead of a 404
+        console.log(`[DEBUG-SW] Returning transparent tile for: ${url.pathname}`);
+        return createTransparentTile();
     }
     
     // Not a tile or not matched pattern, try network

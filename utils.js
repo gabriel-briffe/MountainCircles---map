@@ -187,7 +187,10 @@ export function getBasePath() {
         
         // Check for repository name in path as fallback
         const pathname = window.location.pathname;
-        const pathSegments = pathname.split('/').filter(segment => segment);
+        
+        // Remove index.html if present in the pathname
+        const cleanPathname = pathname.replace(/\/index\.html$/, '/').replace(/\/index\.html\//, '/');
+        const pathSegments = cleanPathname.split('/').filter(segment => segment);
                     
         // If path includes our repository name with correct case
         if (pathSegments.length > 0 && pathSegments[0] === 'MountainCircles---map') {

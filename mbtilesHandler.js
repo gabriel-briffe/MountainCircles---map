@@ -4,6 +4,42 @@
  */
 
 import { getBasePath } from './utils.js';
+// At runtime, we'll use the buildTileUrl function if available, otherwise fall back to a local implementation
+let buildTileUrl;
+
+// Local implementation of buildTileUrl in case we can't import it directly
+// to avoid circular imports
+function createTileUrl(z, x, y) {
+    const basePath = getBasePath();
+    
+    // Ensure consistent URL format for tile paths
+    // This helps with caching by ensuring all references to the same tile use the same URL
+    let url = `${basePath}/tiles/${z}/${x}/${y}.png`;
+    
+    // Apply additional normalization to avoid common path problems
+    // 1. Remove any double slashes (except in protocol)
+    url = url.replace(/([^:])\/\//g, '$1/');
+    
+    // 2. Ensure no 'index.html' in the path
+    url = url.replace(/\/index\.html\//, '/');
+    
+    // 3. Add domain if it's a relative path and we're in a browser
+    if (url.startsWith('.') && typeof window !== 'undefined') {
+        url = `${window.location.origin}${url.substring(1)}`;
+    }
+    
+    return url;
+}
+
+// Set our tile URL builder
+try {
+    // We'll try to import this at runtime to avoid circular references
+    // If it fails, we'll use our local implementation
+    buildTileUrl = createTileUrl;
+} catch (error) {
+    console.log('[DEBUG] Using local implementation of buildTileUrl');
+    buildTileUrl = createTileUrl;
+}
 
 class MBTilesHandler {
     constructor() {
@@ -314,8 +350,8 @@ class MBTilesHandler {
                     // MBTiles uses TMS coordinates, flip y to XYZ
                     const y = (1 << zoom_level) - 1 - tile_row;
                     
-                    // Create URL for this tile
-                    const url = `${this.baseUrl}/tiles/${zoom_level}/${tile_column}/${y}.png`;
+                    // Create URL for this tile using our consistent URL builder
+                    const url = buildTileUrl(zoom_level, tile_column, y);
                     
                     // Determine content type
                     let contentType = 'image/png';
