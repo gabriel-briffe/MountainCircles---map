@@ -72,6 +72,7 @@ const INITIAL_CACHE_RESOURCES = [
     // Map and functionality JS files
     `${BASE_PATH}/airspace.js`,
     `${BASE_PATH}/airspaceStyle.js`,
+    `${BASE_PATH}/appUpdate.js`,
     `${BASE_PATH}/dock.js`,
     `${BASE_PATH}/igc.js`,
     `${BASE_PATH}/init.js`,

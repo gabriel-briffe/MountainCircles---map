@@ -1,3 +1,5 @@
 /map
 *.mbtiles
 **/.DS_Store
+edl_clone**
+clone.py

@@ -56,6 +56,7 @@ export function getCoreFiles() {
         // JS files
         `${BASE_PATH}/airspace.js`,
         `${BASE_PATH}/airspaceStyle.js`,
+        `${BASE_PATH}/appUpdate.js`,
         `${BASE_PATH}/config.js`,
         `${BASE_PATH}/coreFiles.js`,
         `${BASE_PATH}/dock.js`,
