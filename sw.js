@@ -83,6 +83,8 @@ const INITIAL_CACHE_RESOURCES = [
     `${BASE_PATH}/map.js`,
     `${BASE_PATH}/mapInitializer.js`,
     `${BASE_PATH}/mappings.js`,
+    `${BASE_PATH}/mbtilesHandler.js`,
+    `${BASE_PATH}/mbtilesUI.js`,
     `${BASE_PATH}/menu.js`,
     `${BASE_PATH}/navboxManager.js`,
     `${BASE_PATH}/sidebar.js`,
@@ -247,22 +249,94 @@ self.addEventListener('fetch', event => {
 
 // Handle tile requests
 async function handleTileRequest(request) {
+  const url = new URL(request.url);
+  console.log(`[DEBUG-SW] Handling tile request: ${url.pathname}`);
+  
+  // First check the MBTiles cache for this tile
+  const mbtilesCache = await caches.open('mbtiles-cache');
+  const cachedMbtilesResponse = await mbtilesCache.match(request);
+  if (cachedMbtilesResponse) {
+    // Count the number of MBTiles hits for analytics
+    networkFetchCount++;
+    console.log(`[DEBUG-SW] Found tile in MBTiles cache: ${url.pathname}`);
+    return cachedMbtilesResponse;
+  }
+  
+  // If not in MBTiles cache, check regular tile cache
+  console.log(`[DEBUG-SW] Tile not in MBTiles cache, checking regular cache: ${url.pathname}`);
   const cache = await caches.open(TILE_CACHE_NAME);
   try {
     const cachedResponse = await cache.match(request);
     if (cachedResponse) {
+      console.log(`[DEBUG-SW] Found tile in regular cache: ${url.pathname}`);
       return cachedResponse;
     }
     
+    // Try to extract path components that match tile pattern: /tiles/{z}/{x}/{y}.png
+    const pathMatch = url.pathname.match(/\/tiles\/(\d+)\/(\d+)\/(\d+)\.png$/);
+    if (pathMatch) {
+      const z = parseInt(pathMatch[1], 10);
+      const x = parseInt(pathMatch[2], 10);
+      const y = parseInt(pathMatch[3], 10);
+      console.log(`[DEBUG-SW] Tile coordinates: z=${z}, x=${x}, y=${y}`);
+      
+      // Try to fetch the tile from the network
+      try {
+        console.log(`[DEBUG-SW] Fetching tile from network: ${url.pathname}`);
+        const response = await fetch(request, { cache: 'no-store' });
+        if (response.ok) {
+          // Cache the successful response
+          console.log(`[DEBUG-SW] Network fetch successful, caching tile: ${url.pathname}`);
+          await cache.put(request, response.clone());
+          return response;
+        }
+        console.log(`[DEBUG-SW] Network fetch failed with status: ${response.status}`);
+      } catch (networkError) {
+        console.warn(`[DEBUG-SW] Network fetch failed for tile z=${z}, x=${x}, y=${y}:`, networkError);
+        // Fall through to transparent tile
+      }
+      
+      // If we get here, the network fetch failed or returned non-ok status
+      // Return a transparent tile instead of a 404
+      console.log(`[DEBUG-SW] Returning transparent tile for: ${url.pathname}`);
+      return createTransparentTile();
+    }
+    
+    // Not a tile or not matched pattern, try network
+    console.log(`[DEBUG-SW] Not a recognized tile pattern, fetching from network: ${url.pathname}`);
     const response = await fetch(request);
     if (response.ok) {
+      console.log(`[DEBUG-SW] Network fetch successful, caching: ${url.pathname}`);
       await cache.put(request, response.clone());
     }
     return response;
   } catch (error) {
-    console.error('Tile fetch failed:', error);
-    return new Response('Tile not available offline', { status: 404 });
+    console.error(`[DEBUG-SW] Tile fetch failed: ${url.pathname}`, error);
+    // Return a transparent PNG if the tile couldn't be fetched
+    return createTransparentTile();
   }
+}
+
+// Helper function to create a transparent tile
+function createTransparentTile() {
+  console.log(`[DEBUG-SW] Creating transparent tile`);
+  // Create a 1x1 transparent PNG
+  const transparentPixel = new Uint8Array([
+    0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00, 0x00, 0x00, 0x0D,
+    0x49, 0x48, 0x44, 0x52, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01,
+    0x08, 0x06, 0x00, 0x00, 0x00, 0x1F, 0x15, 0xC4, 0x89, 0x00, 0x00, 0x00,
+    0x0A, 0x49, 0x44, 0x41, 0x54, 0x78, 0x9C, 0x63, 0x00, 0x01, 0x00, 0x00,
+    0x05, 0x00, 0x01, 0x0D, 0x0A, 0x2D, 0xB4, 0x00, 0x00, 0x00, 0x00, 0x49,
+    0x45, 0x4E, 0x44, 0xAE, 0x42, 0x60, 0x82
+  ]);
+  
+  return new Response(transparentPixel, {
+    status: 200,
+    headers: {
+      'Content-Type': 'image/png',
+      'Cache-Control': 'public, max-age=604800'
+    }
+  });
 }
 
 // Handle GeoJSON requests
@@ -567,6 +641,87 @@ self.addEventListener('message', async (event) => {
             type: 'appUpdateFailed',
             message: `Cache update failed: ${error.message}. Your app is unchanged.`
         });
+    }
+  }
+
+  if (event.data.type === 'extractMBTiles') {
+    try {
+      console.log('[DEBUG-SW] Received extractMBTiles message');
+      // Send acknowledgment that extraction has started
+      event.source.postMessage({ 
+        type: 'mbtilesExtractionStarted',
+        message: 'Starting MBTiles extraction'
+      });
+
+      // For service worker, we can't directly handle the MBTiles file
+      // Instead, we'll wait for individual tile cache messages from the main thread
+      
+      // Just acknowledge that we're ready for tile caching
+      console.log('[DEBUG-SW] Sending mbtilesExtractionReady message');
+      event.source.postMessage({ 
+        type: 'mbtilesExtractionReady', 
+        message: 'Service worker ready for MBTiles extraction'
+      });
+    } catch (error) {
+      console.error('[DEBUG-SW] Error in MBTiles extraction setup:', error);
+      event.source.postMessage({ 
+        type: 'mbtilesExtractionError', 
+        message: `Error in MBTiles extraction: ${error.message}` 
+      });
+    }
+  }
+
+  if (event.data.type === 'cacheMBTilesTile') {
+    try {
+      const { url, tileData, contentType } = event.data;
+      console.log(`[DEBUG-SW] Received cacheMBTilesTile message for: ${url}`);
+      
+      const cache = await caches.open('mbtiles-cache');
+      
+      // Create response with the tile data
+      const response = new Response(tileData, {
+        status: 200,
+        headers: { 'Content-Type': contentType }
+      });
+      
+      // Cache the response
+      await cache.put(url, response);
+      console.log(`[DEBUG-SW] Successfully cached MBTiles tile: ${url}`);
+      
+      // Acknowledge tile caching
+      event.source.postMessage({ 
+        type: 'mbtilesExtractTileComplete',
+        url: url
+      });
+    } catch (error) {
+      console.error('[DEBUG-SW] Error caching MBTiles tile:', error);
+      event.source.postMessage({ 
+        type: 'mbtilesExtractTileError',
+        message: `Error caching MBTiles tile: ${error.message}`
+      });
+    }
+  }
+
+  if (event.data.type === 'clearMBTilesCache') {
+    try {
+      console.log('[DEBUG-SW] Received clearMBTilesCache message');
+      const cache = await caches.open('mbtiles-cache');
+      const keys = await cache.keys();
+      console.log(`[DEBUG-SW] Clearing ${keys.length} tiles from MBTiles cache`);
+      
+      await cache.keys().then(keys => Promise.all(keys.map(key => cache.delete(key))));
+      console.log('[DEBUG-SW] MBTiles cache cleared successfully');
+      
+      event.source.postMessage({ 
+        type: 'mbtilesExtractClearComplete',
+        message: 'MBTiles cache cleared'
+      });
+    } catch (error) {
+      console.error('[DEBUG-SW] Error clearing MBTiles cache:', error);
+      event.source.postMessage({ 
+        type: 'mbtilesExtractClearError',
+        message: `Error clearing MBTiles cache: ${error.message}`
+      });
     }
   }
 });

@@ -172,3 +172,32 @@ export function igcToGeoJSON(igcContent) {
 
     return geojson;
 }
+
+/**
+ * Get the base path for the application
+ * Used for constructing URLs to resources
+ * @returns {string} The base path for the application
+ */
+export function getBasePath() {
+    try {
+        // Check for GitHub Pages project site
+        if (window.location.hostname === 'gabriel-briffe.github.io') {
+            return '/MountainCircles---map';
+        }
+        
+        // Check for repository name in path as fallback
+        const pathname = window.location.pathname;
+        const pathSegments = pathname.split('/').filter(segment => segment);
+                    
+        // If path includes our repository name with correct case
+        if (pathSegments.length > 0 && pathSegments[0] === 'MountainCircles---map') {
+            return '/MountainCircles---map';
+        }
+        
+        // Otherwise, we're running locally
+        return '.';
+    } catch (e) {
+        console.error('Error in getBasePath:', e);
+        return '.';
+    }
+}

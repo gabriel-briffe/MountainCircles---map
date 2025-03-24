@@ -70,6 +70,8 @@ export function getCoreFiles() {
         `${BASE_PATH}/map.js`,
         `${BASE_PATH}/mapInitializer.js`,
         `${BASE_PATH}/mappings.js`,
+        `${BASE_PATH}/mbtilesHandler.js`,
+        `${BASE_PATH}/mbtilesUI.js`,
         `${BASE_PATH}/menu.js`,
         `${BASE_PATH}/navboxManager.js`,
         `${BASE_PATH}/sidebar.js`,

@@ -15,9 +15,10 @@ import {
 import { setupIGCEventListeners } from "./igc.js";
 import { setupInstallEventListeners } from "./install.js";
 import { setupMenuEventListeners } from "./menu.js";
-import { getLayerManager } from "./state.js";
+import { getLayerManager, getMap } from "./state.js";
 import { isMobileDevice, requestWakeLock } from "./utils.js";
 import { initializeTracking } from "./tracking.js";
+import { initMBTilesUI, updateMapStyleForMBTiles } from "./mbtilesUI.js";
 
 /**
  * Initializes the application
@@ -106,8 +107,60 @@ export async function initializeApp(mapContainerId = 'map') {
             // Initialize the tracklog recording functionality
             initializeTracking();
             
+            // Initialize MBTiles UI after DOM is loaded
+            window.addEventListener('load', () => {
+                console.log('[DEBUG] Window load event fired, starting MBTiles setup');
+                
+                // Initialize UI first with a slight delay to ensure DOM is ready
+                setTimeout(() => {
+                    console.log('[DEBUG] Initializing MBTiles UI components');
+                    initMBTilesUI();
+                    
+                    // Check for cached MBTiles to update the map style if needed
+                    setTimeout(async () => {
+                        try {
+                            if (window.caches) {
+                                console.log('[DEBUG] Checking for existing MBTiles in cache on load');
+                                const cache = await caches.open('mbtiles-cache');
+                                const keys = await cache.keys();
+                                console.log(`[DEBUG] Found ${keys.length} cached MBTiles tiles on startup`);
+                                
+                                if (keys.length > 0) {
+                                    console.log('[DEBUG] Using cached MBTiles found at startup');
+                                    const map = getMap();
+                                    if (map) {
+                                        updateMapStyleForMBTiles(map);
+                                    }
+                                } else {
+                                    console.log('[DEBUG] No cached MBTiles found on startup, using default tiles');
+                                }
+                            }
+                        } catch (error) {
+                            console.error('[DEBUG] Error checking MBTiles cache on startup:', error);
+                        }
+                    }, 1000);
+                }, 1000);
+            });
+            
+            // Listen for MBTiles extraction completion
+            window.addEventListener('mbtilesExtracted', () => {
+                console.log('[DEBUG] Received mbtilesExtracted event');
+                try {
+                    const map = getMap();
+                    if (map) {
+                        console.log('[DEBUG] Found map instance, updating style for MBTiles');
+                        updateMapStyleForMBTiles(map);
+                    } else {
+                        console.error('[DEBUG] Map instance not found');
+                    }
+                } catch (err) {
+                    console.error('[DEBUG] Error handling mbtilesExtracted event:', err);
+                }
+            });
+            
             // After all initialization is done, ensure visibility states match saved state
             mapInstance.once('idle', async () => {
+                console.log('[DEBUG] Map idle event fired, performing final setup');
                 // Apply the saved linestring layer toggle state
                 if (stateLoaded) {
                     // Apply linestring layers visibility based on toggle state
@@ -145,6 +198,27 @@ export async function initializeApp(mapContainerId = 'map') {
                 
                 // Update the config button styles to show which configs are cached
                 await updateSidebarConfigButtonStyles();
+                
+                // Check if MBTiles have already been extracted and update map style if needed
+                if (window.caches) {
+                    try {
+                        console.log('[DEBUG] Checking for existing MBTiles in cache');
+                        const cache = await caches.open('mbtiles-cache');
+                        const keys = await cache.keys();
+                        console.log(`[DEBUG] Found ${keys.length} cached MBTiles tiles`);
+                        
+                        if (keys.length > 0) {
+                            console.log('[DEBUG] Using cached MBTiles for map style');
+                            updateMapStyleForMBTiles(mapInstance);
+                        } else {
+                            console.log('[DEBUG] No cached MBTiles found, using default tiles');
+                        }
+                    } catch (error) {
+                        console.error('[DEBUG] Error checking MBTiles cache:', error);
+                    }
+                } else {
+                    console.log('[DEBUG] Cache API not available, using default tiles');
+                }
             });
         } catch (error) {
             console.error('Error during map initialization:', error);

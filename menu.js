@@ -43,8 +43,80 @@ export async function cacheConfigurationFiles() {
         // Update total files count in UI
         uiElements.totalFiles.textContent = files.length;
         
+        // Create a promise that resolves when caching is complete
+        const cachingComplete = new Promise((resolve, reject) => {
+            const messageHandler = (event) => {
+                const data = event.data;
+                
+                switch (data.type) {
+                    case 'cacheStart':
+                        uiElements.progressBar.style.width = '0%';
+                        uiElements.cacheCount.textContent = '0';
+                        const statusElement = document.querySelector('#cacheProgress .status-text');
+                        if (statusElement) {
+                            statusElement.textContent = data.message || 'Starting cache process...';
+                        }
+                        break;
+                        
+                    case 'cacheProgress':
+                        uiElements.cacheCount.textContent = data.completed;
+                        const percent = (data.completed / data.total) * 100;
+                        uiElements.progressBar.style.width = `${percent}%`;
+                        
+                        const progressStatus = document.querySelector('#cacheProgress .status-text');
+                        if (progressStatus) {
+                            progressStatus.textContent = `Caching: ${data.currentFile || ''}`;
+                        }
+                        break;
+                        
+                    case 'cacheError':
+                        console.error('Cache error:', data.message);
+                        uiElements.progressBar.style.backgroundColor = '#f44336'; // Red for error
+                        
+                        const errorStatus = document.querySelector('#cacheProgress .status-text');
+                        if (errorStatus) {
+                            errorStatus.textContent = `Error: ${data.message}`;
+                        }
+                        
+                        setTimeout(() => {
+                            uiElements.progressElement.style.display = 'none';
+                        }, 5000);
+                        navigator.serviceWorker.removeEventListener('message', messageHandler);
+                        reject(new Error(data.message));
+                        break;
+                        
+                    case 'cacheComplete':
+                        uiElements.progressBar.style.width = '100%';
+                        
+                        const completeStatus = document.querySelector('#cacheProgress .status-text');
+                        if (completeStatus) {
+                            completeStatus.textContent = data.message || 'Cache complete!';
+                        }
+                        
+                        setTimeout(() => {
+                            uiElements.progressElement.style.display = 'none';
+                        }, 2000);
+                        navigator.serviceWorker.removeEventListener('message', messageHandler);
+                        resolve();
+                        break;
+                }
+            };
+            
+            navigator.serviceWorker.addEventListener('message', messageHandler);
+            
+            // Add timeout to remove listener if no response
+            setTimeout(() => {
+                navigator.serviceWorker.removeEventListener('message', messageHandler);
+                uiElements.progressElement.style.display = 'none';
+                reject(new Error('Cache operation timed out after 5 minutes'));
+            }, 300000); // 5 minute timeout
+        });
+        
         // Send message to service worker to cache files
         await sendCacheRequestToServiceWorker(files, configDetails.fullConfig);
+        
+        // Wait for caching to complete
+        await cachingComplete;
         
         // Update cache indicators for sidebar config buttons
         await updateSidebarConfigButtonStyles();
@@ -153,10 +225,13 @@ export function handleCacheError(error, uiElements) {
 }
 
 /**
- * Caches map tiles for offline use
- * @returns {Promise<Object>} - Result of the tile caching operation
+ * Extracts MBTiles for offline use (replacement for original cacheTiles function)
+ * @returns {Promise<Object>} - Result of the MBTiles extraction operation
  */
 export async function cacheTiles() {
+    console.log('[DEBUG] Cache Background Map button clicked - starting MBTiles extraction');
+    
+    // Show progress container for map cache
     const progressElement = document.getElementById('mapCacheProgress');
     const progressBar = document.getElementById('mapProgressBar');
     const cacheCount = document.getElementById('mapCacheCount');
@@ -164,92 +239,52 @@ export async function cacheTiles() {
 
     progressElement.style.display = 'block';
     progressBar.style.width = '0%';
+    
+    // Do NOT close the popup menu to show progress
+    // const popupMenu = document.getElementById('popupMenu');
+    // if (popupMenu) {
+    //     popupMenu.style.display = 'none';
+    // }
 
     try {
-        const bounds = MAP_BOUNDS;
-        const minZoom = TILE_CACHE_SETTINGS.minZoom;
-        const maxZoom = TILE_CACHE_SETTINGS.maxZoom;
-
-        const tiles = [];
-        for (let z = minZoom; z <= maxZoom; z++) {
-            const northwest = latLngToTile(bounds[0][1], bounds[0][0], z);
-            const southeast = latLngToTile(bounds[1][1], bounds[1][0], z);
-
-            const minX = Math.min(northwest.x, southeast.x);
-            const maxX = Math.max(northwest.x, southeast.x);
-            const minY = Math.min(northwest.y, southeast.y);
-            const maxY = Math.max(northwest.y, southeast.y);
-
-            for (let x = minX; x <= maxX; x++) {
-                for (let y = minY; y <= maxY; y++) {
-                    tiles.push({ x, y, z });
+        // Clear any existing regular tile cache to avoid redundancy with MBTiles
+        if ('caches' in window) {
+            const tileCacheNames = await caches.keys();
+            const tileCaches = tileCacheNames.filter(name => 
+                name.startsWith('mapbox-tiles-') || 
+                name.includes('tiles') || 
+                name.includes('map')
+            );
+            
+            for (const cacheName of tileCaches) {
+                if (cacheName !== 'mbtiles-cache') { // Don't delete our MBTiles cache
+                    console.log(`[DEBUG] Clearing regular tile cache: ${cacheName}`);
+                    await caches.delete(cacheName);
                 }
             }
         }
-
-        totalTiles.textContent = tiles.length;
-
-        let completedTiles = 0;
-        let timeoutId;
         
-        // Create a promise that resolves when all tiles are cached
-        const cachingComplete = new Promise((resolve, reject) => {
-            const messageHandler = (event) => {
-                if (event.data.type === 'cacheTileComplete') {
-                    completedTiles++;
-                    cacheCount.textContent = completedTiles;
-                    const percentage = (completedTiles / tiles.length) * 100;
-                    progressBar.style.width = `${percentage}%`;
-
-                    if (completedTiles === tiles.length) {
-                        navigator.serviceWorker.removeEventListener('message', messageHandler);
-                        resolve();
-                    }
-                } else if (event.data.type === 'cacheTileError') {
-                    console.error('Error caching tile:', event.data.error);
-                    // Continue caching other tiles, but log the error
-                }
-            };
-
-            navigator.serviceWorker.addEventListener('message', messageHandler);
+        // Import the mbtilesUI module for handleMBTilesExtraction function
+        const mbtilesUI = await import('./mbtilesUI.js');
+        
+        // Directly call the handleMBTilesExtraction function
+        // This avoids the issue of trying to access mbtilesHandler.initialize() directly
+        if (typeof mbtilesUI.handleMBTilesExtraction === 'function') {
+            console.log('[DEBUG] Calling handleMBTilesExtraction function directly');
+            await mbtilesUI.handleMBTilesExtraction();
             
-            // Set a timeout to reject the promise if it takes too long
-            timeoutId = setTimeout(() => {
-                navigator.serviceWorker.removeEventListener('message', messageHandler);
-                reject(new Error('Tile caching timed out after 5 minutes'));
-            }, CACHE_TIMEOUT); // Use timeout from config
-        });
-
-        const registration = await navigator.serviceWorker.ready;
-        if (!registration || !registration.active) {
-            throw new Error('Service worker not ready or active');
+            // Return success after extraction completes
+            return { success: true };
+        } else {
+            throw new Error('MBTiles extraction function not found in mbtilesUI.js');
         }
-        
-        registration.active.postMessage({
-            type: 'cacheTiles',
-            tiles: tiles,
-            basePath: TILE_CACHE_SETTINGS.basePath
-        });
-
-        // Wait for caching to complete
-        await cachingComplete;
-        
-        // Clear the timeout if it exists
-        if (timeoutId) {
-            clearTimeout(timeoutId);
-        }
-        
-        progressElement.style.display = 'none';
-        progressBar.style.width = '0%';
-        
-        return { success: true, tileCount: tiles.length };
     } catch (error) {
-        console.error('Error caching tiles:', error);
+        console.error('[DEBUG] Error during MBTiles extraction:', error);
         progressElement.style.display = 'none';
         progressBar.style.width = '0%';
         
         // Show error to user
-        alert(`Failed to cache tiles: ${error.message}`);
+        alert(`Failed to extract map tiles: ${error.message}`);
         
         return { success: false, error: error.message };
     }
@@ -278,42 +313,23 @@ export async function updateApp() {
             return { success: true };
         }
         
-        // Set up progress UI
+        // Set up progress UI using common classes
         const progressContainer = document.createElement('div');
-        progressContainer.id = 'update-progress-container';
-        progressContainer.style.position = 'fixed';
-        progressContainer.style.top = '50%';
-        progressContainer.style.left = '50%';
-        progressContainer.style.transform = 'translate(-50%, -50%)';
-        progressContainer.style.backgroundColor = 'white';
-        progressContainer.style.padding = '20px';
-        progressContainer.style.borderRadius = '8px';
-        progressContainer.style.boxShadow = '0 4px 8px rgba(0,0,0,0.2)';
-        progressContainer.style.zIndex = '10000';
-        progressContainer.style.display = 'none';
+        progressContainer.className = 'progress-overlay';
         
         const progressText = document.createElement('div');
-        progressText.id = 'update-progress-text';
-        progressText.style.marginBottom = '10px';
+        progressText.className = 'progress-text';
         progressText.textContent = 'Starting update...';
         
-        const progressBar = document.createElement('div');
-        progressBar.id = 'update-progress-bar';
-        progressBar.style.height = '20px';
-        progressBar.style.backgroundColor = '#f0f0f0';
-        progressBar.style.borderRadius = '4px';
-        progressBar.style.overflow = 'hidden';
+        const progressBarContainer = document.createElement('div');
+        progressBarContainer.className = 'progress-bar-container';
         
-        const progressFill = document.createElement('div');
-        progressFill.id = 'update-progress-fill';
-        progressFill.style.height = '100%';
-        progressFill.style.backgroundColor = '#4CAF50';
-        progressFill.style.width = '0%';
-        progressFill.style.transition = 'width 0.3s';
+        const progressBarFill = document.createElement('div');
+        progressBarFill.className = 'progress-bar-fill';
         
-        progressBar.appendChild(progressFill);
+        progressBarContainer.appendChild(progressBarFill);
         progressContainer.appendChild(progressText);
-        progressContainer.appendChild(progressBar);
+        progressContainer.appendChild(progressBarContainer);
         document.body.appendChild(progressContainer);
         
         // Set up message listener for service worker updates
@@ -323,22 +339,20 @@ export async function updateApp() {
                 
                 switch (data.type) {
                     case 'appUpdateStart':
-                        progressContainer.style.display = 'block';
                         progressText.textContent = data.message;
                         break;
                         
                     case 'appUpdateProgress':
                         progressText.textContent = data.message;
                         const percent = (data.completed / data.total) * 100;
-                        progressFill.style.width = `${percent}%`;
+                        progressBarFill.style.width = `${percent}%`;
                         break;
                         
                     case 'appUpdateError':
                         progressText.textContent = data.message;
-                        progressFill.style.backgroundColor = '#f44336'; // Red for error
+                        progressBarFill.style.backgroundColor = '#f44336'; // Red for error
                         setTimeout(() => {
                             if (document.body.contains(progressContainer)) {
-                                progressContainer.style.display = 'none';
                                 document.body.removeChild(progressContainer);
                             }
                         }, 5000);
@@ -348,10 +362,9 @@ export async function updateApp() {
                         
                     case 'appUpdateFailed':
                         progressText.textContent = data.message;
-                        progressFill.style.backgroundColor = '#f44336'; // Red for error
+                        progressBarFill.style.backgroundColor = '#f44336'; // Red for error
                         setTimeout(() => {
                             if (document.body.contains(progressContainer)) {
-                                progressContainer.style.display = 'none';
                                 document.body.removeChild(progressContainer);
                             }
                         }, 5000);
@@ -361,17 +374,15 @@ export async function updateApp() {
                         
                     case 'appUpdateComplete':
                         progressText.textContent = data.message;
-                        progressFill.style.width = '100%';
+                        progressBarFill.style.width = '100%';
                         setTimeout(() => {
                             if (document.body.contains(progressContainer)) {
-                                progressContainer.style.display = 'none';
                                 document.body.removeChild(progressContainer);
                             }
                             
+                            // Automatically reload after successful update
                             if (data.needsReload) {
-                                if (confirm('Update complete! Reload page to apply changes?')) {
-                                    window.location.reload();
-                                }
+                                window.location.reload();
                             }
                         }, 2000);
                         navigator.serviceWorker.removeEventListener('message', messageHandler);
@@ -385,15 +396,15 @@ export async function updateApp() {
             // Add timeout to remove listener if no response
             setTimeout(() => {
                 navigator.serviceWorker.removeEventListener('message', messageHandler);
-                progressContainer.style.display = 'none';
-                document.body.removeChild(progressContainer);
+                if (document.body.contains(progressContainer)) {
+                    document.body.removeChild(progressContainer);
+                }
                 reject(new Error('Update timed out. No response from service worker.'));
             }, 60000); // 1 minute timeout
         });
         
         // Step 1: Get latest coreFiles.js module
         progressText.textContent = 'Fetching latest file list...';
-        progressContainer.style.display = 'block';
         
         try {
             // Fetch the latest coreFiles.js with cache busting
@@ -421,11 +432,12 @@ export async function updateApp() {
         } catch (error) {
             console.error('[App Update] Error during update process:', error);
             progressText.textContent = `Error fetching file list: ${error.message}`;
-            progressFill.style.backgroundColor = '#f44336'; // Red for error
+            progressBarFill.style.backgroundColor = '#f44336'; // Red for error
             
             setTimeout(() => {
-                progressContainer.style.display = 'none';
-                document.body.removeChild(progressContainer);
+                if (document.body.contains(progressContainer)) {
+                    document.body.removeChild(progressContainer);
+                }
             }, 5000);
             
             return { success: false, error: error.message };
@@ -438,32 +450,186 @@ export async function updateApp() {
 }
 
 /**
+ * Performs a clean installation by clearing all app data and relaunching
+ * @returns {Promise<Object>} - Result of the operation
+ */
+export async function cleanInstall() {
+    console.log('[DEBUG] Clean install requested');
+    
+    if (!confirm('WARNING: This will clear ALL app data including cached maps, configurations, and settings. The app will restart with default settings. Continue?')) {
+        return { success: false, canceled: true };
+    }
+    
+    try {
+        // Show a progress overlay using common classes
+        const progressOverlay = document.createElement('div');
+        progressOverlay.className = 'progress-overlay';
+        
+        const messageElement = document.createElement('div');
+        messageElement.className = 'progress-text';
+        messageElement.textContent = 'Cleaning installation...';
+        
+        const progressContainer = document.createElement('div');
+        progressContainer.className = 'progress-bar-container';
+        
+        const progressBar = document.createElement('div');
+        progressBar.className = 'progress-bar-fill';
+        
+        progressContainer.appendChild(progressBar);
+        progressOverlay.appendChild(messageElement);
+        progressOverlay.appendChild(progressContainer);
+        document.body.appendChild(progressOverlay);
+        
+        // Set initial progress
+        progressBar.style.width = '10%';
+        
+        // 1. Clear all caches
+        if ('caches' in window) {
+            messageElement.textContent = 'Clearing caches...';
+            progressBar.style.width = '20%';
+            
+            const cacheNames = await caches.keys();
+            await Promise.all(
+                cacheNames.map(cacheName => caches.delete(cacheName))
+            );
+            console.log('[DEBUG] All caches cleared');
+        }
+        
+        progressBar.style.width = '40%';
+        messageElement.textContent = 'Clearing local storage...';
+        
+        // 2. Clear localStorage
+        localStorage.clear();
+        console.log('[DEBUG] LocalStorage cleared');
+        
+        progressBar.style.width = '60%';
+        messageElement.textContent = 'Clearing session storage...';
+        
+        // 3. Clear sessionStorage
+        sessionStorage.clear();
+        console.log('[DEBUG] SessionStorage cleared');
+        
+        progressBar.style.width = '80%';
+        messageElement.textContent = 'Clearing IndexedDB...';
+        
+        // 4. Clear IndexedDB (more complex)
+        try {
+            const databases = await indexedDB.databases();
+            for (const db of databases) {
+                await new Promise((resolve, reject) => {
+                    const request = indexedDB.deleteDatabase(db.name);
+                    request.onsuccess = () => resolve();
+                    request.onerror = () => reject(request.error);
+                });
+            }
+            console.log('[DEBUG] IndexedDB databases cleared');
+        } catch (error) {
+            console.warn('[DEBUG] Error clearing IndexedDB:', error);
+            // Continue anyway
+        }
+        
+        progressBar.style.width = '100%';
+        messageElement.textContent = 'Clean installation complete. Restarting...';
+        
+        // 5. Wait a moment for the user to see the completion message
+        await new Promise(resolve => setTimeout(resolve, 1500));
+        
+        // 6. Reload the page properly based on the server environment
+        // For local development server, we need to use index.html or the base path
+        const cacheBuster = new Date().getTime();
+        
+        // Check if we're at root or in a subdirectory
+        const path = window.location.pathname;
+        let reloadUrl;
+        
+        if (path === '/' || path.endsWith('/')) {
+            // We're at the root or a directory path ending with slash
+            // Use index.html to avoid 404 on query params
+            reloadUrl = path + 'index.html?clean=' + cacheBuster;
+        } else if (path.includes('.html')) {
+            // We already have an HTML file in the path
+            const urlParts = path.split('?')[0]; // Remove any existing query params
+            reloadUrl = urlParts + '?clean=' + cacheBuster;
+        } else {
+            // No clear path, try current path with param
+            reloadUrl = path + '?clean=' + cacheBuster;
+        }
+        
+        console.log(`[DEBUG] Reloading to: ${reloadUrl}`);
+        window.location.href = reloadUrl;
+        
+        return { success: true };
+    } catch (error) {
+        console.error('[DEBUG] Error during clean install:', error);
+        alert(`Clean installation failed: ${error.message}. Please try manual cache clearing in your browser settings.`);
+        return { success: false, error: error.message };
+    }
+}
+
+/**
  * Sets up all menu event listeners
  */
 export function setupMenuEventListeners() {
+    console.log('[DEBUG-MENU] Setting up menu event listeners');
+    
     // Popup menu
     const popupMenu = document.getElementById('popupMenu');
     document.getElementById('moreOptionsBtn').addEventListener('click', () => {
+        console.log('[DEBUG-MENU] More options button clicked');
         popupMenu.style.display = "flex";
     });
+    
     document.getElementById('closePopupBtn').addEventListener('click', () => {
+        console.log('[DEBUG-MENU] Close popup button clicked');
         popupMenu.style.display = "none";
     });
+    
     popupMenu.addEventListener('click', (e) => {
         if(e.target === popupMenu) {
+            console.log('[DEBUG-MENU] Popup menu background clicked');
             popupMenu.style.display = "none";
         }
     });
     
     // Cache configuration button
-    document.getElementById('cacheCurrentConfigBtn').addEventListener('click', cacheConfigurationFiles);
+    const cacheConfigBtn = document.getElementById('cacheCurrentConfigBtn');
+    if (cacheConfigBtn) {
+        cacheConfigBtn.addEventListener('click', cacheConfigurationFiles);
+    }
     
-    // Cache background map button
-    document.getElementById('cacheBackgroundMapBtn').addEventListener('click', cacheTiles);
+    // Cache background map button (now used for MBTiles extraction)
+    const cacheBackgroundMapBtn = document.getElementById('cacheBackgroundMapBtn');
+    if (cacheBackgroundMapBtn) {
+        cacheBackgroundMapBtn.addEventListener('click', cacheTiles);
+    }
     
     // App update button
-    document.getElementById('appUpdateBtn').addEventListener('click', updateApp);
-
+    const appUpdateBtn = document.getElementById('appUpdateBtn');
+    if (appUpdateBtn) {
+        appUpdateBtn.addEventListener('click', updateApp);
+    }
+    
+    // Clean Install button (add after app update button)
+    const cleanInstallBtn = document.createElement('button');
+    cleanInstallBtn.id = 'cleanInstallBtn';
+    cleanInstallBtn.className = 'config-button button-with-icon';
+    cleanInstallBtn.innerHTML = `
+        <span class="material-icons-round">delete_forever</span>
+        <span>Clean Install (Reset All)</span>
+    `;
+    
+    // Insert the clean install button after the app update button
+    if (appUpdateBtn && appUpdateBtn.parentNode) {
+        appUpdateBtn.parentNode.insertBefore(cleanInstallBtn, appUpdateBtn.nextSibling);
+        
+        // Add event listener
+        cleanInstallBtn.addEventListener('click', cleanInstall);
+        
+        console.log('[DEBUG-MENU] Clean install button added');
+    } else {
+        console.warn('[DEBUG-MENU] Could not find app update button to insert clean install button after it');
+    }
+    
     // Add a hidden emergency reset function
     // This can be triggered by clicking a specific sequence or from the console
     window.resetMountainCirclesState = async function() {
@@ -482,7 +648,7 @@ export function setupMenuEventListeners() {
             }
         }
     };
-
+    
     // You can add a UI element for this if needed, or keep it as a console-only function
     // For safety-critical applications, having an emergency reset is important
     console.log('Emergency reset function available via window.resetMountainCirclesState()');

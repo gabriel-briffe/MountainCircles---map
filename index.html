@@ -8,6 +8,7 @@
     <!-- Using jsDelivr instead of unpkg to avoid potential network errors on Windows -->
     <script src="https://cdn.jsdelivr.net/npm/maplibre-gl@latest/dist/maplibre-gl.js"></script>
     <link href="https://cdn.jsdelivr.net/npm/maplibre-gl@latest/dist/maplibre-gl.css" rel="stylesheet" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.8.0/sql-wasm.js"></script>
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
     <link rel="manifest" href="manifest.json">
     <script>
@@ -98,12 +99,12 @@
             </button>
             
             <!-- IGC File Control with Icon -->
-            <button id="igcFileButton">
+            <button id="igcFileButton" class="button-with-icon">
                 <span class="material-icons-round">folder_open</span>
                 <span>Open IGC File</span>
             </button>
             <!-- New App Update section -->
-            <button id="appUpdateBtn" class="config-button">
+            <button id="appUpdateBtn" class="config-button button-with-icon">
                 <span class="material-icons-round">system_update</span>
                 Update App
             </button>
@@ -114,6 +115,7 @@
                     <span>Cache Current Config for Offline Use</span>
                 </button>
                 <div id="cacheProgress" style="display: none; margin-top: 10px;">
+                    <div class="status-text" style="margin-bottom: 5px;">Preparing...</div>
                     <div style="margin-bottom: 5px;">Caching files: <span id="cacheCount">0</span>/<span id="totalFiles">0</span></div>
                     <div style="width: 100%; height: 4px; background: #eee; border-radius: 2px;">
                         <div id="progressBar" style="width: 0%; height: 100%; background: #4CAF50; border-radius: 2px; transition: width 0.3s;"></div>
@@ -128,6 +130,7 @@
                     <span>Cache Background Map for Offline Use</span>
                 </button>
                 <div id="mapCacheProgress" style="display: none; margin-top: 10px;">
+                    <div class="status-text" style="margin-bottom: 5px;">Preparing...</div>
                     <div style="margin-bottom: 5px;">Caching tiles: <span id="mapCacheCount">0</span>/<span id="mapTotalTiles">0</span></div>
                     <div style="width: 100%; height: 4px; background: #eee; border-radius: 2px;">
                         <div id="mapProgressBar" style="width: 0%; height: 100%; background: #4CAF50; border-radius: 2px; transition: width 0.3s;"></div>
@@ -156,65 +159,30 @@
         <button id="cancelInstall">Not Now</button>
     </div>
 
+    <!-- MBTiles Progress Container -->
+    <div id="mbtilesProgressContainer" class="mbtiles-progress-container" style="display: none;">
+        <div class="mbtiles-progress-box">
+            <div class="mbtiles-progress-title">Extracting Map Tiles</div>
+            <div class="mbtiles-progress-bar-container">
+                <div id="mbtilesProgressBar" class="mbtiles-progress-bar"></div>
+            </div>
+            <div class="mbtiles-progress-status" id="mbtilesStatus">Preparing...</div>
+            <div class="mbtiles-progress-count">
+                <span id="mbtilesProcessed">0</span> / <span id="mbtilesTotal">0</span> tiles
+            </div>
+        </div>
+    </div>
+
     <script>
-        // Register service worker immediately (moved to top for early activation)
+        // Register service worker
         if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                console.log('Registering service worker with BASE_PATH:', window.BASE_PATH);
-                console.log('Service worker URL:', `${window.BASE_PATH}/sw.js`);
-                console.log('Service worker scope:', `${window.BASE_PATH}/`);
-                
-                navigator.serviceWorker.register(`${window.BASE_PATH}/sw.js`, { scope: `${window.BASE_PATH}/` })
-                    .then(registration => {
-                        console.log('Service Worker registered:', registration.scope);
-                        registration.update();
-                    })
-                    .catch(error => console.error('Service Worker registration failed:', error));
-            });
-
-            // Remove the previous sourcedata-based spinner handler.
-            // Instead, use these spinner control variables and message listener:
-            let activeFetches = 0;
-            let spinnerTimeout = null;
-
-            navigator.serviceWorker.addEventListener('message', (event) => {
-                if (event.data.type === 'fetchStart') {
-                    activeFetches++;
-                    // Debounce showing the spinner for 200ms
-                    if (!spinnerTimeout) {
-                        spinnerTimeout = setTimeout(() => {
-                            document.getElementById('spinner').style.display = 'block';
-                        }, 200);
-                    }
-                } else if (event.data.type === 'fetchComplete') {
-                    activeFetches = Math.max(0, activeFetches - 1);
-                    if (activeFetches === 0) {
-                        clearTimeout(spinnerTimeout);
-                        spinnerTimeout = null;
-                        document.getElementById('spinner').style.display = 'none';
-                    }
-                } else if (event.data.type === 'loadWarning' || event.data.type === 'loadError') {
-                    alert(event.data.message);
-                } else if (event.data.type === 'cacheStart') {
-                    // Optional: handle caching start message if desired.
-                } else if (event.data.type === 'cacheProgress') {
-                    const { completed, total } = event.data;
-                    document.getElementById('cacheCount').textContent = completed;
-                    document.getElementById('totalFiles').textContent = total;
-                    const percentage = (completed / total) * 100;
-                    document.getElementById('progressBar').style.width = `${percentage}%`;
-                } else if (event.data.type === 'cacheComplete') {
-                    if (typeof updateConfigButtonStyles === 'function') {
-                        updateConfigButtonStyles();
-                    }
-                    document.getElementById('cacheProgress').style.display = 'none';
-                    document.getElementById('progressBar').style.width = '0%';
-                } else if (event.data.type === 'cacheTileComplete') {
-                    // Handled in cacheTiles
-                } else if (event.data.type === 'cacheError') {
-                    console.error(event.data.message);
-                }
-            });
+            navigator.serviceWorker.register('./sw.js')
+                .then(registration => {
+                    console.log('[DEBUG] Service Worker registered with scope:', registration.scope);
+                })
+                .catch(error => {
+                    console.error('[DEBUG] Service Worker registration failed:', error);
+                });
         }
     </script>
     

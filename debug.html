@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MountainCircles Debug Page</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        h1, h2 {
+            color: #333;
+        }
+        .container {
+            margin-bottom: 30px;
+            border: 1px solid #ddd;
+            padding: 15px;
+            border-radius: 5px;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+            font-size: 14px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        button.blue {
+            background-color: #2196F3;
+        }
+        button.blue:hover {
+            background-color: #0b7dda;
+        }
+        button.red {
+            background-color: #f44336;
+        }
+        button.red:hover {
+            background-color: #d32f2f;
+        }
+        #consoleOutput {
+            background-color: #f8f8f8;
+            border: 1px solid #ddd;
+            padding: 10px;
+            height: 200px;
+            overflow-y: auto;
+            font-family: monospace;
+            white-space: pre-wrap;
+            margin-top: 10px;
+        }
+        .log {
+            color: #333;
+        }
+        .error {
+            color: #f44336;
+        }
+        .debug {
+            color: #2196F3;
+        }
+        .progress-container {
+            width: 100%;
+            background-color: #f1f1f1;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+        .progress-bar {
+            width: 0%;
+            height: 30px;
+            background-color: #4CAF50;
+            border-radius: 5px;
+            text-align: center;
+            line-height: 30px;
+            color: white;
+        }
+        #fileUpload {
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>MountainCircles Debug Page</h1>
+    
+    <div class="container">
+        <h2>Service Worker Status</h2>
+        <div id="swStatus">Checking...</div>
+        <button id="unregisterSW" class="red">Unregister Service Worker</button>
+        <button id="registerSW">Register Service Worker</button>
+    </div>
+    
+    <div class="container">
+        <h2>MBTiles File Check</h2>
+        <div id="mbtilesStatus">Checking...</div>
+        <button id="checkMBTiles">Check MBTiles File</button>
+        <div class="progress-container">
+            <div id="mbtilesProgressBar" class="progress-bar">0%</div>
+        </div>
+    </div>
+    
+    <div class="container">
+        <h2>Cache Management</h2>
+        <div id="cacheStatus">Checking cache...</div>
+        <button id="checkCache">Check Cache</button>
+        <button id="clearCache" class="red">Clear Cache</button>
+    </div>
+    
+    <div class="container">
+        <h2>Manual MBTiles Upload</h2>
+        <p>Upload your own MBTiles file:</p>
+        <input type="file" id="fileUpload" accept=".mbtiles">
+        <button id="uploadMBTiles" class="blue">Process Uploaded File</button>
+    </div>
+    
+    <div class="container">
+        <h2>Console Output</h2>
+        <button id="clearConsole" class="red">Clear Console</button>
+        <div id="consoleOutput"></div>
+    </div>
+    
+    <script>
+        // Override console methods to capture output
+        const originalConsole = {
+            log: console.log,
+            error: console.error,
+            warn: console.warn,
+            debug: console.debug
+        };
+        
+        const consoleOutput = document.getElementById('consoleOutput');
+        
+        function appendToConsole(message, type = 'log') {
+            const entry = document.createElement('div');
+            entry.className = type;
+            entry.textContent = message;
+            consoleOutput.appendChild(entry);
+            consoleOutput.scrollTop = consoleOutput.scrollHeight;
+        }
+        
+        console.log = function(...args) {
+            const message = args.map(arg => 
+                typeof arg === 'object' ? JSON.stringify(arg, null, 2) : String(arg)
+            ).join(' ');
+            appendToConsole(message, 'log');
+            originalConsole.log(...args);
+        };
+        
+        console.error = function(...args) {
+            const message = args.map(arg => 
+                typeof arg === 'object' ? JSON.stringify(arg, null, 2) : String(arg)
+            ).join(' ');
+            appendToConsole(message, 'error');
+            originalConsole.error(...args);
+        };
+        
+        console.debug = function(...args) {
+            const message = args.map(arg => 
+                typeof arg === 'object' ? JSON.stringify(arg, null, 2) : String(arg)
+            ).join(' ');
+            appendToConsole(message, 'debug');
+            originalConsole.debug(...args);
+        };
+        
+        // Check Service Worker status
+        async function checkServiceWorkerStatus() {
+            const swStatus = document.getElementById('swStatus');
+            
+            if ('serviceWorker' in navigator) {
+                try {
+                    const registrations = await navigator.serviceWorker.getRegistrations();
+                    
+                    if (registrations.length === 0) {
+                        swStatus.textContent = 'No Service Worker registered';
+                        console.log('No Service Worker registered');
+                    } else {
+                        swStatus.innerHTML = '';
+                        registrations.forEach(reg => {
+                            const state = reg.active ? 'active' : reg.installing ? 'installing' : reg.waiting ? 'waiting' : 'unknown';
+                            swStatus.innerHTML += `Service Worker registered with scope: ${reg.scope}<br>State: ${state}<br>`;
+                            console.log(`Service Worker registered with scope: ${reg.scope}, State: ${state}`);
+                        });
+                    }
+                } catch (error) {
+                    swStatus.textContent = `Error checking Service Worker: ${error.message}`;
+                    console.error('Error checking Service Worker:', error);
+                }
+            } else {
+                swStatus.textContent = 'Service Workers not supported in this browser';
+                console.error('Service Workers not supported in this browser');
+            }
+        }
+        
+        // Check MBTiles file
+        async function checkMBTilesFile() {
+            const mbtilesStatus = document.getElementById('mbtilesStatus');
+            const progressBar = document.getElementById('mbtilesProgressBar');
+            
+            const possiblePaths = [
+                './hillshaded_alps.mbtiles',
+                '/hillshaded_alps.mbtiles',
+                window.location.origin + '/hillshaded_alps.mbtiles'
+            ];
+            
+            mbtilesStatus.textContent = 'Checking MBTiles file locations...';
+            console.log('Checking MBTiles file locations...');
+            
+            for (let i = 0; i < possiblePaths.length; i++) {
+                const path = possiblePaths[i];
+                progressBar.style.width = `${(i / possiblePaths.length) * 100}%`;
+                progressBar.textContent = `${Math.floor((i / possiblePaths.length) * 100)}%`;
+                
+                mbtilesStatus.textContent = `Checking path: ${path}`;
+                console.log(`Checking path: ${path}`);
+                
+                try {
+                    const response = await fetch(path, { method: 'HEAD' });
+                    
+                    if (response.ok) {
+                        const contentLength = response.headers.get('Content-Length');
+                        const sizeMB = contentLength ? (parseInt(contentLength) / (1024 * 1024)).toFixed(2) + ' MB' : 'unknown size';
+                        
+                        mbtilesStatus.textContent = `Found MBTiles at: ${path} (${sizeMB})`;
+                        console.log(`Found MBTiles at: ${path} (${sizeMB})`);
+                        
+                        progressBar.style.width = '100%';
+                        progressBar.textContent = '100%';
+                        return;
+                    }
+                } catch (error) {
+                    console.error(`Error checking ${path}:`, error);
+                }
+            }
+            
+            mbtilesStatus.textContent = 'MBTiles file not found in any expected location';
+            console.error('MBTiles file not found in any expected location');
+            progressBar.style.width = '100%';
+            progressBar.style.backgroundColor = '#f44336';
+            progressBar.textContent = 'Not Found';
+        }
+        
+        // Check Cache
+        async function checkCache() {
+            const cacheStatus = document.getElementById('cacheStatus');
+            
+            if ('caches' in window) {
+                try {
+                    const cacheNames = await caches.keys();
+                    
+                    if (cacheNames.includes('mbtiles-cache')) {
+                        const mbtilesCache = await caches.open('mbtiles-cache');
+                        const keys = await mbtilesCache.keys();
+                        
+                        cacheStatus.textContent = `MBTiles cache contains ${keys.length} tiles`;
+                        console.log(`MBTiles cache contains ${keys.length} tiles`);
+                    } else {
+                        cacheStatus.textContent = 'MBTiles cache not found';
+                        console.log('MBTiles cache not found');
+                    }
+                } catch (error) {
+                    cacheStatus.textContent = `Error checking cache: ${error.message}`;
+                    console.error('Error checking cache:', error);
+                }
+            } else {
+                cacheStatus.textContent = 'Cache API not supported in this browser';
+                console.error('Cache API not supported in this browser');
+            }
+        }
+        
+        // Clear Cache
+        async function clearCache() {
+            const cacheStatus = document.getElementById('cacheStatus');
+            
+            if ('caches' in window) {
+                try {
+                    if (await caches.has('mbtiles-cache')) {
+                        await caches.delete('mbtiles-cache');
+                        cacheStatus.textContent = 'MBTiles cache cleared';
+                        console.log('MBTiles cache cleared');
+                    } else {
+                        cacheStatus.textContent = 'MBTiles cache not found, nothing to clear';
+                        console.log('MBTiles cache not found, nothing to clear');
+                    }
+                } catch (error) {
+                    cacheStatus.textContent = `Error clearing cache: ${error.message}`;
+                    console.error('Error clearing cache:', error);
+                }
+            } else {
+                cacheStatus.textContent = 'Cache API not supported in this browser';
+                console.error('Cache API not supported in this browser');
+            }
+        }
+        
+        // Process uploaded MBTiles file
+        async function processUploadedFile() {
+            const fileInput = document.getElementById('fileUpload');
+            const file = fileInput.files[0];
+            
+            if (!file) {
+                console.error('No file selected');
+                return;
+            }
+            
+            console.log(`Processing uploaded file: ${file.name} (${(file.size / (1024 * 1024)).toFixed(2)} MB)`);
+            
+            try {
+                // Implement file processing here if needed
+                console.log('File selected, but processing not implemented in this debug page');
+                
+                // Display file info
+                alert(`File info:\nName: ${file.name}\nSize: ${(file.size / (1024 * 1024)).toFixed(2)} MB\nType: ${file.type}\n\nUse the main app to process this file.`);
+            } catch (error) {
+                console.error('Error processing file:', error);
+            }
+        }
+        
+        // Register Service Worker
+        async function registerServiceWorker() {
+            const swStatus = document.getElementById('swStatus');
+            
+            if ('serviceWorker' in navigator) {
+                try {
+                    swStatus.textContent = 'Registering Service Worker...';
+                    
+                    const registration = await navigator.serviceWorker.register('./sw.js');
+                    
+                    swStatus.textContent = `Service Worker registered with scope: ${registration.scope}`;
+                    console.log(`Service Worker registered with scope: ${registration.scope}`);
+                    
+                    // Wait a moment then refresh the status display
+                    setTimeout(checkServiceWorkerStatus, 1000);
+                } catch (error) {
+                    swStatus.textContent = `Error registering Service Worker: ${error.message}`;
+                    console.error('Error registering Service Worker:', error);
+                }
+            } else {
+                swStatus.textContent = 'Service Workers not supported in this browser';
+                console.error('Service Workers not supported in this browser');
+            }
+        }
+        
+        // Unregister Service Worker
+        async function unregisterServiceWorker() {
+            const swStatus = document.getElementById('swStatus');
+            
+            if ('serviceWorker' in navigator) {
+                try {
+                    const registrations = await navigator.serviceWorker.getRegistrations();
+                    
+                    if (registrations.length === 0) {
+                        swStatus.textContent = 'No Service Worker registered';
+                        console.log('No Service Worker registered');
+                        return;
+                    }
+                    
+                    swStatus.textContent = 'Unregistering Service Workers...';
+                    
+                    for (const registration of registrations) {
+                        const result = await registration.unregister();
+                        if (result) {
+                            console.log(`Unregistered Service Worker with scope: ${registration.scope}`);
+                        } else {
+                            console.error(`Failed to unregister Service Worker with scope: ${registration.scope}`);
+                        }
+                    }
+                    
+                    swStatus.textContent = 'Service Workers unregistered';
+                    console.log('Service Workers unregistered');
+                    
+                    // Wait a moment then refresh the status display
+                    setTimeout(checkServiceWorkerStatus, 1000);
+                } catch (error) {
+                    swStatus.textContent = `Error unregistering Service Worker: ${error.message}`;
+                    console.error('Error unregistering Service Worker:', error);
+                }
+            } else {
+                swStatus.textContent = 'Service Workers not supported in this browser';
+                console.error('Service Workers not supported in this browser');
+            }
+        }
+        
+        // Clear Console
+        function clearConsoleOutput() {
+            consoleOutput.innerHTML = '';
+        }
+        
+        // Event Listeners
+        document.getElementById('checkCache').addEventListener('click', checkCache);
+        document.getElementById('clearCache').addEventListener('click', clearCache);
+        document.getElementById('checkMBTiles').addEventListener('click', checkMBTilesFile);
+        document.getElementById('uploadMBTiles').addEventListener('click', processUploadedFile);
+        document.getElementById('registerSW').addEventListener('click', registerServiceWorker);
+        document.getElementById('unregisterSW').addEventListener('click', unregisterServiceWorker);
+        document.getElementById('clearConsole').addEventListener('click', clearConsoleOutput);
+        
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            checkServiceWorkerStatus();
+            checkCache();
+            console.log('Debug page loaded');
+        });
+    </script>
+</body>
+</html> 
