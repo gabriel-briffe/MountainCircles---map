@@ -185,13 +185,36 @@ self.addEventListener('message', async (event) => {
         let errorCount = 0;
         
         try {
+            // Notify clients that caching has started
+            sendMessageToClients({
+                type: 'cacheStart',
+                total: files.length
+            });
+            
             const cache = await caches.open(cacheKey);
-            for (const file of files) {
+            for (let i = 0; i < files.length; i++) {
+                const file = files[i];
                 try {
+                    // Send progress update
+                    sendMessageToClients({
+                        type: 'cacheProgress',
+                        completed: i,
+                        total: files.length,
+                        currentFile: file
+                    });
+                    
                     const response = await fetch(file);
                     if (response.ok) {
                         await cache.put(file, response);
                         successCount++;
+                        
+                        // Send updated progress
+                        sendMessageToClients({
+                            type: 'cacheProgress',
+                            completed: successCount,
+                            total: files.length,
+                            currentFile: file
+                        });
                     } else {
                         errorCount++;
                         console.error(`SW - Failed to cache file: ${file} (${response.status})`);
@@ -202,6 +225,15 @@ self.addEventListener('message', async (event) => {
                 }
             }
             
+            // Send completion message
+            sendMessageToClients({
+                type: 'cacheComplete',
+                successCount,
+                errorCount,
+                total: files.length
+            });
+            
+            // Also send response directly to the caller
             event.source.postMessage({
                 type: 'cacheFilesComplete',
                 successCount,
@@ -210,6 +242,14 @@ self.addEventListener('message', async (event) => {
             });
         } catch (error) {
             console.error('SW - Error opening cache:', error);
+            
+            // Send error message to all clients
+            sendMessageToClients({
+                type: 'cacheError',
+                error: error.message
+            });
+            
+            // Also send to original caller
             event.source.postMessage({
                 type: 'cacheFilesError',
                 error: error.message

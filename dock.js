@@ -244,7 +244,19 @@ export function toggleEDLNavigation() {
         console.log('[Dock] Creating initial EDL layer');
         const initialLayer = createEDLLayer(getMap());
         if (initialLayer) {
-            initEDLUI(initialLayer);
+            // Initialize the EDL UI
+            import('./edlUI.js').then(module => {
+                module.initEDLUI(initialLayer);
+                
+                // Ensure layer is initially invisible
+                getLayerManager().setVisibility('edl-layer', false);
+                
+                // Make sure the visibility icon shows the correct state
+                const visibilityButton = document.getElementById('edlVisibilityBtn');
+                if (visibilityButton) {
+                    visibilityButton.innerHTML = '<span class="material-icons">visibility_off</span>';
+                }
+            });
         }
     }
 }
@@ -541,29 +553,37 @@ export function setupDockEventListeners() {
  */
 function createEDLNavigationToggleButton() {
     console.log('[Dock] Creating EDL navigation toggle button');
-    
-    // Create button
-    const button = document.createElement('button');
-    button.id = 'toggleEDLNavigationBtn';
-    button.title = 'Toggle EDL Weather Navigation';
-    
-    // Use airwave icon with Material Icons
-    button.innerHTML = '<span class="material-icons">waves</span>';
-    
-    // Add click event
-    button.addEventListener('click', toggleEDLNavigation);
-    
-    // Add to dock, right before the "more options" button
-    const mapDock = document.getElementById('mapDock');
-    const moreOptionsBtn = document.getElementById('moreOptionsBtn');
-    
-    if (moreOptionsBtn) {
-        mapDock.insertBefore(button, moreOptionsBtn);
-    } else {
-        mapDock.appendChild(button);
-    }
-    
-    console.log('[Dock] EDL navigation toggle button created');
+
+    // Check if EDL metadata exists before creating the button
+    import('./cacheEdl.js').then(module => {
+        if (!module.hasEDLTiles()) {
+            console.log('[Dock] No EDL tiles available, not creating EDL navigation button');
+            return;
+        }
+
+        // Create button
+        const button = document.createElement('button');
+        button.id = 'toggleEDLNavigationBtn';
+        button.title = 'Toggle EDL Weather Navigation';
+        
+        // Use airwave icon with Material Icons
+        button.innerHTML = '<span class="material-icons">waves</span>';
+        
+        // Add click event
+        button.addEventListener('click', toggleEDLNavigation);
+        
+        // Add to dock, right before the "more options" button
+        const mapDock = document.getElementById('mapDock');
+        const moreOptionsBtn = document.getElementById('moreOptionsBtn');
+        
+        if (moreOptionsBtn) {
+            mapDock.insertBefore(button, moreOptionsBtn);
+        } else {
+            mapDock.appendChild(button);
+        }
+        
+        console.log('[Dock] EDL navigation toggle button created');
+    });
 }
 
 /**

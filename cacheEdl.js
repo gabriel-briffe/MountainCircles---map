@@ -506,6 +506,40 @@ export async function cacheEDLTiles() {
     // Save metadata about the cached tiles
     await saveEDLMetadata(processedFiles);
     
+    // After successful caching, create the EDL navigation button if it doesn't exist
+    if (succeeded > 0) {
+      // Create the EDL navigation button if it doesn't exist
+      const existingButton = document.getElementById('toggleEDLNavigationBtn');
+      if (!existingButton) {
+        console.log('[edlCache] Creating EDL navigation button after successful cache');
+        // Import dock.js dynamically to avoid circular dependencies
+        import('./dock.js').then(module => {
+          // Create the button
+          const button = document.createElement('button');
+          button.id = 'toggleEDLNavigationBtn';
+          button.title = 'Toggle EDL Weather Navigation';
+          
+          // Use airwave icon with Material Icons
+          button.innerHTML = '<span class="material-icons">waves</span>';
+          
+          // Add click event
+          button.addEventListener('click', module.toggleEDLNavigation);
+          
+          // Add to dock, right before the "more options" button
+          const mapDock = document.getElementById('mapDock');
+          const moreOptionsBtn = document.getElementById('moreOptionsBtn');
+          
+          if (moreOptionsBtn) {
+            mapDock.insertBefore(button, moreOptionsBtn);
+          } else {
+            mapDock.appendChild(button);
+          }
+          
+          console.log('[edlCache] EDL navigation button created after caching');
+        });
+      }
+    }
+    
     return {
       success: true,
       processed: processed,

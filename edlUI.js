@@ -27,6 +27,9 @@ export function initEDLUI(initialLayer) {
         currentLayerInfo = { ...initialLayer.info };
     }
     
+    // Set layer visibility to false initially
+    edlLayerVisible = false;
+    
     // Initial UI update
     updateNavigationButtonsState();
 }

@@ -293,44 +293,16 @@ function findNearestValue(value, array) {
 export function toggleEDLVisibility(isVisible) {
     console.log(`[EDL] Toggling EDL layer visibility: ${isVisible}`);
     
-    // If making the layer visible, check cache contents
-    if (isVisible) {
-        checkEDLCacheContents();
-    }
-    
     // Update layer visibility
     const layerManager = getLayerManager();
-    if (layerManager) {
-        if (layerManager.hasLayer('edl-layer')) {
-            console.log(`[EDL] Layer exists, setting visibility to ${isVisible ? 'visible' : 'none'}`);
-            layerManager.setVisibility('edl-layer', isVisible);
-            
-            // Redraw layers to ensure proper order
-            layerManager.redrawLayersInOrder();
-            console.log(`[EDL] Called redrawLayersInOrder after changing visibility`);
-        } else {
-            console.log(`[EDL] Layer does not exist, cannot change visibility`);
-            
-            // If trying to make visible but layer doesn't exist, create it
-            if (isVisible) {
-                console.log(`[EDL] Attempting to create EDL layer`);
-                
-                const today = new Date();
-                const dateString = today.toISOString().slice(0, 10);
-                const hour = findNearestValue(today.getHours(), getAvailableHours());
-                const pressure = DEFAULT_PRESSURE;
-                
-                // Create the layer with current parameters
-                createEDLLayer(null, { pressure });
-                
-                // Ensure it's visible
-                layerManager.setVisibility('edl-layer', true);
-                
-                // Redraw layers
-                layerManager.redrawLayersInOrder();
-                console.log(`[EDL] Created new layer and called redrawLayersInOrder`);
-            }
-        }
+    if (layerManager && layerManager.hasLayer('edl-layer')) {
+        console.log(`[EDL] Setting EDL layer visibility to ${isVisible ? 'visible' : 'none'}`);
+        layerManager.setVisibility('edl-layer', isVisible);
+        
+        // Redraw layers to ensure proper order
+        layerManager.redrawLayersInOrder();
+    } else {
+        console.log(`[EDL] Layer does not exist, cannot change visibility`);
     }
 }
 
@@ -340,7 +312,10 @@ export function toggleEDLVisibility(isVisible) {
  */
 async function checkEDLCacheContents() {
     try {
-        console.log('[EDL] Checking EDL tile cache contents...');
+        // Only check if we need to check the specific directory for the current layer
+        if (!currentLayerInfo) {
+            return;
+        }
         
         // First, check if caches API is available
         if (!('caches' in window)) {
@@ -350,71 +325,22 @@ async function checkEDLCacheContents() {
         
         // Try to open the tile cache
         const cache = await caches.open('mountaincircles-tiles-v1');
-        const requests = await cache.keys();
         
-        // Filter for EDL tiles
-        const edlRequests = requests.filter(req => 
-            req.url.includes('/edl_tiles/')
+        // Build the specific path we're trying to load
+        const expectedDir = `edl_tiles/${currentLayerInfo.date}_${currentLayerInfo.hour}_${currentLayerInfo.pressure}`;
+        console.log(`[EDL] Checking cache for: ${expectedDir}`);
+        
+        // Get matching requests only for the specific directory
+        const requests = await cache.keys();
+        const matchingRequests = requests.filter(req => 
+            req.url.includes(expectedDir)
         );
         
-        if (edlRequests.length === 0) {
-            console.warn('[EDL] No EDL tiles found in cache!');
-            return;
+        if (matchingRequests.length === 0) {
+            console.warn(`[EDL] No tiles found for ${expectedDir}`);
+        } else {
+            console.log(`[EDL] Found ${matchingRequests.length} tiles for ${expectedDir}`);
         }
-        
-        console.log(`[EDL] Found ${edlRequests.length} EDL tile entries in cache`);
-        
-        // Group by date_hour_pressure directory
-        const directoryMap = {};
-        
-        edlRequests.forEach(req => {
-            // Extract the directory part, e.g., "edl_tiles/2025-03-25_7_50000"
-            const urlParts = req.url.split('/');
-            const edlIndex = urlParts.findIndex(part => part === 'edl_tiles');
-            
-            if (edlIndex >= 0 && edlIndex + 1 < urlParts.length) {
-                const dirKey = `edl_tiles/${urlParts[edlIndex + 1]}`;
-                const zoomLevel = urlParts[edlIndex + 2] || 'unknown';
-                
-                if (!directoryMap[dirKey]) {
-                    directoryMap[dirKey] = {
-                        total: 0,
-                        byZoom: {}
-                    };
-                }
-                
-                directoryMap[dirKey].total++;
-                
-                if (!directoryMap[dirKey].byZoom[zoomLevel]) {
-                    directoryMap[dirKey].byZoom[zoomLevel] = 0;
-                }
-                
-                directoryMap[dirKey].byZoom[zoomLevel]++;
-            }
-        });
-        
-        // Log the directory structure
-        console.log('[EDL] EDL tile cache contents:');
-        Object.keys(directoryMap).forEach(dir => {
-            console.log(`[EDL] ${dir}/ - ${directoryMap[dir].total} tiles total`);
-            
-            Object.keys(directoryMap[dir].byZoom).sort((a, b) => parseInt(a) - parseInt(b)).forEach(zoom => {
-                console.log(`[EDL]   - Zoom level ${zoom}: ${directoryMap[dir].byZoom[zoom]} tiles`);
-            });
-        });
-        
-        // Log specifically what we're trying to load now
-        if (currentLayerInfo) {
-            const expectedDir = `edl_tiles/${currentLayerInfo.date}_${currentLayerInfo.hour}_${currentLayerInfo.pressure}`;
-            console.log(`[EDL] Currently trying to load from: ${expectedDir}`);
-            
-            if (directoryMap[expectedDir]) {
-                console.log(`[EDL] This directory exists in cache with ${directoryMap[expectedDir].total} tiles`);
-            } else {
-                console.warn(`[EDL] ⚠️ This directory DOES NOT EXIST in cache! This explains the 404 errors.`);
-            }
-        }
-        
     } catch (error) {
         console.error(`[EDL] Error checking cache: ${error.message}`);
     }

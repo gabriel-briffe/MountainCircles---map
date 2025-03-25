@@ -141,15 +141,8 @@ async function initializeBaseLayers() {
     // Add highlight layer
     getLayerManager().addLayerIfNotExists('highlight-airspace', highlightAirspaceStyle);
     
-    // Add EDL weather layer (initially invisible)
-    try {
-        const edlLayer = createEDLLayer(getMap());
-        // Set visibility to false by default
-        getLayerManager().setVisibility('edl-layer', false);
-        console.log('[MapInitializer] EDL layer added successfully');
-    } catch (error) {
-        console.error('[MapInitializer] Error adding EDL layer:', error);
-    }
+    // Note: EDL layer is no longer created during initialization
+    // It will be created on-demand when the user requests it
     
     // Add empty source for dynamic layers
     getLayerManager().addOrUpdateSource('dynamic-source', {
