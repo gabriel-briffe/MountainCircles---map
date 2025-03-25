@@ -5,7 +5,7 @@
 
 import { BASE_PATH } from './config.js';
 import { getLayerManager } from './state.js';
-import { getEDLMetadata, hasEDLTiles } from './edlCache.js';
+import { getEDLMetadata, hasEDLTiles } from './cacheEdl.js';
 
 // Constants for EDL layer
 const DEFAULT_PRESSURE = 50000; // 500 hPa
@@ -487,6 +487,17 @@ export function addEDLToggleToSidebar(sidebar) {
             
             // Also update pressure options
             updatePressureOptions(selectedDate, availableHours[0]);
+            
+            // Automatically update the layer
+            const hour = parseInt(hourSelector.value);
+            const pressure = parseInt(pressureSelector.value);
+            updateEDLLayer(selectedDate, hour, pressure);
+            
+            // If the layer is not currently visible, make it visible
+            const edlToggleSwitch = document.getElementById('edl-toggle');
+            if (edlToggleSwitch && !edlToggleSwitch.classList.contains('active')) {
+                toggleEDLVisibility(true);
+            }
         }
     });
     
@@ -495,6 +506,32 @@ export function addEDLToggleToSidebar(sidebar) {
         const selectedDate = dateSelector.value;
         const selectedHour = parseInt(e.target.value);
         updatePressureOptions(selectedDate, selectedHour);
+        
+        // Automatically update the layer
+        const pressure = parseInt(pressureSelector.value);
+        updateEDLLayer(selectedDate, selectedHour, pressure);
+        
+        // If the layer is not currently visible, make it visible
+        const edlToggleSwitch = document.getElementById('edl-toggle');
+        if (edlToggleSwitch && !edlToggleSwitch.classList.contains('active')) {
+            toggleEDLVisibility(true);
+        }
+    });
+    
+    // Add event listener to pressure selector to update the layer
+    pressureSelector.addEventListener('change', (e) => {
+        const selectedDate = dateSelector.value;
+        const selectedHour = parseInt(hourSelector.value);
+        const selectedPressure = parseInt(e.target.value);
+        
+        // Automatically update the layer
+        updateEDLLayer(selectedDate, selectedHour, selectedPressure);
+        
+        // If the layer is not currently visible, make it visible
+        const edlToggleSwitch = document.getElementById('edl-toggle');
+        if (edlToggleSwitch && !edlToggleSwitch.classList.contains('active')) {
+            toggleEDLVisibility(true);
+        }
     });
     
     // Function to update pressure options based on selected date and hour
@@ -518,32 +555,9 @@ export function addEDLToggleToSidebar(sidebar) {
         }
     }
     
-    // Create update button
-    const updateButton = document.createElement('button');
-    updateButton.textContent = 'Update Layer';
-    updateButton.className = 'sidebar-config-btn';
-    updateButton.style.width = '100%';
-    updateButton.style.marginTop = '5px';
-    updateButton.style.padding = '4px';
-    
-    // Add click handler for update button
-    updateButton.addEventListener('click', () => {
-        const date = dateSelector.value;
-        const hour = parseInt(hourSelector.value);
-        const pressure = parseInt(pressureSelector.value);
-        
-        // Update the layer
-        updateEDLLayer(date, hour, pressure);
-        
-        // If the layer is not currently visible, make it visible
-        const toggleSwitch = document.getElementById('edl-toggle');
-        if (toggleSwitch && !toggleSwitch.classList.contains('active')) {
-            toggleEDLVisibility(true);
-        }
-    });
-    
+    // We don't need the update button anymore as updates happen automatically
+    // Just add the dropdowns to the container
     dropdownContainer.appendChild(selectorContainer);
-    dropdownContainer.appendChild(updateButton);
     
     edlContainer.appendChild(dropdownContainer);
     
@@ -565,6 +579,21 @@ export function addEDLToggleToSidebar(sidebar) {
     
     // Update debug info initially
     updateDebugInfo(mostRecentDate, nearestHour, availablePressures[0]);
+    
+    // Initialize the EDL layer with the default values
+    const initialDate = dateSelector.value;
+    const initialHour = parseInt(hourSelector.value);
+    const initialPressure = parseInt(pressureSelector.value);
+    
+    // Create the layer with initial values
+    updateEDLLayer(initialDate, initialHour, initialPressure);
+    
+    // If the toggle switch exists, make the layer visible initially
+    const edlToggleSwitch = document.getElementById('edl-toggle');
+    if (edlToggleSwitch) {
+        edlToggleSwitch.classList.add('active');
+        toggleEDLVisibility(true);
+    }
 }
 
 /**
@@ -679,12 +708,12 @@ export function toggleEDLVisibility(isVisible) {
     }
     
     // Update UI toggle
-    const toggleSwitch = document.getElementById('edl-toggle');
-    if (toggleSwitch) {
+    const edlToggleSwitch = document.getElementById('edl-toggle');
+    if (edlToggleSwitch) {
         if (isVisible) {
-            toggleSwitch.classList.add('active');
+            edlToggleSwitch.classList.add('active');
         } else {
-            toggleSwitch.classList.remove('active');
+            edlToggleSwitch.classList.remove('active');
         }
     }
     

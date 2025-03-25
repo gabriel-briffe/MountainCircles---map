@@ -142,7 +142,7 @@ export function createTypeCheckboxes(features) {
     addPeaksPassesToggle(sidebar);
     
     // Import and check hasEDLTiles dynamically to avoid circular dependencies
-    import('./edlCache.js').then(edlCacheModule => {
+    import('./cacheEdl.js').then(edlCacheModule => {
         // Only add EDL toggle if tiles are available
         if (edlCacheModule.hasEDLTiles()) {
             // Add a divider for EDL section

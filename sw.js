@@ -64,17 +64,18 @@ const INITIAL_CACHE_RESOURCES = [
     // CSS files
     `${BASE_PATH}/styles.css`,
     
-    // Core JS files
-    `${BASE_PATH}/config.js`,
-    `${BASE_PATH}/coreFiles.js`,
-    `${BASE_PATH}/sw.js`,
-    
-    // Map and functionality JS files
+    // JS files
     `${BASE_PATH}/airspace.js`,
     `${BASE_PATH}/airspaceStyle.js`,
     `${BASE_PATH}/appUpdate.js`,
     `${BASE_PATH}/cacheConfig.js`,
+    `${BASE_PATH}/cacheEdl.js`,
+    `${BASE_PATH}/cacheTiles.js`,
+    `${BASE_PATH}/cleanInstall.js`,
+    `${BASE_PATH}/config.js`,
+    `${BASE_PATH}/coreFiles.js`,
     `${BASE_PATH}/dock.js`,
+    `${BASE_PATH}/edl.js`,
     `${BASE_PATH}/igc.js`,
     `${BASE_PATH}/init.js`,
     `${BASE_PATH}/install.js`,
@@ -82,13 +83,16 @@ const INITIAL_CACHE_RESOURCES = [
     `${BASE_PATH}/layers.js`,
     `${BASE_PATH}/layerStyles.js`,
     `${BASE_PATH}/location.js`,
+    `${BASE_PATH}/main.js`,
     `${BASE_PATH}/map.js`,
     `${BASE_PATH}/mapInitializer.js`,
     `${BASE_PATH}/mappings.js`,
+    `${BASE_PATH}/mbtiles.js`,
     `${BASE_PATH}/menu.js`,
     `${BASE_PATH}/navboxManager.js`,
     `${BASE_PATH}/sidebar.js`,
     `${BASE_PATH}/state.js`,
+    `${BASE_PATH}/sw.js`,
     `${BASE_PATH}/toggleManager.js`,
     `${BASE_PATH}/tracking.js`,
     `${BASE_PATH}/utils.js`,

@@ -32,7 +32,7 @@ import { cleanInstall, createCleanInstallButton } from "./cleanInstall.js";
 import { cacheTiles } from "./cacheTiles.js";
 
 // Import EDL caching functionality
-import { cacheEDLTiles } from "./edlCache.js";
+import { cacheEDLTiles } from "./cacheEdl.js";
 
 /**
  * Sets up all menu event listeners
