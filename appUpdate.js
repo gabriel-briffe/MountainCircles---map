@@ -14,26 +14,44 @@ async function fetchCoreFilesModule() {
  * @returns {Object} UI elements for progress tracking
  */
 function setupUpdateProgressUI() {
-    // Create progress overlay using the same style as cleanInstall
-    const progressOverlay = document.createElement('div');
-    progressOverlay.className = 'progress-overlay';
-    
-    const messageElement = document.createElement('div');
-    messageElement.className = 'progress-text';
-    messageElement.textContent = 'Starting update...';
-    
     const progressContainer = document.createElement('div');
-    progressContainer.className = 'progress-bar-container';
+    progressContainer.id = 'update-progress-container';
+    progressContainer.style.position = 'fixed';
+    progressContainer.style.top = '50%';
+    progressContainer.style.left = '50%';
+    progressContainer.style.transform = 'translate(-50%, -50%)';
+    progressContainer.style.backgroundColor = 'white';
+    progressContainer.style.padding = '20px';
+    progressContainer.style.borderRadius = '8px';
+    progressContainer.style.boxShadow = '0 4px 8px rgba(0,0,0,0.2)';
+    progressContainer.style.zIndex = '10000';
+    progressContainer.style.display = 'none';
+    
+    const progressText = document.createElement('div');
+    progressText.id = 'update-progress-text';
+    progressText.style.marginBottom = '10px';
+    progressText.textContent = 'Starting update...';
     
     const progressBar = document.createElement('div');
-    progressBar.className = 'progress-bar-fill';
+    progressBar.id = 'update-progress-bar';
+    progressBar.style.height = '20px';
+    progressBar.style.backgroundColor = '#f0f0f0';
+    progressBar.style.borderRadius = '4px';
+    progressBar.style.overflow = 'hidden';
     
+    const progressFill = document.createElement('div');
+    progressFill.id = 'update-progress-fill';
+    progressFill.style.height = '100%';
+    progressFill.style.backgroundColor = '#4CAF50';
+    progressFill.style.width = '0%';
+    progressFill.style.transition = 'width 0.3s';
+    
+    progressBar.appendChild(progressFill);
+    progressContainer.appendChild(progressText);
     progressContainer.appendChild(progressBar);
-    progressOverlay.appendChild(messageElement);
-    progressOverlay.appendChild(progressContainer);
-    document.body.appendChild(progressOverlay);
+    document.body.appendChild(progressContainer);
     
-    return { progressOverlay, messageElement, progressBar };
+    return { progressContainer, progressText, progressBar, progressFill };
 }
 
 /**
@@ -42,7 +60,7 @@ function setupUpdateProgressUI() {
  * @returns {Promise} Promise that resolves when update completes or rejects on error
  */
 function setupMessageHandler(uiElements) {
-    const { progressOverlay, messageElement, progressBar } = uiElements;
+    const { progressContainer, progressText, progressFill } = uiElements;
     
     return new Promise((resolve, reject) => {
         const messageHandler = (event) => {
@@ -50,53 +68,56 @@ function setupMessageHandler(uiElements) {
             
             switch (data.type) {
                 case 'appUpdateStart':
-                    progressOverlay.style.display = 'flex';
-                    messageElement.textContent = data.message;
+                    progressContainer.style.display = 'block';
+                    progressText.textContent = data.message;
                     break;
                     
                 case 'appUpdateProgress':
-                    messageElement.textContent = data.message;
+                    progressText.textContent = data.message;
                     const percent = (data.completed / data.total) * 100;
-                    progressBar.style.width = `${percent}%`;
+                    progressFill.style.width = `${percent}%`;
                     break;
                     
                 case 'appUpdateError':
-                    messageElement.textContent = data.message;
-                    progressBar.style.backgroundColor = '#f44336'; // Red for error
+                    progressText.textContent = data.message;
+                    progressFill.style.backgroundColor = '#f44336'; // Red for error
                     setTimeout(() => {
-                        if (document.body.contains(progressOverlay)) {
-                            document.body.removeChild(progressOverlay);
+                        if (document.body.contains(progressContainer)) {
+                            progressContainer.style.display = 'none';
+                            document.body.removeChild(progressContainer);
                         }
-                    }, 3000);
+                    }, 5000);
                     navigator.serviceWorker.removeEventListener('message', messageHandler);
                     reject(new Error(data.message));
                     break;
                     
                 case 'appUpdateFailed':
-                    messageElement.textContent = data.message;
-                    progressBar.style.backgroundColor = '#f44336'; // Red for error
+                    progressText.textContent = data.message;
+                    progressFill.style.backgroundColor = '#f44336'; // Red for error
                     setTimeout(() => {
-                        if (document.body.contains(progressOverlay)) {
-                            document.body.removeChild(progressOverlay);
+                        if (document.body.contains(progressContainer)) {
+                            progressContainer.style.display = 'none';
+                            document.body.removeChild(progressContainer);
                         }
-                    }, 3000);
+                    }, 5000);
                     navigator.serviceWorker.removeEventListener('message', messageHandler);
                     reject(new Error(data.message));
                     break;
                     
                 case 'appUpdateComplete':
-                    messageElement.textContent = data.message || 'Update complete. Restarting...';
-                    progressBar.style.width = '100%';
+                    progressText.textContent = data.message;
+                    progressFill.style.width = '100%';
                     setTimeout(() => {
-                        if (document.body.contains(progressOverlay)) {
-                            document.body.removeChild(progressOverlay);
+                        if (document.body.contains(progressContainer)) {
+                            progressContainer.style.display = 'none';
+                            document.body.removeChild(progressContainer);
                         }
                         
                         if (data.needsReload) {
                             // Auto reload without confirmation
                             window.location.reload();
                         }
-                    }, 1500);
+                    }, 2000);
                     navigator.serviceWorker.removeEventListener('message', messageHandler);
                     resolve();
                     break;
@@ -108,15 +129,8 @@ function setupMessageHandler(uiElements) {
         // Add timeout to remove listener if no response
         setTimeout(() => {
             navigator.serviceWorker.removeEventListener('message', messageHandler);
-            messageElement.textContent = 'Update timed out. No response from service worker.';
-            progressBar.style.backgroundColor = '#f44336'; // Red for error
-            
-            setTimeout(() => {
-                if (document.body.contains(progressOverlay)) {
-                    document.body.removeChild(progressOverlay);
-                }
-            }, 3000);
-            
+            progressContainer.style.display = 'none';
+            document.body.removeChild(progressContainer);
             reject(new Error('Update timed out. No response from service worker.'));
         }, 60000); // 1 minute timeout
     });
@@ -128,21 +142,7 @@ function setupMessageHandler(uiElements) {
  */
 export async function updateApp() {
     if (!('serviceWorker' in navigator)) {
-        // Use progress overlay instead of alert
-        const progressOverlay = document.createElement('div');
-        progressOverlay.className = 'progress-overlay';
-        
-        const messageElement = document.createElement('div');
-        messageElement.className = 'progress-text';
-        messageElement.textContent = 'Service workers are not supported in this browser. Cannot update the app.';
-        
-        progressOverlay.appendChild(messageElement);
-        document.body.appendChild(progressOverlay);
-        
-        setTimeout(() => {
-            document.body.removeChild(progressOverlay);
-        }, 3000);
-        
+        alert('Service workers are not supported in this browser. Cannot update the app.');
         return { success: false, error: 'Service workers not supported' };
     }
     
@@ -152,29 +152,23 @@ export async function updateApp() {
             throw new Error('No service worker registration found');
         }
         
-        // Set up progress UI
-        const uiElements = setupUpdateProgressUI();
-        const { messageElement, progressBar } = uiElements;
-        
         if (!navigator.serviceWorker.controller) {
             // If service worker is not controlling the page yet, update and reload
             await registration.update();
-            messageElement.textContent = 'App update started. Page will reload to complete the update...';
-            progressBar.style.width = '100%';
-            
-            setTimeout(() => {
-                window.location.reload();
-            }, 2000);
-            
+            alert('App update started. Please reload the page to complete the update.');
             return { success: true };
         }
+        
+        // Set up progress UI
+        const uiElements = setupUpdateProgressUI();
+        const { progressText } = uiElements;
         
         // Set up message listener for service worker updates
         const messagePromise = setupMessageHandler(uiElements);
         
         // Step 1: Get latest coreFiles.js module
-        messageElement.textContent = 'Fetching latest file list...';
-        progressBar.style.width = '10%';
+        progressText.textContent = 'Fetching latest file list...';
+        uiElements.progressContainer.style.display = 'block';
         
         try {
             // Fetch the latest coreFiles.js with cache busting
@@ -185,8 +179,7 @@ export async function updateApp() {
             const filesToUpdate = coreFilesModule.getCoreFiles();
             console.log(`[App Update] Retrieved ${filesToUpdate.length} files to update:`, filesToUpdate);
             
-            messageElement.textContent = `Found ${filesToUpdate.length} files to update...`;
-            progressBar.style.width = '20%';
+            progressText.textContent = `Found ${filesToUpdate.length} files to update...`;
             
             // Step 2: Send the list of files to update to the service worker
             navigator.serviceWorker.controller.postMessage({
@@ -201,35 +194,19 @@ export async function updateApp() {
             return { success: true };
         } catch (error) {
             console.error('[App Update] Error during update process:', error);
-            messageElement.textContent = `Error fetching file list: ${error.message}`;
-            progressBar.style.backgroundColor = '#f44336'; // Red for error
+            progressText.textContent = `Error fetching file list: ${error.message}`;
+            uiElements.progressFill.style.backgroundColor = '#f44336'; // Red for error
             
             setTimeout(() => {
-                if (document.body.contains(uiElements.progressOverlay)) {
-                    document.body.removeChild(uiElements.progressOverlay);
-                }
-            }, 3000);
+                uiElements.progressContainer.style.display = 'none';
+                document.body.removeChild(uiElements.progressContainer);
+            }, 5000);
             
             return { success: false, error: error.message };
         }
     } catch (error) {
         console.error('Error updating app:', error);
-        
-        // Show error with progress overlay instead of alert
-        const progressOverlay = document.createElement('div');
-        progressOverlay.className = 'progress-overlay';
-        
-        const messageElement = document.createElement('div');
-        messageElement.className = 'progress-text';
-        messageElement.textContent = `App update failed: ${error.message}`;
-        
-        progressOverlay.appendChild(messageElement);
-        document.body.appendChild(progressOverlay);
-        
-        setTimeout(() => {
-            document.body.removeChild(progressOverlay);
-        }, 3000);
-        
+        alert(`App update failed: ${error.message}`);
         return { success: false, error: error.message };
     }
 } 

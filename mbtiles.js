@@ -56,6 +56,44 @@ export class MBTilesHandler {
   }
 
   /**
+   * Load an MBTiles file from an ArrayBuffer
+   * @param {ArrayBuffer} buffer - The MBTiles data as ArrayBuffer
+   * @param {Function} progressCallback - Callback for load progress
+   * @returns {Promise<boolean>} Success status
+   */
+  async loadFromBuffer(buffer, progressCallback) {
+    try {
+      // If SQL.js is not loaded, load it
+      if (typeof SQL === 'undefined') {
+        console.log('[DEBUG] Loading SQL.js library');
+        await this.loadSQLJS();
+      }
+      
+      // Create a new database from the buffer
+      console.log('[DEBUG] Creating database from ArrayBuffer');
+      if (progressCallback) {
+        progressCallback(0.5, 'Creating database...');
+      }
+      
+      this.db = new SQL.Database(new Uint8Array(buffer));
+      
+      // Load metadata
+      console.log('[DEBUG] Loading metadata from MBTiles file');
+      this.metadata = await this.loadMetadata();
+      
+      if (progressCallback) {
+        progressCallback(1.0, 'Database loaded');
+      }
+      
+      this.isLoaded = true;
+      return true;
+    } catch (error) {
+      console.error('[DEBUG] Error loading MBTiles from buffer:', error);
+      return false;
+    }
+  }
+
+  /**
    * Load the SQL.js library dynamically
    * @returns {Promise<void>}
    */
@@ -214,9 +252,10 @@ export class MBTilesHandler {
    * Extract and cache tiles to browser cache
    * @param {string} cacheName - Cache name to use
    * @param {Function} progressCallback - Callback for extraction progress
+   * @param {string} [customBasePath] - Optional custom base path for tiles
    * @returns {Promise<boolean>} Success status
    */
-  async extractAndCacheTiles(cacheName, progressCallback) {
+  async extractAndCacheTiles(cacheName, progressCallback, customBasePath) {
     if (!this.db) {
       throw new Error('Database not initialized');
     }
@@ -258,11 +297,19 @@ export class MBTilesHandler {
         const end = Math.min(start + batchSize, this.totalTiles);
         const batch = tiles.slice(start, end);
         
+        console.log(`[DEBUG] Processing batch ${batchIndex + 1}/${totalBatches}: tiles ${start}-${end}`);
+        
         // Process batch in parallel
         await Promise.all(batch.map(async (tile) => {
           try {
-            // Determine tile URL with absolute path
-            const url = `${BASE_PATH}/tiles/${tile.z}/${tile.x}/${tile.y}.png`;
+            // Determine tile URL based on provided base path or default
+            const basePath = customBasePath || `${BASE_PATH}/tiles`;
+            const url = `${basePath}/${tile.z}/${tile.x}/${tile.y}.png`;
+            
+            // Log tile URL for debugging
+            if (batchIndex === 0 || this.processedTiles % 50 === 0) {
+              console.log(`[DEBUG] Caching tile at: ${url} (z:${tile.z}, x:${tile.x}, y:${tile.y})`);
+            }
             
             // Determine content type based on metadata
             let contentType = 'image/png';
@@ -292,7 +339,7 @@ export class MBTilesHandler {
             
             // No individual tile progress updates to prevent UI flickering
           } catch (error) {
-            console.error('[DEBUG] Error processing tile:', error);
+            console.error(`[DEBUG] Error processing tile: ${error.message}`, error);
           }
         }));
         

@@ -142,6 +142,23 @@
                     </a>
                 </div>
             </div>
+            
+            <!-- Add new section for caching EDL tiles -->
+            <div style="margin-top: 15px;">
+                <button id="cacheEDLTilesBtn" class="config-button" style="display: flex; align-items: center; gap: 8px;">
+                    <span class="material-icons-round">cloud_download</span>
+                    <span>Cache EDL Weather Forecast for Offline Use</span>
+                </button>
+                <div id="edlCacheProgress" style="display: none; margin-top: 10px;">
+                    <div style="margin-bottom: 5px;">Caching files: <span id="edlCacheCount">0</span>/<span id="edlTotalFiles">0</span></div>
+                    <div style="width: 100%; height: 4px; background: #eee; border-radius: 2px;">
+                        <div id="edlProgressBar" style="width: 0%; height: 100%; background: #4CAF50; border-radius: 2px; transition: width 0.3s;"></div>
+                    </div>
+                </div>
+                <div style="margin-top: 8px; font-size: 12px; color: #666; text-align: left; padding: 4px 8px; background: rgba(50, 50, 50, 0.05); border-radius: 4px;">
+                    Downloads 150 forecast files for 2 days: today and tomorrow (7:00-21:00, 5 pressure levels)
+                </div>
+            </div>
 
             <h3>Warning</h3>
             <p>Airspace from openAip and no automatic update so far - will contain mistakes</p>

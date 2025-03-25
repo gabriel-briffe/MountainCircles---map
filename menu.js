@@ -31,6 +31,9 @@ import { cleanInstall, createCleanInstallButton } from "./cleanInstall.js";
 // Import tile caching functionality
 import { cacheTiles } from "./cacheTiles.js";
 
+// Import EDL caching functionality
+import { cacheEDLTiles } from "./edlCache.js";
+
 /**
  * Sets up all menu event listeners
  */
@@ -54,6 +57,9 @@ export function setupMenuEventListeners() {
     
     // Cache background map button
     document.getElementById('cacheBackgroundMapBtn').addEventListener('click', cacheTiles);
+
+    // Cache EDL tiles button
+    document.getElementById('cacheEDLTilesBtn').addEventListener('click', cacheEDLTiles);
     
     // App update button
     const appUpdateBtn = document.getElementById('appUpdateBtn');
