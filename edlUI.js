@@ -400,22 +400,49 @@ export function updateNavigationButtonsState() {
     const pressureUpButton = document.getElementById('edlPressureUpBtn');
     const pressureDownButton = document.getElementById('edlPressureDownBtn');
     const visibilityButton = document.getElementById('edlVisibilityBtn');
+    const nowButton = document.getElementById('edlNowBtn');
+    const pressureButton = document.getElementById('edlPressureBtn');
     const pressureIndicator = document.getElementById('edlPressureIndicator');
     
     if (!prevButton || !nextButton) {
         console.warn('[EDL UI] Navigation buttons not found');
         return;
     }
+
+    // Update visibility button icon - never disable it
+    if (visibilityButton) {
+        visibilityButton.disabled = false;
+        visibilityButton.innerHTML = `<span class="material-icons">${edlLayerVisible ? 'visibility' : 'visibility_off'}</span>`;
+    }
     
+    // If the layer is not visible, disable all other navigation buttons
+    if (!edlLayerVisible) {
+        console.log('[EDL UI] EDL layer not visible, disabling all navigation buttons');
+        prevButton.disabled = true;
+        nextButton.disabled = true;
+        if (pressureUpButton) pressureUpButton.disabled = true;
+        if (pressureDownButton) pressureDownButton.disabled = true;
+        if (nowButton) nowButton.disabled = true;
+        if (pressureButton) pressureButton.disabled = true;
+        return;
+    }
+    
+    // If layer is visible but no EDL data, disable all buttons except visibility
     if (!hasEDLTiles() || !currentLayerInfo.date) {
         // Disable all buttons if no EDL data
         prevButton.disabled = true;
         nextButton.disabled = true;
         if (pressureUpButton) pressureUpButton.disabled = true;
         if (pressureDownButton) pressureDownButton.disabled = true;
-        // Don't disable visibility button as we want to toggle even when no data
+        if (nowButton) nowButton.disabled = true;
+        if (pressureButton) pressureButton.disabled = true;
         return;
     }
+    
+    // Enable the now button and pressure button by default
+    // (they display information but aren't necessarily navigation buttons)
+    if (nowButton) nowButton.disabled = false;
+    if (pressureButton) pressureButton.disabled = false;
     
     const metadata = getEDLMetadata();
     
@@ -430,7 +457,6 @@ export function updateNavigationButtonsState() {
         nextButton.disabled = true;
         if (pressureUpButton) pressureUpButton.disabled = true;
         if (pressureDownButton) pressureDownButton.disabled = true;
-        // Don't disable visibility button as we want to toggle even when no data
         return;
     }
     
@@ -474,12 +500,6 @@ export function updateNavigationButtonsState() {
         pressureDownButton.disabled = !hasLowerAltitude;
     }
     
-    // Update visibility button icon - never disable it
-    if (visibilityButton) {
-        visibilityButton.disabled = false;
-        visibilityButton.innerHTML = `<span class="material-icons">${edlLayerVisible ? 'visibility' : 'visibility_off'}</span>`;
-    }
-    
     // Update pressure indicator
     if (pressureIndicator && currentLayerInfo.pressure) {
         const pressureHpa = currentLayerInfo.pressure / 100;
@@ -503,7 +523,6 @@ export function updateNavigationButtonsState() {
         timeIndicator.textContent = formattedHour;
         
         // Also update the button title with date and pressure information
-        const nowButton = document.getElementById('edlNowBtn');
         if (nowButton && currentLayerInfo.date) {
             const dateObj = new Date(currentLayerInfo.date);
             const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 
