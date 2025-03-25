@@ -50,7 +50,7 @@ function debounce(func, wait) {
 /**
  * Calculates and sets optimal button and slider sizes based on available space
  */
-function updateDockElementSizes() {
+export function updateDockElementSizes() {
     // Get the map dock element
     const mapDock = document.getElementById('mapDock');
     if (!mapDock) return;
@@ -583,6 +583,9 @@ function createEDLNavigationToggleButton() {
         }
         
         console.log('[Dock] EDL navigation toggle button created');
+        
+        // Recalculate the dock element sizes to account for the new button
+        updateDockElementSizes();
     });
 }
 

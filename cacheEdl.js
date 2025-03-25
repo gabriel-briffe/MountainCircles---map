@@ -536,6 +536,9 @@ export async function cacheEDLTiles() {
           }
           
           console.log('[edlCache] EDL navigation button created after caching');
+          
+          // Recalculate dock element sizes to account for the new button
+          module.updateDockElementSizes();
         });
       }
     }
