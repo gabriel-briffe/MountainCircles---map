@@ -207,8 +207,11 @@
                     if (typeof updateConfigButtonStyles === 'function') {
                         updateConfigButtonStyles();
                     }
-                    document.getElementById('cacheProgress').style.display = 'none';
-                    document.getElementById('progressBar').style.width = '0%';
+                    // Add a 5-second delay before hiding the progress bar
+                    setTimeout(() => {
+                        document.getElementById('cacheProgress').style.display = 'none';
+                        document.getElementById('progressBar').style.width = '0%';
+                    }, 5000);
                 } else if (event.data.type === 'cacheTileComplete') {
                     // Handled in cacheTiles
                 } else if (event.data.type === 'cacheError') {
