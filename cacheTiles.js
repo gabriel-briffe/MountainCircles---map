@@ -105,10 +105,30 @@ export async function cacheTilesFromMBTiles() {
     ui.statusElement.textContent = `Loading ${file.name} (${fileSizeMB} MB)`;
     console.log(`[DEBUG] Selected file: ${file.name} (${fileSizeMB} MB)`);
     
+    // Setup debounced UI update to prevent flickering
+    let lastUpdateTime = 0;
+    const updateThreshold = 300; // ms
+    
+    // Function to update UI with progress information
+    const updateProgressUI = (progress, processed, total, message) => {
+      const now = Date.now();
+      if (now - lastUpdateTime < updateThreshold && progress < 1.0) {
+        return; // Skip update if not enough time has passed
+      }
+      
+      lastUpdateTime = now;
+      ui.progressBar.style.width = `${progress * 100}%`;
+      ui.countElement.textContent = processed;
+      ui.totalElement.textContent = total;
+      
+      if (message) {
+        ui.statusElement.textContent = message;
+      }
+    };
+    
     // Load MBTiles file
     const loadSuccess = await mbtilesHandler.loadFile(file, (progress, loaded, total, message) => {
-      ui.progressBar.style.width = `${progress * 100}%`;
-      ui.statusElement.textContent = message || `Loading file (${(loaded / (1024 * 1024)).toFixed(2)}/${(total / (1024 * 1024)).toFixed(2)} MB)`;
+      updateProgressUI(progress, 0, 0, message || `Loading file (${(loaded / (1024 * 1024)).toFixed(2)}/${(total / (1024 * 1024)).toFixed(2)} MB)`);
     });
     
     if (!loadSuccess) {
@@ -116,16 +136,10 @@ export async function cacheTilesFromMBTiles() {
     }
     
     // Extract and cache tiles
-    ui.statusElement.textContent = 'Extracting tiles...';
-    ui.progressBar.style.width = '0%';
-    
     const extractSuccess = await mbtilesHandler.extractAndCacheTiles(
       TILE_CACHE_NAME, 
       (progress, processed, total, message) => {
-        ui.progressBar.style.width = `${progress * 100}%`;
-        ui.countElement.textContent = processed;
-        ui.totalElement.textContent = total;
-        ui.statusElement.textContent = message || 'Extracting tiles...';
+        updateProgressUI(progress, processed, total, message || 'Extracting tiles...');
       }
     );
     
@@ -133,9 +147,11 @@ export async function cacheTilesFromMBTiles() {
       throw new Error('Failed to extract tiles from MBTiles file');
     }
     
-    // Complete
+    // Complete - ensure 100% is shown
     ui.progressBar.style.width = '100%';
     ui.statusElement.textContent = 'Tile extraction complete!';
+    ui.countElement.textContent = mbtilesHandler.processedTiles;
+    ui.totalElement.textContent = mbtilesHandler.totalTiles;
     
     // Close the database connection
     mbtilesHandler.close();

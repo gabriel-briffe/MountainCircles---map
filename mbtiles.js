@@ -228,6 +228,16 @@ export class MBTilesHandler {
       this.processedTiles = 0;
       console.log(`[DEBUG] Total tiles to extract: ${this.totalTiles}`);
       
+      // Initial progress update
+      if (typeof progressCallback === 'function') {
+        progressCallback(
+          0,
+          0,
+          this.totalTiles,
+          'Starting tile extraction...'
+        );
+      }
+      
       // Open the cache
       const cache = await caches.open(cacheName);
       
@@ -237,6 +247,10 @@ export class MBTilesHandler {
       // Determine batch size based on total number of tiles
       const batchSize = this.totalTiles > 5000 ? 100 : 50;
       const totalBatches = Math.ceil(this.totalTiles / batchSize);
+      
+      // To avoid UI flickering, we'll use a throttled progress update
+      let lastUpdateTime = 0;
+      const updateThreshold = 500; // Only update UI every 500ms
       
       // Process tiles in batches
       for (let batchIndex = 0; batchIndex < totalBatches; batchIndex++) {
@@ -272,33 +286,37 @@ export class MBTilesHandler {
             // Cache the response
             await cache.put(url, response);
             
-            // Update progress
+            // Update progress count
             this.processedTiles++;
             this.extractionProgress = this.processedTiles / this.totalTiles;
             
-            // Call progress callback
-            if (typeof progressCallback === 'function' && this.processedTiles % 20 === 0) {
-              progressCallback(
-                this.extractionProgress,
-                this.processedTiles,
-                this.totalTiles,
-                `Extracting tiles (${batchIndex + 1}/${totalBatches} batches)`
-              );
-            }
+            // No individual tile progress updates to prevent UI flickering
           } catch (error) {
             console.error('[DEBUG] Error processing tile:', error);
           }
         }));
         
-        // Report batch progress
-        if (typeof progressCallback === 'function') {
+        // Only update progress at batch completion and if enough time has passed
+        const now = Date.now();
+        if (typeof progressCallback === 'function' && (now - lastUpdateTime > updateThreshold || batchIndex === totalBatches - 1)) {
+          lastUpdateTime = now;
           progressCallback(
             this.extractionProgress,
             this.processedTiles, 
             this.totalTiles,
-            `Completed batch ${batchIndex + 1}/${totalBatches}`
+            `Extracting tiles: batch ${batchIndex + 1}/${totalBatches}`
           );
         }
+      }
+      
+      // Final progress update
+      if (typeof progressCallback === 'function') {
+        progressCallback(
+          1.0,
+          this.processedTiles,
+          this.totalTiles,
+          'Tile extraction complete!'
+        );
       }
       
       console.log(`[DEBUG] Extracted ${this.processedTiles} tiles from MBTiles file`);
