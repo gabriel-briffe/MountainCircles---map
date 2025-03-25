@@ -7,8 +7,8 @@ import mbtilesHandler from './mbtiles.js';
 
 // Constants from multiload.js
 const isobareList = [50000, 60000, 70000, 80000, 90000];
-const hourList = [7];
-// const hourList = [7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21];
+// const hourList = [7];
+const hourList = [7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21];
 const mbtilesURLBase = 'https://edl-proxy.gabriel-briffe.workers.dev/?url=https://www.edl-soaring.com/mbtiles/extract_mbtiles_from_date.php';
 
 // Cache name to use for EDL tiles (reusing the same cache for all tiles)
