@@ -301,6 +301,147 @@ async function testEDLProxy() {
 }
 
 /**
+ * Saves metadata about the cached EDL tiles to localStorage
+ * @param {Array} processedFiles - Array of successfully processed files
+ */
+async function saveEDLMetadata(processedFiles) {
+  try {
+    console.log('[edlCache] Saving EDL metadata to localStorage');
+    
+    // Extract key information from processed files
+    const metadata = {
+      lastUpdated: new Date().toISOString(),
+      availableLayers: {}
+    };
+    
+    // Organize by date, then by hour, then list available pressure levels
+    processedFiles.forEach(file => {
+      if (!file.success) return;
+      
+      // Parse date, hour, and pressure from the tilePath
+      // Format is: edl_tiles/YYYY-MM-DD_H_PPPPP
+      const pathParts = file.tilePath.split('/');
+      const dirName = pathParts[pathParts.length - 1]; // Get the last part
+      
+      // Parse the components from the directory name (e.g., "2023-04-25_7_50000")
+      const [date, hour, pressure] = dirName.split('_');
+      
+      if (!date || !hour || !pressure) {
+        console.warn(`[edlCache] Could not parse metadata from tilePath: ${file.tilePath}`);
+        return;
+      }
+      
+      // Add to metadata structure
+      if (!metadata.availableLayers[date]) {
+        metadata.availableLayers[date] = {};
+      }
+      
+      if (!metadata.availableLayers[date][hour]) {
+        metadata.availableLayers[date][hour] = [];
+      }
+      
+      // Add pressure if not already in the array
+      if (!metadata.availableLayers[date][hour].includes(parseInt(pressure))) {
+        metadata.availableLayers[date][hour].push(parseInt(pressure));
+      }
+    });
+    
+    // Save to localStorage
+    localStorage.setItem('edl_metadata', JSON.stringify(metadata));
+    console.log('[edlCache] EDL metadata saved to localStorage:', metadata);
+    
+    // Also dispatch an event to notify other parts of the application
+    const event = new CustomEvent('edl_metadata_updated', { detail: metadata });
+    window.dispatchEvent(event);
+    
+    return metadata;
+  } catch (error) {
+    console.error('[edlCache] Error saving EDL metadata:', error);
+    return null;
+  }
+}
+
+/**
+ * Gets metadata about available EDL layers
+ * @returns {Object|null} Metadata object or null if not available
+ */
+export function getEDLMetadata() {
+  try {
+    const metadataStr = localStorage.getItem('edl_metadata');
+    if (!metadataStr) return null;
+    
+    return JSON.parse(metadataStr);
+  } catch (error) {
+    console.error('[edlCache] Error reading EDL metadata:', error);
+    return null;
+  }
+}
+
+/**
+ * Checks if any EDL tiles are available
+ * @returns {boolean} True if EDL tiles are available
+ */
+export function hasEDLTiles() {
+  const metadata = getEDLMetadata();
+  return !!(metadata && metadata.availableLayers && Object.keys(metadata.availableLayers).length > 0);
+}
+
+/**
+ * Checks and adds EDL section to sidebar if needed
+ */
+async function refreshSidebarAfterCaching() {
+  try {
+    console.log('[edlCache] Checking if EDL section exists in sidebar');
+    
+    // Wait briefly to ensure the metadata event has been processed
+    await new Promise(resolve => setTimeout(resolve, 300));
+    
+    // Find the sidebar - use the ID that's used in sidebar.js
+    const sidebar = document.getElementById('airspace-sidebar');
+    if (!sidebar) {
+      console.log('[edlCache] Sidebar not found');
+      return;
+    }
+    
+    // Check if EDL section already exists
+    let edlSectionExists = false;
+    const headings = sidebar.querySelectorAll('h3');
+    
+    for (const heading of headings) {
+      if (heading.textContent === 'EDL Weather') {
+        edlSectionExists = true;
+        break;
+      }
+    }
+    
+    // If section doesn't exist but we have EDL tiles, add it
+    if (!edlSectionExists && hasEDLTiles()) {
+      console.log('[edlCache] EDL section not found, adding it after caching');
+      
+      // Import the EDL module dynamically to avoid circular dependencies
+      const edlModule = await import('./edl.js');
+      
+      // Add a divider before the EDL toggle section (matching the pattern in sidebar.js)
+      // Create and add a divider if it's a function imported from sidebar.js
+      try {
+        const { addSidebarDivider } = await import('./sidebar.js');
+        addSidebarDivider(sidebar);
+      } catch (err) {
+        // If we can't import the function, create a divider manually
+        const divider = document.createElement('hr');
+        divider.className = 'sidebar-divider';
+        sidebar.appendChild(divider);
+      }
+      
+      // Add the EDL toggle section
+      edlModule.addEDLToggleToSidebar(sidebar);
+    }
+  } catch (error) {
+    console.error('[edlCache] Error refreshing sidebar:', error);
+  }
+}
+
+/**
  * Processes all EDL MBTiles files sequentially
  * @returns {Promise<Object>} Result of the caching operation
  */
@@ -337,6 +478,9 @@ export async function cacheEDLTiles() {
     let succeeded = 0;
     let failed = 0;
     let totalTiles = 0;
+    
+    // Keep track of successfully processed files for metadata
+    const processedFiles = [];
     
     // Setup a function to update UI with progress information
     let lastUpdateTime = 0;
@@ -381,6 +525,9 @@ export async function cacheEDLTiles() {
         if (result.success) {
           succeeded++;
           totalTiles += result.tileCount || 0;
+          
+          // Add to processed files for metadata
+          processedFiles.push(result);
         } else {
           failed++;
           console.error(`[edlCache] Failed to process file: ${result.url}`, result.error);
@@ -421,6 +568,12 @@ and can be accessed via that path structure.`);
     setTimeout(() => {
       ui.container.style.display = 'none';
     }, 5000);
+    
+    // Save metadata about the cached tiles
+    await saveEDLMetadata(processedFiles);
+    
+    // Check and add EDL section to sidebar if needed
+    await refreshSidebarAfterCaching();
     
     return {
       success: true,

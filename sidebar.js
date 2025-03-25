@@ -141,6 +141,27 @@ export function createTypeCheckboxes(features) {
     // Add peaks and passes toggles
     addPeaksPassesToggle(sidebar);
     
+    // Import and check hasEDLTiles dynamically to avoid circular dependencies
+    import('./edlCache.js').then(edlCacheModule => {
+        // Only add EDL toggle if tiles are available
+        if (edlCacheModule.hasEDLTiles()) {
+            // Add a divider for EDL section
+            addSidebarDivider(sidebar);
+            
+            // Import EDL module and add the toggle to sidebar
+            import('./edl.js').then(edlModule => {
+                // Add EDL toggle
+                edlModule.addEDLToggleToSidebar(sidebar);
+            }).catch(error => {
+                console.error('[Sidebar] Error importing EDL module:', error);
+            });
+        } else {
+            console.log('[Sidebar] No EDL tiles available, not adding EDL toggle section');
+        }
+    }).catch(error => {
+        console.error('[Sidebar] Error importing edlCache module:', error);
+    });
+    
     // Add geolocation toggle and navboxes toggle only on mobile devices
     if (isMobileDevice()) {
         // Add a divider
@@ -556,11 +577,10 @@ export async function isConfigCached(config) {
         
         const policy = configParts[0];
         const configPrefix = configParts[1].split('-').slice(0, 3).join('-');
-        const mainGeojsonPath = `${BASE_PATH}/${config}/aa_${policy}_${configPrefix}.geojson`;
-        const sectorsGeojsonPath = `${BASE_PATH}/${config}/aa_${policy}_${configPrefix}_sectors1.geojson`;
+        const mainGeojsonUrl = `${BASE_PATH}/${config}/aa_${policy}_${configPrefix}.geojson`;
         
         const cache = await caches.open(CACHE_NAME);
-        const response = await cache.match(mainGeojsonPath);
+        const response = await cache.match(mainGeojsonUrl);
         return !!response;
     } catch (error) {
         console.error(`Error checking if config ${config} is cached:`, error);
@@ -892,8 +912,8 @@ export function addGeoJSONSources(configPrefix, policyName) {
     const currentConfig = getCurrentConfig();
     console.debug(`[Sidebar] Current config: ${currentConfig}`);
     
-    const mainGeojsonPath = `${BASE_PATH}/${currentConfig}/aa_${policyName}_${configPrefix}.geojson`;
-    const sectorsGeojsonPath = `${BASE_PATH}/${currentConfig}/aa_${policyName}_${configPrefix}_sectors1.geojson`;
+    const mainGeojsonPath = `${currentConfig}/aa_${policyName}_${configPrefix}.geojson`;
+    const sectorsGeojsonPath = `${currentConfig}/aa_${policyName}_${configPrefix}_sectors1.geojson`;
     
     console.debug(`[Sidebar] Main GeoJSON path: ${mainGeojsonPath}`);
     console.debug(`[Sidebar] Sectors GeoJSON path: ${sectorsGeojsonPath}`);
@@ -1215,6 +1235,39 @@ export function addTracklogControls(sidebar) {
     sidebar.appendChild(toggleContainer);
 }
 
-// Note: These functions are referenced but defined elsewhere
-// They will need to be imported from the appropriate modules
-// or moved here if they are sidebar-specific 
+// Add event listener for EDL metadata updates
+window.addEventListener('edl_metadata_updated', (event) => {
+    console.log('[Sidebar] EDL metadata updated, refreshing sidebar');
+    
+    // Get sidebar reference using the ID to be consistent with the rest of the code
+    const sidebar = document.getElementById('airspace-sidebar');
+    if (sidebar) {
+        // Check if EDL section already exists
+        let existingEDLSection = false;
+        
+        // Find all h3 headings in the sidebar and check their text content
+        const headings = sidebar.querySelectorAll('h3');
+        for (const heading of headings) {
+            if (heading.textContent === 'EDL Weather') {
+                existingEDLSection = true;
+                break;
+            }
+        }
+        
+        // Only refresh if EDL section isn't already present
+        if (!existingEDLSection) {
+            console.log('[Sidebar] Adding EDL section after metadata update');
+            
+            // Add a divider first
+            addSidebarDivider(sidebar);
+            
+            // Import the EDL module dynamically to avoid circular dependencies
+            import('./edl.js').then(edlModule => {
+                // Add EDL toggle if it doesn't exist yet
+                edlModule.addEDLToggleToSidebar(sidebar);
+            }).catch(error => {
+                console.error('[Sidebar] Error loading EDL module:', error);
+            });
+        }
+    }
+}); 

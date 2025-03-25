@@ -15,6 +15,7 @@ import {
     dynamicLabelLayerStyle
 } from "./layerStyles.js";
 import { setupGeolocation } from "./location.js";
+import { createEDLLayer } from "./edl.js";
 
 import {
     MAP_BOUNDS,
@@ -139,6 +140,16 @@ async function initializeBaseLayers() {
 
     // Add highlight layer
     getLayerManager().addLayerIfNotExists('highlight-airspace', highlightAirspaceStyle);
+    
+    // Add EDL weather layer (initially invisible)
+    try {
+        const edlLayer = createEDLLayer(getMap());
+        // Set visibility to false by default
+        getLayerManager().setVisibility('edl-layer', false);
+        console.log('[MapInitializer] EDL layer added successfully');
+    } catch (error) {
+        console.error('[MapInitializer] Error adding EDL layer:', error);
+    }
     
     // Add empty source for dynamic layers
     getLayerManager().addOrUpdateSource('dynamic-source', {

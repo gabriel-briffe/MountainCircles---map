@@ -203,7 +203,7 @@ self.addEventListener('fetch', event => {
 
       try {
         // Do not trigger spinner for tile requests
-        if (url.pathname.includes('/tiles/')) {
+        if (url.pathname.includes('/tiles/') || url.pathname.includes('/edl_tiles/')) {
           const response = await handleTileRequest(event.request);
           clearTimeout(timeoutId);
           return response;

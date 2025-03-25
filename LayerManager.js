@@ -66,7 +66,24 @@ export class LayerManager {
             this.map.addSource(sourceId, options);
         } else {
             console.debug(`[LayerManager] Source already exists, updating data`);
-            this.map.getSource(sourceId).setData(options.data);
+            // Only GeoJSON sources support setData, for other types like raster
+            // we need to remove and re-add the source
+            const source = this.map.getSource(sourceId);
+            if (options.type === 'geojson' && source.setData) {
+                source.setData(options.data);
+            } else {
+                // For non-GeoJSON sources, we need to remove layers using this source first
+                const layers = this.map.getStyle().layers;
+                for (const layer of layers) {
+                    if (layer.source === sourceId) {
+                        this.removeLayerIfExists(layer.id);
+                    }
+                }
+                
+                // Then remove and re-add the source
+                this.removeSourceIfExists(sourceId);
+                this.map.addSource(sourceId, options);
+            }
         }
         
         console.debug(`[LayerManager] Source ${sourceId} added/updated successfully`);
@@ -225,6 +242,9 @@ export class LayerManager {
             'airspace-outline',
             'highlight-airspace',
             'points-labels',
+            
+            // EDL Weather Layer - between airspace and location marker
+            'edl-layer',
             
             // Location marker - always at the very top
             'location-marker-triangle'
