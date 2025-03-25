@@ -5,6 +5,7 @@
 
 // Import path utilities
 import { latLngToTile } from './utils.js';
+import { BASE_PATH } from './config.js';
 
 /**
  * MBTiles handler class
@@ -246,8 +247,8 @@ export class MBTilesHandler {
         // Process batch in parallel
         await Promise.all(batch.map(async (tile) => {
           try {
-            // Determine tile URL
-            const url = `./tiles/${tile.z}/${tile.x}/${tile.y}.png`;
+            // Determine tile URL with absolute path
+            const url = `${BASE_PATH}/tiles/${tile.z}/${tile.x}/${tile.y}.png`;
             
             // Determine content type based on metadata
             let contentType = 'image/png';

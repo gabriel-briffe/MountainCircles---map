@@ -556,10 +556,11 @@ export async function isConfigCached(config) {
         
         const policy = configParts[0];
         const configPrefix = configParts[1].split('-').slice(0, 3).join('-');
-        const mainGeojsonUrl = `${BASE_PATH}/${config}/aa_${policy}_${configPrefix}.geojson`;
+        const mainGeojsonPath = `${BASE_PATH}/${config}/aa_${policy}_${configPrefix}.geojson`;
+        const sectorsGeojsonPath = `${BASE_PATH}/${config}/aa_${policy}_${configPrefix}_sectors1.geojson`;
         
         const cache = await caches.open(CACHE_NAME);
-        const response = await cache.match(mainGeojsonUrl);
+        const response = await cache.match(mainGeojsonPath);
         return !!response;
     } catch (error) {
         console.error(`Error checking if config ${config} is cached:`, error);
@@ -891,8 +892,8 @@ export function addGeoJSONSources(configPrefix, policyName) {
     const currentConfig = getCurrentConfig();
     console.debug(`[Sidebar] Current config: ${currentConfig}`);
     
-    const mainGeojsonPath = `${currentConfig}/aa_${policyName}_${configPrefix}.geojson`;
-    const sectorsGeojsonPath = `${currentConfig}/aa_${policyName}_${configPrefix}_sectors1.geojson`;
+    const mainGeojsonPath = `${BASE_PATH}/${currentConfig}/aa_${policyName}_${configPrefix}.geojson`;
+    const sectorsGeojsonPath = `${BASE_PATH}/${currentConfig}/aa_${policyName}_${configPrefix}_sectors1.geojson`;
     
     console.debug(`[Sidebar] Main GeoJSON path: ${mainGeojsonPath}`);
     console.debug(`[Sidebar] Sectors GeoJSON path: ${sectorsGeojsonPath}`);

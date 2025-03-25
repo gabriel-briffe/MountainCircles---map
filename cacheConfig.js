@@ -5,6 +5,7 @@
 
 // Import from state management
 import { getCurrentConfig } from "./state.js";
+import { BASE_PATH } from "./config.js";
 
 // Import from sidebar
 import { updateSidebarConfigButtonStyles } from "./sidebar.js";
@@ -53,7 +54,7 @@ export async function prepareFilesToCache(configDetails) {
         console.debug('[CacheConfig] Preparing files to cache, config details:', configDetails);
         
         const { policy, configPrefix, fullConfig } = configDetails;
-        const mainGeojsonUrl = `./${fullConfig}/aa_${policy}_${configPrefix}.geojson`;
+        const mainGeojsonUrl = `${BASE_PATH}/${fullConfig}/aa_${policy}_${configPrefix}.geojson`;
         
         console.debug(`[CacheConfig] Main GeoJSON URL: ${mainGeojsonUrl}`);
         
@@ -84,11 +85,11 @@ export async function prepareFilesToCache(configDetails) {
             });
         }
         
-        // Create list of files to cache
+        // Create list of files to cache with absolute paths
         const filesToCache = [
-            `${fullConfig}/aa_${policy}_${configPrefix}.geojson`,
-            `${fullConfig}/aa_${policy}_${configPrefix}_sectors1.geojson`,
-            ...pointFeatures.map(f => `${fullConfig}/${f.properties.filename}`)
+            `${BASE_PATH}/${fullConfig}/aa_${policy}_${configPrefix}.geojson`,
+            `${BASE_PATH}/${fullConfig}/aa_${policy}_${configPrefix}_sectors1.geojson`,
+            ...pointFeatures.map(f => `${BASE_PATH}/${fullConfig}/${f.properties.filename}`)
         ];
         
         console.debug(`[CacheConfig] Total files to cache: ${filesToCache.length}`);

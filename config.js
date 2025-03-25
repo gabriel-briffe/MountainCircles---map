@@ -12,18 +12,18 @@ function getBasePath() {
         // Check if we're on GitHub Pages
         if (typeof window !== 'undefined' && window.location) {
             const hostname = window.location.hostname;
-            const pathname = window.location.pathname;
             
             if (hostname === 'gabriel-briffe.github.io') {
                 return '/MountainCircles---map';
             }
             
-            if (pathname.includes('/MountainCircles---map/')) {
-                return '/MountainCircles---map';
+            // For local development using a server
+            if (hostname === 'localhost' || hostname === '127.0.0.1') {
+                return '';
             }
         }
         
-        // Default for local development
+        // Default fallback for other scenarios
         return '.';
     } catch (e) {
         console.error('Config - Error in getBasePath:', e);

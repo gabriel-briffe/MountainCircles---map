@@ -17,6 +17,7 @@ import {
 import { updateVisibilityIcon } from "./dock.js";
 import { clearMarker } from "./map.js";
 import { clearHighlight } from "./airspace.js";
+import { BASE_PATH } from "./config.js";
 
 // Flag to track if a point was just clicked, to prevent airspace popup from showing
 export let pointClickedFlag = false;
@@ -51,7 +52,7 @@ export function handlePointClick(e) {
             pointClickedFlag = false;
         }, 200);
         
-        const filePath = getCurrentConfig() + "/" + feature.properties.filename;
+        const filePath = `${BASE_PATH}/${getCurrentConfig()}/${feature.properties.filename}`;
         const dynamicLayerId = 'dynamic-lines-' + getCurrentConfig() + '-' + feature.properties.filename;
         const dynamicSourceId = dynamicLayerId + '-source';
         const dynamicLabelId = dynamicLayerId + '-labels';

@@ -23,12 +23,12 @@ function getBasePath() {
             return '/MountainCircles---map';
         }
         
-        // Check if pathname contains the repo name
-        if (self.location.pathname.includes('/MountainCircles---map/')) {
-            return '/MountainCircles---map';
+        // For localhost development server
+        if (self.location.hostname === 'localhost' || self.location.hostname === '127.0.0.1') {
+            return '';
         }
         
-        // Default for local development
+        // Default for other scenarios
         return '.';
     } catch (e) {
         console.error('SW - Error in getBasePath:', e);
@@ -136,8 +136,19 @@ self.addEventListener('activate', event => {
   self.clients.claim();
 });
 
-// Helper function to normalize URLs (unchanged)
+// Helper function to normalize URLs
 function normalizeUrl(url) {
+  // If BASE_PATH is empty (localhost), just return the pathname
+  if (BASE_PATH === '') {
+    return url.pathname;
+  }
+  
+  // If BASE_PATH is a dot (relative path), check if pathname starts with /
+  if (BASE_PATH === '.') {
+    return url.pathname.startsWith('/') ? url.pathname.substring(1) : url.pathname;
+  }
+  
+  // For GitHub Pages (absolute path with BASE_PATH)
   return url.pathname.startsWith(BASE_PATH) ? url.pathname : `${BASE_PATH}${url.pathname}`;
 }
 
@@ -286,55 +297,76 @@ async function handleGeoJSONRequest(request) {
       }
       
       console.debug(`[SW] airspace.geojson not in cache, fetching from network`);
-      // If not in cache, fetch from network
       response = await fetch(request);
       if (response.ok) {
         console.debug(`[SW] Successfully fetched airspace.geojson, caching`);
         await airspaceCache.put(request, response.clone());
-      } else {
-        console.error(`[SW] Failed to fetch airspace.geojson: ${response.status} ${response.statusText}`);
       }
       return response;
     }
     
-    // For other GeoJSON files, use the existing caching logic
-    console.debug(`[SW] Regular GeoJSON handling for: ${url.pathname}`);
+    // For configuration GeoJSON files (dynamic layers, config files, etc.)
+    // Use a simpler strategy: store everything in DYNAMIC_CACHE_NAME
     
-    // Check dynamic cache first
-    const dynamicCache = await caches.open(DYNAMIC_CACHE_NAME);
-    console.debug(`[SW] Checking dynamic cache: ${DYNAMIC_CACHE_NAME}`);
+    // Determine which cache to use based on the path pattern
+    let cacheToUse;
     
-    let response = await dynamicCache.match(request);
+    // Files in a subdirectory like 'alps/10-100-250-4200/...' are configuration files
+    // or dynamic layer files, store them in DYNAMIC_CACHE_NAME
+    if (url.pathname.includes('/') && !url.pathname.endsWith('peaks.geojson') && !url.pathname.endsWith('passes.geojson')) {
+      cacheToUse = DYNAMIC_CACHE_NAME;
+      console.debug(`[SW] Using dynamic cache for: ${url.pathname}`);
+    } else {
+      // Basic GeoJSON files (peaks, passes, etc.) go in the regular GeoJSON cache
+      cacheToUse = GEOJSON_CACHE_NAME;
+      console.debug(`[SW] Using regular GeoJSON cache for: ${url.pathname}`);
+    }
+    
+    // Open the appropriate cache
+    const cache = await caches.open(cacheToUse);
+    
+    // Check if the file is in cache
+    let response = await cache.match(request);
     if (response) {
-      console.debug(`[SW] Found GeoJSON in dynamic cache: ${url.pathname}`);
+      console.debug(`[SW] Found in cache: ${url.pathname}`);
       return response;
     }
-    console.debug(`[SW] GeoJSON not found in dynamic cache`);
-
-    // Then check regular GeoJSON cache
-    const cache = await caches.open(GEOJSON_CACHE_NAME);
-    console.debug(`[SW] Checking GeoJSON cache: ${GEOJSON_CACHE_NAME}`);
     
-    response = await cache.match(request);
+    // If not in cache, also check the other cache as a fallback
+    // (in case previously cached in the wrong location)
+    const otherCacheName = (cacheToUse === DYNAMIC_CACHE_NAME) ? GEOJSON_CACHE_NAME : DYNAMIC_CACHE_NAME;
+    const otherCache = await caches.open(otherCacheName);
+    
+    response = await otherCache.match(request);
     if (response) {
-      console.debug(`[SW] Found GeoJSON in regular cache: ${url.pathname}`);
+      console.debug(`[SW] Found in fallback cache (${otherCacheName}): ${url.pathname}`);
+      // Store in the preferred cache for next time
+      await cache.put(request, response.clone());
       return response;
     }
-    console.debug(`[SW] GeoJSON not found in regular cache`);
-
-    // If not in cache, fetch from network
-    console.debug(`[SW] Fetching GeoJSON from network: ${url.pathname}`);
+    
+    // If not in either cache, fetch from network
+    console.debug(`[SW] Fetching from network: ${url.pathname}`);
     response = await fetch(request);
+    
     if (response.ok) {
-      console.debug(`[SW] Successfully fetched GeoJSON, caching in: ${GEOJSON_CACHE_NAME}`);
+      console.debug(`[SW] Successfully fetched, caching in: ${cacheToUse}`);
       await cache.put(request, response.clone());
     } else {
-      console.error(`[SW] Failed to fetch GeoJSON: ${response.status} ${response.statusText}`);
+      console.error(`[SW] Failed to fetch: ${response.status} ${response.statusText}`);
     }
+    
     return response;
   } catch (error) {
     console.error('[SW] GeoJSON fetch failed:', error);
-    return new Response('GeoJSON not available offline', { status: 404 });
+    // Return an empty GeoJSON response to prevent UI errors
+    return new Response(JSON.stringify({ 
+      type: 'FeatureCollection', 
+      features: [] 
+    }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' }
+    });
   }
 }
 
@@ -414,12 +446,27 @@ self.addEventListener('message', async (event) => {
     
     for (const file of event.data.files) {
       try {
-        const url = new URL(`${BASE_PATH}/${file}`, self.location.origin).href;
-        console.debug(`[SW] Attempting to fetch from URL: ${url}, original file path: ${file}`);
+        // Handle paths based on BASE_PATH
+        let url;
+        if (BASE_PATH === '') {
+          // For localhost (empty BASE_PATH)
+          url = new URL(file, self.location.origin).href;
+          console.debug(`[SW] Localhost path: ${file}`);
+        } else if (file.startsWith(BASE_PATH)) {
+          // Path already has BASE_PATH, use it directly
+          url = new URL(file, self.location.origin).href;
+          console.debug(`[SW] Path already contains BASE_PATH: ${file}`);
+        } else {
+          // Path doesn't have BASE_PATH, add it
+          url = new URL(`${BASE_PATH}/${file}`, self.location.origin).href;
+          console.debug(`[SW] Adding BASE_PATH to path: ${BASE_PATH}/${file}`);
+        }
+        
+        console.debug(`[SW] Fetching URL: ${url}, original file path: ${file}`);
         
         sendMessageToClients({
           type: 'cacheProgress',
-          message: `Attempting to fetch: ${url}`,
+          message: `Fetching: ${file}`,
           completed: completed,
           total: total,
           currentFile: file
@@ -493,7 +540,19 @@ self.addEventListener('message', async (event) => {
       
       await Promise.all(batch.map(async (tile) => {
         try {
-          const url = `${basePath}/${tile.z}/${tile.x}/${tile.y}.png`;
+          // Handle paths based on BASE_PATH
+          let url;
+          if (BASE_PATH === '') {
+            // For localhost (empty BASE_PATH)
+            url = `${basePath}/${tile.z}/${tile.x}/${tile.y}.png`;
+          } else if (basePath.startsWith(BASE_PATH)) {
+            // Path already has BASE_PATH, use it directly
+            url = `${basePath}/${tile.z}/${tile.x}/${tile.y}.png`;
+          } else {
+            // Path doesn't have BASE_PATH, add it
+            url = `${BASE_PATH}/${basePath}/${tile.z}/${tile.x}/${tile.y}.png`;
+          }
+          
           console.debug(`[SW] Checking tile at: ${url}`);
           
           const cachedResponse = await cache.match(url);
