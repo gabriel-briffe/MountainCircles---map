@@ -74,29 +74,67 @@ export async function cleanInstall() {
             // Continue anyway
         }
         
+        // 5. Now fetch critical files with cache: 'no-store' to ensure fresh copies
+        progressBar.style.width = '90%';
+        progressText.textContent = 'Fetching fresh app files...';
+        
+        try {
+            // Import the core files list dynamically to avoid circular dependencies
+            const coreFilesModule = await import('./coreFiles.js');
+            const criticalFiles = coreFilesModule.getCoreFiles();
+            
+            // Only fetch a few critical files that are needed for initial load
+            const criticalJsFiles = criticalFiles.filter(file => 
+                file.endsWith('.js') && 
+                (file.includes('main.js') || file.includes('init.js') || file.includes('sw.js'))
+            );
+            
+            console.log('[DEBUG] Fetching critical files with cache bypass:', criticalJsFiles);
+            
+            // Create a new cache for these fresh files
+            const cache = await caches.open('mountaincircles-cache');
+            
+            // Fetch each critical file with cache: 'no-store'
+            await Promise.all(criticalJsFiles.map(async (file) => {
+                try {
+                    const response = await fetch(file, { cache: 'no-store' });
+                    if (response.ok) {
+                        await cache.put(file, response);
+                        console.log(`[DEBUG] Fresh copy of ${file} cached`);
+                    } else {
+                        console.warn(`[DEBUG] Failed to fetch fresh copy of ${file}: ${response.status}`);
+                    }
+                } catch (fetchError) {
+                    console.warn(`[DEBUG] Error fetching ${file}:`, fetchError);
+                }
+            }));
+            
+            // Also ensure the service worker is unregistered for a complete clean install
+            if ('serviceWorker' in navigator) {
+                const registration = await navigator.serviceWorker.getRegistration();
+                if (registration) {
+                    await registration.unregister();
+                    console.log('[DEBUG] Service worker unregistered');
+                }
+            }
+        } catch (fetchError) {
+            console.warn('[DEBUG] Error fetching fresh files:', fetchError);
+            // Continue anyway - the browser should fetch fresh files on reload
+        }
+        
         progressBar.style.width = '100%';
         progressText.textContent = 'Clean installation complete. Restarting...';
         
-        // 5. Wait a moment for the user to see the completion message
+        // 6. Wait a moment for the user to see the completion message
         await new Promise(resolve => setTimeout(resolve, 1500));
         
         // Hide the progress container
         progressContainer.style.display = 'none';
         
-        // 6. Reload the page without cache parameters
-        // Check if we're at root or in a subdirectory
-        const path = window.location.pathname;
-        
-        if (path === '/' || path.endsWith('/')) {
-            // We're at the root or a directory path ending with slash
-            window.location.href = path + 'index.html';
-        } else if (path.includes('.html')) {
-            // We already have an HTML file in the path
-            window.location.href = path;
-        } else {
-            // No clear path, try current path
-            window.location.href = path;
-        }
+        // 7. Reload the page without cache-busting parameter, similar to appUpdate.js
+        // Since we've already fetched fresh files and updated the service worker,
+        // a simple reload will use the fresh files from the cache
+        window.location.reload();
         
         return { success: true };
     } catch (error) {
