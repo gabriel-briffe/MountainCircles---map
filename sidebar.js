@@ -545,6 +545,8 @@ export async function isConfigCached(config) {
     }
     
     try {
+        console.debug(`[Sidebar] Checking if config is cached: ${config}`);
+        
         const configParts = config.split('/');
         if (configParts.length < 2) {
             console.warn(`Invalid config format: ${config}`);
@@ -554,10 +556,67 @@ export async function isConfigCached(config) {
         const policy = configParts[0];
         const configPrefix = configParts[1].split('-').slice(0, 3).join('-');
         const mainGeojsonUrl = `${BASE_PATH}/${config}/aa_${policy}_${configPrefix}.geojson`;
+        const sectors1GeojsonUrl = `${BASE_PATH}/${config}/aa_${policy}_${configPrefix}_sectors1.geojson`;
+        
         
         const cache = await caches.open(CACHE_NAME);
-        const response = await cache.match(mainGeojsonUrl);
-        return !!response;
+        
+        // Check if main GeoJSON file is cached
+        console.debug(`[Sidebar] Checking main GeoJSON: ${mainGeojsonUrl}`);
+        const mainResponse = await cache.match(mainGeojsonUrl);
+        if (!mainResponse) {
+            console.debug(`[Sidebar] Main GeoJSON not found in cache`);
+            return false;
+        }
+        
+        // Check if sectors GeoJSON file is cached
+        console.debug(`[Sidebar] Checking sectors GeoJSON: ${sectors1GeojsonUrl}`);
+        const sectorsResponse = await cache.match(sectors1GeojsonUrl);
+        if (!sectorsResponse) {
+            console.debug(`[Sidebar] Sectors GeoJSON not found in cache`);
+            return false;
+        }
+        
+        // Fetch and check the main GeoJSON to verify point files are cached
+        try {
+            // Try to get from cache first
+            const mainGeoJSON = await mainResponse.json();
+            
+            // Get point features with filenames
+            const pointFeatures = mainGeoJSON.features.filter(f => 
+                f.geometry.type === 'Point' && f.properties.filename);
+            
+            console.debug(`[Sidebar] Found ${pointFeatures.length} point features with filenames to check`);
+            
+            // If no point features, just check the main files which we've already verified
+            if (pointFeatures.length === 0) {
+                console.debug(`[Sidebar] No point features found, considering config cached based on main files`);
+                return true;
+            }
+            
+            // Check ALL point files instead of just a sample
+            console.debug(`[Sidebar] Checking ALL ${pointFeatures.length} point files`);
+            
+            // Check each point file to make sure it's cached
+            for (const feature of pointFeatures) {
+                const pointFileUrl = `${BASE_PATH}/${config}/${feature.properties.filename}`;
+                const response = await cache.match(pointFileUrl);
+                if (!response) {
+                    console.debug(`[Sidebar] Point file not cached: ${feature.properties.filename}`);
+                    return false; // Return false as soon as we find a file that's not cached
+                }
+            }
+            
+            // If we got here, all files are cached
+            console.debug(`[Sidebar] All ${pointFeatures.length} point files are cached`);
+            return true;
+            
+        } catch (error) {
+            console.error(`Error checking point files for config ${config}:`, error);
+            // If we can't parse the main GeoJSON, fall back to just checking if main files exist
+            console.debug(`[Sidebar] Error checking point files, falling back to main file check`);
+            return true;
+        }
     } catch (error) {
         console.error(`Error checking if config ${config} is cached:`, error);
         return false;

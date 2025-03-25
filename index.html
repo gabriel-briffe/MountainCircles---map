@@ -259,9 +259,16 @@
                     const percentage = (completed / total) * 100;
                     document.getElementById('progressBar').style.width = `${percentage}%`;
                 } else if (event.data.type === 'cacheComplete') {
-                    if (typeof updateConfigButtonStyles === 'function') {
-                        updateConfigButtonStyles();
-                    }
+                    // After all files are cached, update the sidebar config button styles
+                    // to properly show green borders for cached configurations
+                    import('./sidebar.js').then(sidebarModule => {
+                        if (typeof sidebarModule.updateSidebarConfigButtonStyles === 'function') {
+                            sidebarModule.updateSidebarConfigButtonStyles();
+                        }
+                    }).catch(err => {
+                        console.error('Failed to import sidebar.js for updating config button styles:', err);
+                    });
+                    
                     // Add a 5-second delay before hiding the progress bar
                     setTimeout(() => {
                         document.getElementById('cacheProgress').style.display = 'none';

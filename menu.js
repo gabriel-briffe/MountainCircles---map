@@ -40,6 +40,16 @@ export function setupMenuEventListeners() {
     // Popup menu
     const popupMenu = document.getElementById('popupMenu');
     document.getElementById('moreOptionsBtn').addEventListener('click', () => {
+        // Check if the sidebar is visible and close it
+        const sidebar = document.getElementById('airspace-sidebar');
+        if (sidebar && sidebar.style.display === 'block') {
+            // Use dynamic import to avoid circular dependencies
+            import('./sidebar.js').then(module => {
+                module.toggleSidebar();
+            });
+        }
+
+        // Show the popup menu
         popupMenu.style.display = "flex";
     });
     document.getElementById('closePopupBtn').addEventListener('click', () => {

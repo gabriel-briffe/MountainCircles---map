@@ -173,8 +173,12 @@ export async function cacheConfigurationFiles() {
         console.debug('[CacheConfig] Sending cache request to service worker');
         await sendCacheRequestToServiceWorker(files, configDetails.fullConfig);
         
-        // Update cache indicators for sidebar config buttons
-        console.debug('[CacheConfig] Updating sidebar config button styles');
+        // Create a promise that resolves when the service worker sends a 'cacheComplete' message
+        console.debug('[CacheConfig] Waiting for cache completion message from service worker');
+        await waitForCacheComplete();
+        
+        // After caching is complete, update cache indicators for sidebar config buttons
+        console.debug('[CacheConfig] Cache completion confirmed, updating sidebar config button styles');
         await updateSidebarConfigButtonStyles();
         
         console.debug('[CacheConfig] Configuration caching process completed successfully');
@@ -184,4 +188,29 @@ export async function cacheConfigurationFiles() {
         handleCacheError(error, uiElements);
         return { success: false, error: error.message };
     }
+}
+
+/**
+ * Creates a promise that resolves when the service worker sends a 'cacheComplete' message
+ * @returns {Promise<void>} Promise that resolves on cache completion
+ */
+function waitForCacheComplete() {
+    return new Promise((resolve) => {
+        const messageHandler = (event) => {
+            if (event.data && event.data.type === 'cacheComplete') {
+                console.debug('[CacheConfig] Received cacheComplete message from service worker');
+                navigator.serviceWorker.removeEventListener('message', messageHandler);
+                resolve();
+            }
+        };
+        
+        navigator.serviceWorker.addEventListener('message', messageHandler);
+        
+        // Add a timeout in case the service worker never responds
+        setTimeout(() => {
+            console.warn('[CacheConfig] Cache completion message timeout - continuing anyway');
+            navigator.serviceWorker.removeEventListener('message', messageHandler);
+            resolve();
+        }, 30000); // 30 second timeout
+    });
 } 
