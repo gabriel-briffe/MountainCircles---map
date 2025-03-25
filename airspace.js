@@ -163,6 +163,14 @@ export function toggleFeatureHighlight(feature, index) {
     const map = getMap();
     const sectionRefs = getSectionRefs();
     const barRefs = getBarRefs();
+    const highlightedFeatureKey = getHighlightedFeatureKey();
+    
+    // Check if the clicked feature is already highlighted
+    if (highlightedFeatureKey === feature.properties.AN) {
+        // If already highlighted, just clear the highlight
+        clearHighlight();
+        return;
+    }
     
     // Clear any existing highlights
     clearHighlight();
