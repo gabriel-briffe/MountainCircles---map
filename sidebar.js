@@ -207,9 +207,6 @@ export function createSidebarHeader(sidebar) {
     // Create title
     const title = document.createElement('h2');
     title.textContent = 'Airspace';
-    title.style.fontSize = '18px';
-    title.style.fontWeight = 'bold';
-    title.style.margin = '0 0 5px 0';
     header.appendChild(title);
     
     // Create toggle switch for all airspace

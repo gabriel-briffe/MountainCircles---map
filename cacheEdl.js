@@ -41,7 +41,6 @@ function getProgressUI() {
     console.debug('[edlCache] Creating new status text element');
     statusElement = document.createElement('div');
     statusElement.className = 'status-text';
-    statusElement.style.marginBottom = '5px';
     
     // Insert at the beginning of the progress element
     const firstChild = progressElement.firstChild;
@@ -452,7 +451,7 @@ export async function cacheEDLTiles() {
   const ui = getProgressUI();
   
   // Show progress UI
-  ui.container.style.display = 'block';
+  ui.container.style.display = 'flex';
   ui.progressBar.style.width = '0%';
   ui.statusElement.textContent = 'Preparing EDL tiles caching...';
   ui.countElement.textContent = '0';
@@ -552,17 +551,7 @@ export async function cacheEDLTiles() {
     ui.statusElement.textContent = summaryMessage;
     console.debug(`[edlCache] ${summaryMessage}`);
     
-    // Show completion alert
-    setTimeout(() => {
-      alert(`EDL Weather Forecast Caching Complete:
-
-${succeeded} files processed
-${totalTiles} tiles extracted
-${failed} files failed
-
-The tiles are stored at: ${BASE_PATH}/edl_tiles/[date]_[hour]_[pressure]/[z]/[x]/[y].png
-and can be accessed via that path structure.`);
-    }, 500);
+    // No completion alert, just show status in UI
     
     // Hide progress UI after a delay
     setTimeout(() => {
@@ -587,7 +576,7 @@ and can be accessed via that path structure.`);
     
     // Show error in UI
     ui.statusElement.textContent = `Error: ${error.message}`;
-    ui.progressBar.style.backgroundColor = '#f44336'; // Red for error
+    ui.progressBar.classList.add('progress-bar-error');
     
     // Show error alert
     setTimeout(() => {
@@ -598,7 +587,7 @@ and can be accessed via that path structure.`);
     setTimeout(() => {
       ui.container.style.display = 'none';
       // Reset progress bar color
-      ui.progressBar.style.backgroundColor = '#4CAF50';
+      ui.progressBar.classList.remove('progress-bar-error');
     }, 5000);
     
     return {

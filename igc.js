@@ -25,27 +25,33 @@ export async function handleFileSelect(event) {
     const file = event.target.files[0];
     if (!file) return { success: false };
 
-    // Hide the menu after file selection
-    const popupMenu = document.getElementById('popupMenu');
-    if (popupMenu) {
-        popupMenu.style.display = "none";
-    }
+    // Show progress indicator
+    const igcProgress = document.getElementById('igcProgress');
+    const progressBar = document.getElementById('igcProgressBar');
+    igcProgress.style.display = "flex";
+    progressBar.style.width = "10%";
     
     try {
         // Read the file as text
+        progressBar.style.width = "30%";
         const igcContent = await new Promise((resolve, reject) => {
             const reader = new FileReader();
-            reader.onload = e => resolve(e.target.result);
+            reader.onload = e => {
+                progressBar.style.width = "50%";
+                resolve(e.target.result);
+            };
             reader.onerror = e => reject(new Error('Failed to read file'));
             reader.readAsText(file);
         });
         
+        progressBar.style.width = "60%";
         const geojsonData = igcToGeoJSON(igcContent);
         
         if (!geojsonData.features || geojsonData.features.length === 0) {
             throw new Error('No valid data found in IGC file');
         }
         
+        progressBar.style.width = "70%";
         const baseLayerId = 'igc-layer-' + file.name.replace(/\W/g, '');
         let layerId = baseLayerId;
         if (getLayerManager().hasLayer(layerId)) {
@@ -60,6 +66,7 @@ export async function handleFileSelect(event) {
         });
         
         // Create and add the track layer using the style creator
+        progressBar.style.width = "80%";
         const trackStyle = IGC_STYLES.createTrackStyle(sourceId, layerId);
         getLayerManager().addLayerIfNotExists(layerId, trackStyle);
         
@@ -82,6 +89,7 @@ export async function handleFileSelect(event) {
             duration: 1000
         });
         
+        progressBar.style.width = "90%";
         // Add altitude points
         const altPoints = {
             type: 'FeatureCollection',
@@ -114,9 +122,37 @@ export async function handleFileSelect(event) {
         // Ensure proper layer order
         getLayerManager().redrawLayersInOrder();
         
+        progressBar.style.width = "100%";
+        
+        // Hide the progress indicator after a brief delay to show completion
+        setTimeout(() => {
+            igcProgress.style.display = "none";
+            progressBar.style.width = "0%";
+            
+            // Hide the menu after successful processing
+            const popupMenu = document.getElementById('popupMenu');
+            if (popupMenu) {
+                popupMenu.style.display = "none";
+            }
+        }, 500);
+        
         return { success: true, trackId: layerId };
     } catch (error) {
         console.error('Error processing IGC file:', error);
+        
+        // Show error in progress indicator
+        progressBar.classList.add('progress-bar-error');
+        const statusText = igcProgress.querySelector('.progress-status');
+        statusText.textContent = `Error: ${error.message}`;
+        
+        // Hide the progress indicator after a delay
+        setTimeout(() => {
+            igcProgress.style.display = "none";
+            progressBar.style.width = "0%";
+            progressBar.classList.remove('progress-bar-error');
+            statusText.textContent = "Processing IGC file...";
+        }, 3000);
+        
         alert(`Failed to process IGC file: ${error.message}`);
         return { success: false, error: error.message };
     }

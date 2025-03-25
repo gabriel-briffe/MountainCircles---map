@@ -98,68 +98,97 @@
             </button>
             
             <!-- IGC File Control with Icon -->
-            <button id="igcFileButton" class="config-button button-with-icon">
-                <span class="material-icons-round">folder_open</span>
-                <span>Open IGC File</span>
-            </button>
+            <div>
+                <button id="igcFileButton" class="popup-menu-button button-with-icon">
+                    <span class="material-icons-round">folder_open</span>
+                    <span>Open IGC File</span>
+                </button>
+                <div id="igcProgress" class="cache-progress">
+                    <div class="progress-status">Processing IGC file...</div>
+                    <div class="progress-bar-container">
+                        <div id="igcProgressBar" class="progress-bar-fill"></div>
+                    </div>
+                </div>
+            </div>
+            
             <!-- New App Update section -->
-            <button id="appUpdateBtn" class="config-button">
-                <span class="material-icons-round">system_update</span>
-                Update App
-            </button>
-            <!-- Add this after the IGC File button in the popup menu -->
-            <div style="margin-top: 15px;">
-                <button id="cacheCurrentConfigBtn" class="config-button" style="display: flex; align-items: center; gap: 8px;">
+            <div>
+                <button id="appUpdateBtn" class="popup-menu-button button-with-icon">
+                    <span class="material-icons-round">system_update</span>
+                    <span>Update App</span>
+                </button>
+                <div id="appUpdateProgress" class="cache-progress">
+                    <div class="progress-status">Updating app...</div>
+                    <div class="progress-bar-container">
+                        <div id="appUpdateProgressBar" class="progress-bar-fill"></div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Clean Install Button -->
+            <div>
+                <button id="cleanInstallBtn" class="popup-menu-button button-with-icon">
+                    <span class="material-icons-round">delete_forever</span>
+                    <span>Clean Install (Reset All)</span>
+                </button>
+                <div id="cleanInstallProgress" class="cache-progress">
+                    <div class="progress-status">Resetting application...</div>
+                    <div class="progress-bar-container">
+                        <div id="cleanInstallProgressBar" class="progress-bar-fill"></div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Add new section for caching EDL tiles - moved before cache current config -->
+            <div>
+                <button id="cacheEDLTilesBtn" class="popup-menu-button button-with-icon">
+                    <span class="material-icons-round">cloud_download</span>
+                    <span>Cache today's EDL Weather Forecast</span>
+                </button>
+                <div id="edlCacheProgress" class="cache-progress">
+                    <div class="progress-status">Caching files: <span id="edlCacheCount">0</span>/<span id="edlTotalFiles">0</span></div>
+                    <div class="progress-bar-container">
+                        <div id="edlProgressBar" class="progress-bar-fill"></div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Cache Current Config section -->
+            <div>
+                <button id="cacheCurrentConfigBtn" class="popup-menu-button button-with-icon">
                     <span class="material-icons-round">download</span>
                     <span>Cache Current Config for Offline Use</span>
                 </button>
-                <div id="cacheProgress" style="display: none; margin-top: 10px;">
-                    <div style="margin-bottom: 5px;">Caching files: <span id="cacheCount">0</span>/<span id="totalFiles">0</span></div>
-                    <div style="width: 100%; height: 4px; background: #eee; border-radius: 2px;">
-                        <div id="progressBar" style="width: 0%; height: 100%; background: #4CAF50; border-radius: 2px; transition: width 0.3s;"></div>
+                <div id="cacheProgress" class="cache-progress">
+                    <div class="progress-status">Caching files: <span id="cacheCount">0</span>/<span id="totalFiles">0</span></div>
+                    <div class="progress-bar-container">
+                        <div id="progressBar" class="progress-bar-fill"></div>
                     </div>
                 </div>
             </div>
 
             <!-- Add new section for caching background map -->
-            <div style="margin-top: 15px;">
-                <button id="cacheBackgroundMapBtn" class="config-button" style="display: flex; align-items: center; gap: 8px;">
+            <div>
+                <button id="cacheBackgroundMapBtn" class="popup-menu-button button-with-icon">
                     <span class="material-icons-round">map</span>
                     <span>Cache Background Map for Offline Use</span>
                 </button>
-                <div id="mapCacheProgress" style="display: none; margin-top: 10px;">
-                    <div style="margin-bottom: 5px;">Caching tiles: <span id="mapCacheCount">0</span>/<span id="mapTotalTiles">0</span></div>
-                    <div style="width: 100%; height: 4px; background: #eee; border-radius: 2px;">
-                        <div id="mapProgressBar" style="width: 0%; height: 100%; background: #4CAF50; border-radius: 2px; transition: width 0.3s;"></div>
+                <div id="mapCacheProgress" class="cache-progress">
+                    <div class="progress-status">Caching tiles: <span id="mapCacheCount">0</span>/<span id="mapTotalTiles">0</span></div>
+                    <div class="progress-bar-container">
+                        <div id="mapProgressBar" class="progress-bar-fill"></div>
                     </div>
                 </div>
                 <!-- Link to map download -->
-                <div style="margin-top: 8px; text-align: center;">
+                <div class="map-link-container">
                     <a href="https://drive.google.com/file/d/10hk7NRZp3o9hZg92tnGXo8VO1nBra62S/view?usp=drive_link" 
-                       target="_blank" 
-                       style="color: #4CAF50; text-decoration: underline; font-size: 14px; display: inline-block; padding: 4px 8px; background-color: rgba(50, 50, 50, 0.1); border-radius: 4px;">
+                       class="map-download-link"
+                       target="_blank">
                         → link to map
                     </a>
                 </div>
             </div>
             
-            <!-- Add new section for caching EDL tiles -->
-            <div style="margin-top: 15px;">
-                <button id="cacheEDLTilesBtn" class="config-button" style="display: flex; align-items: center; gap: 8px;">
-                    <span class="material-icons-round">cloud_download</span>
-                    <span>Cache EDL Weather Forecast for Offline Use</span>
-                </button>
-                <div id="edlCacheProgress" style="display: none; margin-top: 10px;">
-                    <div style="margin-bottom: 5px;">Caching files: <span id="edlCacheCount">0</span>/<span id="edlTotalFiles">0</span></div>
-                    <div style="width: 100%; height: 4px; background: #eee; border-radius: 2px;">
-                        <div id="edlProgressBar" style="width: 0%; height: 100%; background: #4CAF50; border-radius: 2px; transition: width 0.3s;"></div>
-                    </div>
-                </div>
-                <div style="margin-top: 8px; font-size: 12px; color: #666; text-align: left; padding: 4px 8px; background: rgba(50, 50, 50, 0.05); border-radius: 4px;">
-                    Downloads 150 forecast files for 2 days: today and tomorrow (7:00-21:00, 5 pressure levels)
-                </div>
-            </div>
-
             <h3>Warning</h3>
             <p>Airspace from openAip and no automatic update so far - will contain mistakes</p>
             <p>This is a new experimental tool. Problems will arise that have not been encountered before in the gliding community.</p>
@@ -221,7 +250,8 @@
                 } else if (event.data.type === 'loadWarning' || event.data.type === 'loadError') {
                     alert(event.data.message);
                 } else if (event.data.type === 'cacheStart') {
-                    // Optional: handle caching start message if desired.
+                    // Show the progress bar at the start of caching
+                    document.getElementById('cacheProgress').style.display = 'flex';
                 } else if (event.data.type === 'cacheProgress') {
                     const { completed, total } = event.data;
                     document.getElementById('cacheCount').textContent = completed;
@@ -238,7 +268,7 @@
                         document.getElementById('progressBar').style.width = '0%';
                     }, 5000);
                 } else if (event.data.type === 'cacheTileComplete') {
-                    // Handled in cacheTiles
+                    // Handled in cacheTiles - progress is managed in the cacheTiles.js file
                 } else if (event.data.type === 'cacheError') {
                     console.error(event.data.message);
                 }

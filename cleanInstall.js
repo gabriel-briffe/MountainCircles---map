@@ -16,31 +16,22 @@ export async function cleanInstall() {
     }
     
     try {
-        // Show a progress overlay using common classes
-        const progressOverlay = document.createElement('div');
-        progressOverlay.className = 'progress-overlay';
+        // Show progress using the element in the popup menu
+        const progressContainer = document.getElementById('cleanInstallProgress');
+        const progressText = progressContainer.querySelector('.progress-status');
+        const progressBar = document.getElementById('cleanInstallProgressBar');
         
-        const messageElement = document.createElement('div');
-        messageElement.className = 'progress-text';
-        messageElement.textContent = 'Cleaning installation...';
-        
-        const progressContainer = document.createElement('div');
-        progressContainer.className = 'progress-bar-container';
-        
-        const progressBar = document.createElement('div');
-        progressBar.className = 'progress-bar-fill';
-        
-        progressContainer.appendChild(progressBar);
-        progressOverlay.appendChild(messageElement);
-        progressOverlay.appendChild(progressContainer);
-        document.body.appendChild(progressOverlay);
+        // Reset initial state
+        progressText.textContent = 'Starting clean installation...';
+        progressBar.style.width = '0%';
+        progressContainer.style.display = 'flex';
         
         // Set initial progress
         progressBar.style.width = '10%';
         
         // 1. Clear all caches
         if ('caches' in window) {
-            messageElement.textContent = 'Clearing caches...';
+            progressText.textContent = 'Clearing caches...';
             progressBar.style.width = '20%';
             
             const cacheNames = await caches.keys();
@@ -51,21 +42,21 @@ export async function cleanInstall() {
         }
         
         progressBar.style.width = '40%';
-        messageElement.textContent = 'Clearing local storage...';
+        progressText.textContent = 'Clearing local storage...';
         
         // 2. Clear localStorage
         localStorage.clear();
         console.log('[DEBUG] LocalStorage cleared');
         
         progressBar.style.width = '60%';
-        messageElement.textContent = 'Clearing session storage...';
+        progressText.textContent = 'Clearing session storage...';
         
         // 3. Clear sessionStorage
         sessionStorage.clear();
         console.log('[DEBUG] SessionStorage cleared');
         
         progressBar.style.width = '80%';
-        messageElement.textContent = 'Clearing IndexedDB...';
+        progressText.textContent = 'Clearing IndexedDB...';
         
         // 4. Clear IndexedDB (more complex)
         try {
@@ -84,64 +75,54 @@ export async function cleanInstall() {
         }
         
         progressBar.style.width = '100%';
-        messageElement.textContent = 'Clean installation complete. Restarting...';
+        progressText.textContent = 'Clean installation complete. Restarting...';
         
         // 5. Wait a moment for the user to see the completion message
         await new Promise(resolve => setTimeout(resolve, 1500));
         
-        // 6. Reload the page properly based on the server environment
-        // For local development server, we need to use index.html or the base path
-        const cacheBuster = new Date().getTime();
+        // Hide the progress container
+        progressContainer.style.display = 'none';
         
+        // 6. Reload the page without cache parameters
         // Check if we're at root or in a subdirectory
         const path = window.location.pathname;
-        let reloadUrl;
         
         if (path === '/' || path.endsWith('/')) {
             // We're at the root or a directory path ending with slash
-            // Use index.html to avoid 404 on query params
-            reloadUrl = path + 'index.html?clean=' + cacheBuster;
+            window.location.href = path + 'index.html';
         } else if (path.includes('.html')) {
             // We already have an HTML file in the path
-            const urlParts = path.split('?')[0]; // Remove any existing query params
-            reloadUrl = urlParts + '?clean=' + cacheBuster;
+            window.location.href = path;
         } else {
-            // No clear path, try current path with param
-            reloadUrl = path + '?clean=' + cacheBuster;
+            // No clear path, try current path
+            window.location.href = path;
         }
-        
-        console.log(`[DEBUG] Reloading to: ${reloadUrl}`);
-        window.location.href = reloadUrl;
         
         return { success: true };
     } catch (error) {
         console.error('[DEBUG] Error during clean install:', error);
+        
+        // Show error in progress bar if it exists
+        try {
+            const progressContainer = document.getElementById('cleanInstallProgress');
+            const progressText = progressContainer.querySelector('.progress-status');
+            const progressBar = document.getElementById('cleanInstallProgressBar');
+            
+            progressText.textContent = `Error: ${error.message}`;
+            progressBar.classList.add('progress-bar-error');
+            
+            // Hide after delay
+            setTimeout(() => {
+                progressContainer.style.display = 'none';
+                progressBar.classList.remove('progress-bar-error');
+                progressBar.style.width = '0%';
+                progressText.textContent = 'Resetting application...';
+            }, 5000);
+        } catch (uiError) {
+            console.warn('[DEBUG] Error updating UI:', uiError);
+        }
+        
         alert(`Clean installation failed: ${error.message}. Please try manual cache clearing in your browser settings.`);
         return { success: false, error: error.message };
     }
-}
-
-/**
- * Creates the clean install button and adds it to the DOM
- * @param {HTMLElement} parentElement - Element to insert the button after (typically app update button)
- * @returns {HTMLElement} The created button
- */
-export function createCleanInstallButton(parentElement) {
-    const cleanInstallBtn = document.createElement('button');
-    cleanInstallBtn.id = 'cleanInstallBtn';
-    cleanInstallBtn.className = 'config-button button-with-icon';
-    cleanInstallBtn.innerHTML = `
-        <span class="material-icons-round">delete_forever</span>
-        <span>Clean Install (Reset All)</span>
-    `;
-    
-    // Insert after the parent element
-    if (parentElement && parentElement.parentNode) {
-        parentElement.parentNode.insertBefore(cleanInstallBtn, parentElement.nextSibling);
-        console.log('[DEBUG-MENU] Clean install button added');
-    } else {
-        console.warn('[DEBUG-MENU] Could not find parent element to insert clean install button after it');
-    }
-    
-    return cleanInstallBtn;
 } 

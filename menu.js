@@ -15,8 +15,7 @@ import {
 import {
     BASE_PATH,
     MAP_BOUNDS,
-    TILE_CACHE_SETTINGS,
-    CACHE_TIMEOUT
+    TILE_CACHE_SETTINGS
 } from "./config.js";
 
 // Import from appUpdate
@@ -26,7 +25,7 @@ import { updateApp } from "./appUpdate.js";
 import { cacheConfigurationFiles } from "./cacheConfig.js";
 
 // Import clean install functionality
-import { cleanInstall, createCleanInstallButton } from "./cleanInstall.js";
+import { cleanInstall } from "./cleanInstall.js";
 
 // Import tile caching functionality
 import { cacheTiles } from "./cacheTiles.js";
@@ -65,9 +64,8 @@ export function setupMenuEventListeners() {
     const appUpdateBtn = document.getElementById('appUpdateBtn');
     appUpdateBtn.addEventListener('click', updateApp);
     
-    // Create and add clean install button after app update button
-    const cleanInstallBtn = createCleanInstallButton(appUpdateBtn);
-    cleanInstallBtn.addEventListener('click', cleanInstall);
+    // Clean Install button
+    document.getElementById('cleanInstallBtn').addEventListener('click', cleanInstall);
 
     // Add a hidden emergency reset function
     // This can be triggered by clicking a specific sequence or from the console

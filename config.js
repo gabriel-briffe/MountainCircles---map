@@ -6,7 +6,7 @@
 // Import color mappings
 import { COLOR_MAPPING, AIRSPACE_TYPE_ORDER } from "./mappings.js";
 
-// Determine the base path first to ensure it's available globally
+// Determine the base path consistently for all modules
 function getBasePath() {
     try {
         // Check if we're on GitHub Pages
@@ -17,7 +17,7 @@ function getBasePath() {
                 return '/MountainCircles---map';
             }
             
-            // For local development using a server
+            // For local development server
             if (hostname === 'localhost' || hostname === '127.0.0.1') {
                 return '';
             }
@@ -34,10 +34,13 @@ function getBasePath() {
 // Compute the BASE_PATH
 export const BASE_PATH = getBasePath();
 
-// Also set it as a global for use by coreFiles.js during cache updates
+// Also set it as a global for use by service worker during cache updates
 if (typeof window !== 'undefined') {
     window.mountainCirclesBasePathForCache = BASE_PATH;
 }
+
+// Single cache name for all app resources
+export const CACHE_NAME = 'mountaincircles-cache';
 
 // Default text size for labels
 export const DEFAULT_TEXT_SIZE = 14;
@@ -69,10 +72,6 @@ export const POLICIES = {
 // Default policy and configuration
 export const DEFAULT_POLICY = 'alps';
 export const DEFAULT_CONFIG = DEFAULT_POLICY + '/' + '20-100-250-4200';
-
-// Cache settings
-export const CACHE_NAME = 'mountaincircles-dynamic-v1';
-export const CACHE_TIMEOUT = 5 * 60 * 1000; // 5 minutes
 
 // Map settings
 export const MAP_SETTINGS = {

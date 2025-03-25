@@ -659,22 +659,10 @@ h3 {
     position: relative;
     text-align: center;
     color: var(--text-light);
-}
-
-/* Config buttons container: centers buttons and adds gap with extra bottom margin */
-#popupMenu #configButtons {
     display: flex;
-    flex-wrap: wrap;
-    justify-content: center;
-    gap: 5px;  /* 5px gap between config buttons */
-    margin-bottom: 15px;
+    flex-direction: column;
+    align-items: center;
 }
-
-/* Style for configuration buttons inside the popup menu */
-#popupMenu #configButtons button {
-    margin: 5px;
-}
-
 
 /* Style for the close button in the popup menu using a Material Icon */
 #popupMenu .popup-content .close {
@@ -686,6 +674,119 @@ h3 {
     font-size: 24px;
     cursor: pointer;
     color: var(--text-light);
+}
+
+/* Standard popup menu button style */
+.popup-menu-button {
+    border: none;
+    border-radius: var(--border-radius-standard);
+    cursor: pointer;
+    font-family: var(--font-family);
+    font-size: var(--font-size-base);
+    transition: background-color 0.2s, border 0.3s, box-shadow 0.3s;
+    white-space: normal; /* Allow text to wrap for all popup buttons */
+    word-break: break-word; /* Allow words to break if needed */
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: inline-flex;
+    align-items: center;
+    width: auto; /* Take only needed width */
+    padding: 10px 15px;
+    margin: 6px auto; /* Center horizontally with auto margins */
+    background: var(--bg-button-light);
+    color: var(--text-light);
+    gap: 12px; /* Space between icon and text */
+    position: relative;
+    box-sizing: border-box;
+}
+
+.popup-menu-button:hover {
+    background: var(--bg-button-hover-light);
+}
+
+/* Style for the button icons in popup menu */
+.popup-menu-button .material-icons-round {
+    font-size: 20px; /* Consistent icon size */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 20px; /* Ensure icons don't collapse */
+}
+
+/* Add spacing for button containers in popup menu */
+#popupMenu .popup-content > div {
+    margin: 12px 0;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+/* Cache progress bars styling */
+.cache-progress {
+    display: none; /* Hidden by default */
+    flex-direction: column;
+    width: 100%;
+    max-width: 280px; /* Match max button width */
+    align-items: center;
+    margin-top: 10px;
+}
+
+/* Status text for cache progress */
+.status-text {
+    margin-bottom: 5px;
+    width: 100%;
+    text-align: center;
+    font-size: 0.9em;
+    color: inherit;
+}
+
+/* Progress bar status text */
+.progress-status {
+    margin-bottom: 5px;
+    width: 100%;
+    text-align: center;
+    font-size: 0.9em;
+}
+
+/* Progress bar container */
+.progress-bar-container {
+    width: 100%;
+    height: 6px;
+    background: #eee;
+    border-radius: 3px;
+    margin: 5px 0;
+    overflow: hidden;
+}
+
+/* Progress bar fill */
+.progress-bar-fill {
+    width: 0%; 
+    height: 100%; 
+    background: var(--accent-green); 
+    border-radius: 3px; 
+    transition: width 0.3s ease;
+}
+
+/* Progress bar error state */
+.progress-bar-error {
+    background: #f44336 !important; /* Red for error */
+}
+
+/* Dark mode overrides */
+@media (prefers-color-scheme: dark) {
+    .popup-menu-button {
+        background: var(--bg-button-dark);
+        color: var(--text-dark);
+    }
+    
+    .popup-menu-button:hover {
+        background: var(--bg-button-hover-dark);
+    }
+    
+    .progress-bar-container {
+        background: #444;
+    }
 }
 
 /* Airspace Popup Menu (for airspace inspection) */
@@ -930,20 +1031,6 @@ h3 {
     gap: 8px;
 }
 
-/* Ensure consistency for all config buttons with icons */
-#cacheCurrentConfigBtn, #cacheBackgroundMapBtn, #cleanInstallBtn, #appUpdateBtn, #igcFileButton {
-    transition: border 0.3s, box-shadow 0.3s;
-    border: none;
-    box-shadow: none;
-    position: relative;
-    box-sizing: border-box;
-    white-space: normal;
-    word-break: break-word;
-    display: inline-flex !important;
-    align-items: center !important;
-    gap: 8px;
-}
-
 /* Style for layer toggle buttons */
 #peaksToggleBtn, #passesToggleBtn {
     display: inline-flex;
@@ -966,26 +1053,22 @@ button .material-icons-round {
 
 /* Style for cached configuration buttons */
 .cached-config {
-    border: 2px solid #4CAF50; /* Green border */
+    border: 2px solid var(--accent-green) !important; /* Green border */
 }
 
-/* Add to your existing CSS */
-#cacheProgress {
-    display: none;
+/* Update old progress bar styles (keep compatibility) */
+#cacheProgress, #mapCacheProgress, #edlCacheProgress {
+    display: none; /* Hidden by default */
     flex-direction: column;
     width: 100%;
     align-items: center;
     margin-top: 10px;
 }
 
-.progress-bar-container {
-    width: 80%;
-    margin: 5px 0;
-}
-
 /* Sidebar toggle buttons for peaks and passes */
 .sidebar-toggle-btn {
     background-color: transparent;
+    color: var(--text-light);
 }
 
 .sidebar-toggle-btn:hover {
@@ -997,21 +1080,7 @@ button .material-icons-round {
     flex: 1;
     min-width: 0;
     max-width: none;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    background-color: var(--bg-button-light);
-    border: none;
-    border-radius: var(--border-radius-standard);
-    cursor: pointer;
     font-weight: var(--font-weight-bold);
-    color: var(--text-light);
-    padding: 8px 12px;
-    transition: background-color 0.2s;
-}
-
-.sidebar-config-btn:hover {
-    background-color: var(--bg-button-hover-light);
 }
 
 .sidebar-config-buttons {
@@ -1028,12 +1097,8 @@ button .material-icons-round {
 .sidebar-config-btn,
 .policy-button,
 .text-size-button,
-#popupMenu #configButtons button,
-#popupMenu button#igcFileButton,
 #peaksToggleBtn, 
 #passesToggleBtn,
-#cacheCurrentConfigBtn,
-#cacheBackgroundMapBtn,
 .sidebar-toggle-btn {
     /* Common button properties */
     border: none;
@@ -1053,51 +1118,57 @@ button .material-icons-round {
     color: var(--text-light);
 }
 
-/* Override white-space for cache buttons specifically */
-#cacheCurrentConfigBtn, #cacheBackgroundMapBtn {
-    white-space: normal; /* Allow text to wrap for these specific buttons */
-    word-break: break-word; /* Allow words to break if needed */
-}
-
 /* Button hover states */
 .config-button:hover,
 .sidebar-config-btn:hover,
-#popupMenu #configButtons button:hover,
-#popupMenu button#igcFileButton:hover,
 #peaksToggleBtn:hover, 
 #passesToggleBtn:hover,
-#cacheCurrentConfigBtn:hover,
-#cacheBackgroundMapBtn:hover,
 .sidebar-toggle-btn:hover {
     background: var(--bg-button-hover-light);
 }
 
 @media (prefers-color-scheme: dark) {
+    /* Regular sidebar/config buttons */
     .config-button,
     .sidebar-config-btn,
     .policy-button,
     .text-size-button,
-    #popupMenu #configButtons button,
-    #popupMenu button#igcFileButton,
     #peaksToggleBtn, 
-    #passesToggleBtn,
-    #cacheCurrentConfigBtn,
-    #cacheBackgroundMapBtn,
-    .sidebar-toggle-btn {
+    #passesToggleBtn {
         background: var(--bg-button-dark);
         color: var(--text-dark);
     }
     
     .config-button:hover,
     .sidebar-config-btn:hover,
-    #popupMenu #configButtons button:hover,
-    #popupMenu button#igcFileButton:hover,
     #peaksToggleBtn:hover, 
-    #passesToggleBtn:hover,
-    #cacheCurrentConfigBtn:hover,
-    #cacheBackgroundMapBtn:hover,
-    .sidebar-toggle-btn:hover {
+    #passesToggleBtn:hover {
         background: var(--bg-button-hover-dark);
+    }
+    
+    /* Popup menu buttons */
+    .popup-menu-button {
+        background: var(--bg-button-dark);
+        color: var(--text-dark);
+    }
+    
+    .popup-menu-button:hover {
+        background: var(--bg-button-hover-dark);
+    }
+    
+    /* Transparent sidebar toggle buttons */
+    .sidebar-toggle-btn {
+        background-color: transparent;
+        color: var(--text-dark);
+    }
+    
+    .sidebar-toggle-btn:hover {
+        background-color: var(--hover-bg-dark);
+    }
+    
+    /* Global elements */
+    .material-icons-round {
+        color: var(--text-dark);
     }
 }
 
@@ -1324,22 +1395,14 @@ button .material-icons-round {
         color: var(--text-dark);
     }
     
-    #popupMenu #configButtons button {
-        background: var(--bg-dark);
+    /* Updated popup menu button styles for dark mode */
+    .popup-menu-button {
+        background: var(--bg-button-dark);
         color: var(--text-dark);
     }
     
-    #popupMenu #configButtons button:hover {
-        background: var(--bg-dark-solid);
-    }
-    
-    #popupMenu button#igcFileButton {
-        background: var(--bg-dark);
-        color: var(--text-dark);
-    }
-    
-    #popupMenu button#igcFileButton:hover {
-        background: var(--bg-dark-solid);
+    .popup-menu-button:hover {
+        background: var(--bg-button-hover-dark);
     }
     
     #popupMenu .popup-content .close {
@@ -1417,7 +1480,7 @@ button .material-icons-round {
         border-bottom: none; /* Also remove the border in dark mode */
     }
     
-    .sidebar-header h2 {
+    #airspace-sidebar .sidebar-header h2 {
         color: var(--text-heading-dark);
     }
     
@@ -1444,13 +1507,8 @@ button .material-icons-round {
     .sidebar-config-btn,
     .policy-button,
     .text-size-button,
-    #popupMenu #configButtons button,
-    #popupMenu button#igcFileButton,
     #peaksToggleBtn, 
     #passesToggleBtn,
-    #cacheCurrentConfigBtn,
-    #cacheBackgroundMapBtn,
-    #cleanInstallBtn,
     .sidebar-toggle-btn {
         background: var(--bg-button-dark);
         color: var(--text-dark);
@@ -1458,13 +1516,8 @@ button .material-icons-round {
     
     .config-button:hover,
     .sidebar-config-btn:hover,
-    #popupMenu #configButtons button:hover,
-    #popupMenu button#igcFileButton:hover,
     #peaksToggleBtn:hover, 
     #passesToggleBtn:hover,
-    #cacheCurrentConfigBtn:hover,
-    #cacheBackgroundMapBtn:hover,
-    #cleanInstallBtn:hover,
     .sidebar-toggle-btn:hover {
         background: var(--bg-button-hover-dark);
     }
@@ -1696,4 +1749,89 @@ button .material-icons-round {
 .text-size-button {
     flex: 1;
     font-size: var(--font-size-base);
+}
+
+/* Map download link container */
+.map-link-container {
+    margin-top: 8px;
+    text-align: center;
+    width: 100%;
+}
+
+/* Map download link styling */
+.map-download-link {
+    display: inline-block;
+    color: var(--accent-green);
+    text-decoration: underline;
+    font-size: 14px;
+    padding: 6px 10px;
+    margin: 4px auto;
+    background-color: rgba(50, 50, 50, 0.1);
+    border-radius: var(--border-radius-standard);
+    transition: background-color 0.2s;
+}
+
+.map-download-link:hover {
+    background-color: rgba(50, 50, 50, 0.2);
+}
+
+@media (prefers-color-scheme: dark) {
+    .map-download-link {
+        background-color: rgba(200, 200, 200, 0.1);
+    }
+    
+    .map-download-link:hover {
+        background-color: rgba(200, 200, 200, 0.2);
+    }
+}
+
+/* App update progress container */
+#update-progress-container {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(255, 255, 255, 0.9);
+    padding: 20px;
+    border-radius: 10px;
+    box-shadow: 0 0 20px rgba(0, 0, 0, 0.2);
+    z-index: 2000;
+    text-align: center;
+    width: 80%;
+    max-width: 400px;
+    display: none;
+}
+
+#update-progress-text {
+    margin-bottom: 10px;
+    font-weight: var(--font-weight-bold);
+}
+
+#update-progress-bar {
+    height: 20px;
+    background-color: #f0f0f0;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+#update-progress-fill {
+    height: 100%;
+    background-color: var(--accent-green);
+    width: 0%;
+    transition: width 0.3s;
+}
+
+#update-progress-fill.error {
+    background-color: #f44336; /* Red for error */
+}
+
+@media (prefers-color-scheme: dark) {
+    #update-progress-container {
+        background: rgba(30, 30, 30, 0.9);
+        color: var(--text-dark);
+    }
+    
+    #update-progress-bar {
+        background-color: #333;
+    }
 }

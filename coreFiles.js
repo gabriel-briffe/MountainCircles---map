@@ -5,48 +5,16 @@
  * when the app is updated.
  */
 
-// Internal implementation of getBasePath as fallback
-function internalGetBasePath() {
-    // Check if we're on GitHub Pages
-    if (typeof window !== 'undefined' && window.location) {
-        const hostname = window.location.hostname;
-        const pathname = window.location.pathname;
-
-        if (hostname === 'gabriel-briffe.github.io') {
-            return '/MountainCircles---map';
-        }
-        
-        if (pathname.includes('/MountainCircles---map/')) {
-            return '/MountainCircles---map';
-        }
-    }
-    
-    // Default for local development
-    return '.';
-}
-
-// Get BASE_PATH
-let BASE_PATH;
-
-// Try to get the BASE_PATH from the global context if it exists
-// (it would be set if config.js was loaded before this file)
-if (typeof window !== 'undefined' && window.mountainCirclesBasePathForCache) {
-    BASE_PATH = window.mountainCirclesBasePathForCache;
-} else {
-    // Fall back to internal implementation
-    BASE_PATH = internalGetBasePath();
-}
-
+// Import the BASE_PATH from config
+import { BASE_PATH } from './config.js';
 
 /**
  * Returns the list of core app files that should be updated when updating the app
  * @returns {string[]} Array of file paths
  */
 export function getCoreFiles() {
-    
     return [
         // HTML files
-        // Root path is removed as it causes 404 errors
         `${BASE_PATH}/index.html`,
         `${BASE_PATH}/manifest.json`,
         

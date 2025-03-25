@@ -20,7 +20,7 @@ export function setupCacheProgressUI() {
     const cacheCount = document.getElementById('cacheCount');
     const totalFiles = document.getElementById('totalFiles');
     
-    progressElement.style.display = 'block';
+    progressElement.style.display = 'flex';
     
     return { progressElement, progressBar, cacheCount, totalFiles };
 }

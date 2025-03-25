@@ -23,7 +23,6 @@ function getProgressUI() {
   if (!statusElement) {
     statusElement = document.createElement('div');
     statusElement.className = 'status-text';
-    statusElement.style.marginBottom = '5px';
     
     // Insert at the beginning of the progress element
     const firstChild = progressElement.firstChild;
@@ -84,7 +83,7 @@ export async function cacheTilesFromMBTiles() {
   
   // Get existing progress UI
   const ui = getProgressUI();
-  ui.container.style.display = 'block';
+  ui.container.style.display = 'flex';
   ui.progressBar.style.width = '0%';
   ui.statusElement.textContent = 'Select an MBTiles file...';
   ui.countElement.textContent = '0';
@@ -170,7 +169,7 @@ export async function cacheTilesFromMBTiles() {
     
     // Show error message
     ui.statusElement.textContent = `Error: ${error.message}`;
-    ui.progressBar.style.backgroundColor = '#f44336'; // Red for error
+    ui.progressBar.classList.add('progress-bar-error');
     
     // Close database connection if open
     mbtilesHandler.close();
@@ -179,7 +178,7 @@ export async function cacheTilesFromMBTiles() {
     setTimeout(() => {
       ui.container.style.display = 'none';
       // Reset the progress bar color
-      ui.progressBar.style.backgroundColor = '#4CAF50';
+      ui.progressBar.classList.remove('progress-bar-error');
     }, 5000);
     
     return { 
