@@ -33,6 +33,7 @@ export function getCoreFiles() {
         `${BASE_PATH}/coreFiles.js`,
         `${BASE_PATH}/dock.js`,
         `${BASE_PATH}/edl.js`,
+        `${BASE_PATH}/edlUI.js`,
         `${BASE_PATH}/igc.js`,
         `${BASE_PATH}/init.js`,
         `${BASE_PATH}/install.js`,

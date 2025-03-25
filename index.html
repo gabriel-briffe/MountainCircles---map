@@ -8,7 +8,7 @@
     <!-- Using jsDelivr instead of unpkg to avoid potential network errors on Windows -->
     <script src="https://cdn.jsdelivr.net/npm/maplibre-gl@latest/dist/maplibre-gl.js"></script>
     <link href="https://cdn.jsdelivr.net/npm/maplibre-gl@latest/dist/maplibre-gl.css" rel="stylesheet" />
-    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
     <link rel="manifest" href="manifest.json">
     <script>
         // Automatically determine if we're on GitHub Pages or running locally
@@ -68,12 +68,12 @@
     <div id="mapDock">
         <!-- Repurposed Button to Toggle Airspace Sidebar -->
         <button title="Toggle Airspace Types" id="toggleSidebarButton">
-            <span class="material-icons-round" id="sidebarVisibilityIcon">layers</span>
+            <span class="material-icons" id="sidebarVisibilityIcon">layers</span>
         </button>
         
         <!-- Toggle Visibility for main layers -->
         <button title="Toggle Layer Visibility" id="toggleLayerButton">
-            <span class="material-icons-round" id="visibilityIcon">visibility</span>
+            <span class="material-icons" id="visibilityIcon">visibility</span>
         </button>
         
         <!-- Slider wrapper for polygon opacity -->
@@ -85,7 +85,7 @@
         
         <!-- More Options Button -->
         <button title="More Options" id="moreOptionsBtn">
-            <span class="material-icons-round">menu</span>
+            <span class="material-icons">menu</span>
         </button>
         
     </div>
@@ -94,13 +94,13 @@
     <div id="popupMenu">
         <div class="popup-content">
             <button class="close" id="closePopupBtn">
-                <span class="material-icons-round">close</span>
+                <span class="material-icons">close</span>
             </button>
             
             <!-- IGC File Control with Icon -->
             <div>
                 <button id="igcFileButton" class="popup-menu-button button-with-icon">
-                    <span class="material-icons-round">folder_open</span>
+                    <span class="material-icons">folder_open</span>
                     <span>Open IGC File</span>
                 </button>
                 <div id="igcProgress" class="cache-progress">
@@ -114,7 +114,7 @@
             <!-- New App Update section -->
             <div>
                 <button id="appUpdateBtn" class="popup-menu-button button-with-icon">
-                    <span class="material-icons-round">system_update</span>
+                    <span class="material-icons">system_update</span>
                     <span>Update App</span>
                 </button>
                 <div id="appUpdateProgress" class="cache-progress">
@@ -128,7 +128,7 @@
             <!-- Clean Install Button -->
             <div>
                 <button id="cleanInstallBtn" class="popup-menu-button button-with-icon">
-                    <span class="material-icons-round">delete_forever</span>
+                    <span class="material-icons">delete_forever</span>
                     <span>Clean Install (Reset All)</span>
                 </button>
                 <div id="cleanInstallProgress" class="cache-progress">
@@ -142,7 +142,7 @@
             <!-- Add new section for caching EDL tiles - moved before cache current config -->
             <div>
                 <button id="cacheEDLTilesBtn" class="popup-menu-button button-with-icon">
-                    <span class="material-icons-round">cloud_download</span>
+                    <span class="material-icons">cloud_download</span>
                     <span>Cache today's EDL Weather Forecast</span>
                 </button>
                 <div id="edlCacheProgress" class="cache-progress">
@@ -156,7 +156,7 @@
             <!-- Cache Current Config section -->
             <div>
                 <button id="cacheCurrentConfigBtn" class="popup-menu-button button-with-icon">
-                    <span class="material-icons-round">download</span>
+                    <span class="material-icons">download</span>
                     <span>Cache Current Config for Offline Use</span>
                 </button>
                 <div id="cacheProgress" class="cache-progress">
@@ -170,7 +170,7 @@
             <!-- Add new section for caching background map -->
             <div>
                 <button id="cacheBackgroundMapBtn" class="popup-menu-button button-with-icon">
-                    <span class="material-icons-round">map</span>
+                    <span class="material-icons">map</span>
                     <span>Cache Background Map for Offline Use</span>
                 </button>
                 <div id="mapCacheProgress" class="cache-progress">

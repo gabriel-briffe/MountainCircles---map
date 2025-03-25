@@ -14,6 +14,22 @@ import {
     saveStateToLocalStorage
 } from "./state.js";
 
+// Import EDL UI functions
+import {
+    initEDLUI,
+    navigateToPreviousHour,
+    navigateToNextHour,
+    navigateToCurrentTime,
+    toggleEDLNavigationRow,
+    updateNavigationButtonsState
+} from "./edlUI.js";
+
+// Import EDL functions
+import { createEDLLayer } from "./edl.js";
+
+// Flag to track EDL navigation row visibility
+let edlNavigationVisible = false;
+
 /**
  * Creates a debounced version of a function
  * @param {Function} func - The function to debounce
@@ -196,6 +212,277 @@ export function toggleLayerVisibility() {
 }
 
 /**
+ * Toggles the EDL navigation row
+ */
+export function toggleEDLNavigation() {
+    console.log('[Dock] Toggling EDL navigation row');
+    
+    // Create EDL navigation row if it doesn't exist
+    if (!document.getElementById('edlNavRow')) {
+        createEDLNavigationRow();
+    }
+    
+    // Toggle the visibility state
+    edlNavigationVisible = !edlNavigationVisible;
+    
+    // Update UI
+    toggleEDLNavigationRow(edlNavigationVisible);
+    
+    // Update button visual
+    const toggleButton = document.getElementById('toggleEDLNavigationBtn');
+    if (toggleButton) {
+        // Make sure to remove old class first to ensure proper toggling
+        toggleButton.classList.remove('active');
+        if (edlNavigationVisible) {
+            toggleButton.classList.add('active');
+        }
+        console.log(`[Dock] EDL button active state: ${toggleButton.classList.contains('active')}`);
+    }
+    
+    // Initialize EDL layer if it doesn't exist and we're making the navigation visible
+    if (edlNavigationVisible && !getLayerManager().hasLayer('edl-layer')) {
+        console.log('[Dock] Creating initial EDL layer');
+        const initialLayer = createEDLLayer(getMap());
+        if (initialLayer) {
+            initEDLUI(initialLayer);
+        }
+    }
+}
+
+/**
+ * Creates the EDL navigation row in the dock
+ */
+function createEDLNavigationRow() {
+    console.log('[Dock] Creating EDL navigation row');
+    
+    // Create row container
+    const navRow = document.createElement('div');
+    navRow.id = 'edlNavRow';
+    navRow.className = 'edl-nav-row';
+    navRow.style.display = 'none'; // Initially hidden
+    
+    // Previous hour button
+    const prevButton = document.createElement('button');
+    prevButton.id = 'edlPrevHourBtn';
+    prevButton.className = 'edl-nav-btn';
+    prevButton.title = 'Previous Hour';
+    prevButton.innerHTML = '<span class="material-icons">keyboard_double_arrow_left</span>';
+    prevButton.addEventListener('click', () => {
+        console.log('[Dock] Previous hour button clicked');
+        navigateToPreviousHour();
+    });
+    
+    // Current time button
+    const nowButton = document.createElement('button');
+    nowButton.id = 'edlNowBtn';
+    nowButton.className = 'edl-nav-btn';
+    nowButton.title = 'Current Time';
+    
+    // Time indicator span
+    const timeIndicator = document.createElement('span');
+    timeIndicator.id = 'edlTimeIndicator';
+    timeIndicator.textContent = 'Now';
+    
+    nowButton.appendChild(timeIndicator);
+    nowButton.addEventListener('click', () => {
+        console.log('[Dock] Now button clicked');
+        navigateToCurrentTime();
+    });
+    
+    // Next hour button
+    const nextButton = document.createElement('button');
+    nextButton.id = 'edlNextHourBtn';
+    nextButton.className = 'edl-nav-btn';
+    nextButton.title = 'Next Hour';
+    nextButton.innerHTML = '<span class="material-icons">keyboard_double_arrow_right</span>';
+    nextButton.addEventListener('click', () => {
+        console.log('[Dock] Next hour button clicked');
+        navigateToNextHour();
+    });
+    
+    // Pressure Up button
+    const pressureUpButton = document.createElement('button');
+    pressureUpButton.id = 'edlPressureUpBtn';
+    pressureUpButton.className = 'edl-nav-btn';
+    pressureUpButton.title = 'Higher Altitude (Lower Pressure)';
+    pressureUpButton.innerHTML = '<span class="material-icons">keyboard_double_arrow_up</span>';
+    pressureUpButton.addEventListener('click', () => {
+        console.log('[Dock] Pressure up button clicked');
+        import('./edlUI.js').then(module => {
+            module.navigateToHigherAltitude();
+        });
+    });
+    
+    // Pressure display button
+    const pressureButton = document.createElement('button');
+    pressureButton.id = 'edlPressureBtn';
+    pressureButton.className = 'edl-nav-btn';
+    pressureButton.title = 'Current Pressure Level';
+    
+    // Pressure indicator span
+    const pressureIndicator = document.createElement('span');
+    pressureIndicator.id = 'edlPressureIndicator';
+    pressureIndicator.textContent = '500hPa';
+    
+    pressureButton.appendChild(pressureIndicator);
+    
+    // Pressure Down button
+    const pressureDownButton = document.createElement('button');
+    pressureDownButton.id = 'edlPressureDownBtn';
+    pressureDownButton.className = 'edl-nav-btn';
+    pressureDownButton.title = 'Lower Altitude (Higher Pressure)';
+    pressureDownButton.innerHTML = '<span class="material-icons">keyboard_double_arrow_down</span>';
+    pressureDownButton.addEventListener('click', () => {
+        console.log('[Dock] Pressure down button clicked');
+        import('./edlUI.js').then(module => {
+            module.navigateToLowerAltitude();
+        });
+    });
+    
+    // EDL Visibility Toggle button
+    const visibilityButton = document.createElement('button');
+    visibilityButton.id = 'edlVisibilityBtn';
+    visibilityButton.className = 'edl-nav-btn';
+    visibilityButton.title = 'Toggle EDL Layer Visibility';
+    visibilityButton.innerHTML = '<span class="material-icons">visibility</span>';
+    visibilityButton.addEventListener('click', () => {
+        console.log('[Dock] EDL visibility button clicked');
+        import('./edlUI.js').then(module => {
+            module.toggleEDLLayerVisibility();
+        });
+    });
+    
+    // Add all buttons to row in a single line
+    navRow.appendChild(prevButton);
+    navRow.appendChild(nowButton);
+    navRow.appendChild(nextButton);
+    navRow.appendChild(pressureUpButton);
+    navRow.appendChild(pressureButton);
+    navRow.appendChild(pressureDownButton);
+    navRow.appendChild(visibilityButton);
+    
+    // Create a container for the EDL navigation that's separate from the main dock
+    const container = document.createElement('div');
+    container.id = 'edlNavContainer';
+    container.appendChild(navRow);
+    
+    // Add to the body, not the mapDock
+    document.body.appendChild(container);
+    
+    // Add styles if needed
+    addEDLNavigationStyles();
+    
+    console.log('[Dock] EDL navigation row created');
+}
+
+/**
+ * Adds CSS styles for EDL navigation
+ */
+function addEDLNavigationStyles() {
+    // Check if styles already exist
+    if (document.getElementById('edl-nav-styles')) return;
+    
+    // Create style element
+    const style = document.createElement('style');
+    style.id = 'edl-nav-styles';
+    
+    // Add CSS
+    style.textContent = `
+        /* EDL Navigation Container - positioned near the dock */
+        #edlNavContainer {
+            position: fixed;
+            z-index: 1100;
+            pointer-events: none; /* Let clicks pass through to map unless on buttons */
+        }
+        
+        /* EDL Navigation Row */
+        .edl-nav-row {
+            display: flex;
+            pointer-events: auto; /* Make buttons clickable */
+            background: rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(4px);
+            border-radius: var(--border-radius-large);
+            padding: calc(var(--dock-button-size) * 0.1);
+            gap: calc(var(--dock-button-size) * 0.2);
+        }
+        
+        /* EDL Navigation Buttons */
+        .edl-nav-btn {
+            background: var(--bg-light);
+            border: none;
+            outline: none;
+            border-radius: var(--border-radius-large);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: var(--dock-button-size);
+            height: var(--dock-button-size);
+            aspect-ratio: 1 / 1;
+        }
+        
+        .edl-nav-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        #edlTimeIndicator,
+        #edlPressureIndicator {
+            font-size: 0.8em;
+            font-weight: bold;
+        }
+        
+        /* Active state for the toggle button */
+        #toggleEDLNavigationBtn.active {
+            background-color: var(--accent-blue);
+            color: white;
+        }
+        
+        /* Dark mode styles */
+        @media (prefers-color-scheme: dark) {
+            .edl-nav-btn {
+                background: var(--bg-dark);
+                color: var(--text-dark);
+            }
+            
+            .edl-nav-row {
+                background: rgba(0, 0, 0, 0.2);
+            }
+        }
+        
+        /* Landscape mode */
+        @media (orientation: landscape) {
+            #edlNavContainer {
+                left: calc(var(--dock-button-size) * 1.4);
+                top: 50%;
+                transform: translateY(-50%);
+            }
+            
+            .edl-nav-row {
+                flex-direction: column;
+            }
+        }
+        
+        /* Portrait mode */
+        @media (orientation: portrait) {
+            #edlNavContainer {
+                top: calc(var(--dock-button-size) * 1.4);
+                left: 50%;
+                transform: translateX(-50%);
+            }
+            
+            .edl-nav-row {
+                flex-direction: row;
+            }
+        }
+    `;
+    
+    // Add to document
+    document.head.appendChild(style);
+    console.log('[Dock] EDL navigation styles added');
+}
+
+/**
  * Sets up all dock event listeners
  */
 export function setupDockEventListeners() {
@@ -234,6 +521,9 @@ export function setupDockEventListeners() {
     // Create and add zoom buttons only for non-mobile devices
     createZoomButtonsIfNeeded();
     
+    // Create EDL navigation toggle button
+    createEDLNavigationToggleButton();
+    
     // Ensure visibility icon matches the current state
     updateVisibilityIcon();
     
@@ -247,47 +537,69 @@ export function setupDockEventListeners() {
 }
 
 /**
+ * Creates a button to toggle EDL navigation
+ */
+function createEDLNavigationToggleButton() {
+    console.log('[Dock] Creating EDL navigation toggle button');
+    
+    // Create button
+    const button = document.createElement('button');
+    button.id = 'toggleEDLNavigationBtn';
+    button.title = 'Toggle EDL Weather Navigation';
+    
+    // Use airwave icon with Material Icons
+    button.innerHTML = '<span class="material-icons">waves</span>';
+    
+    // Add click event
+    button.addEventListener('click', toggleEDLNavigation);
+    
+    // Add to dock, right before the "more options" button
+    const mapDock = document.getElementById('mapDock');
+    const moreOptionsBtn = document.getElementById('moreOptionsBtn');
+    
+    if (moreOptionsBtn) {
+        mapDock.insertBefore(button, moreOptionsBtn);
+    } else {
+        mapDock.appendChild(button);
+    }
+    
+    console.log('[Dock] EDL navigation toggle button created');
+}
+
+/**
  * Creates and adds zoom buttons only for non-mobile devices
  */
 function createZoomButtonsIfNeeded() {
-    // Import the isMobileDevice function dynamically to avoid circular dependencies
-    import('./utils.js').then(module => {
-        const isMobileDevice = module.isMobileDevice;
-        
-        // Only create zoom buttons if NOT on a mobile device
-        if (!isMobileDevice()) {
-            const mapDock = document.getElementById('mapDock');
-            const moreOptionsBtn = document.getElementById('moreOptionsBtn');
-            
-            // Create zoom in button
-            const zoomInBtn = document.createElement('button');
-            zoomInBtn.id = 'zoomInBtn';
-            zoomInBtn.title = 'Zoom In';
-            zoomInBtn.innerHTML = '<span class="material-icons-round">zoom_in</span>';
-            
-            // Create zoom out button
-            const zoomOutBtn = document.createElement('button');
-            zoomOutBtn.id = 'zoomOutBtn';
-            zoomOutBtn.title = 'Zoom Out';
-            zoomOutBtn.innerHTML = '<span class="material-icons-round">zoom_out</span>';
-            
-            // Insert before the more options button
-            mapDock.insertBefore(zoomInBtn, moreOptionsBtn);
-            mapDock.insertBefore(zoomOutBtn, moreOptionsBtn);
-            
-            // Add event listeners
-            zoomInBtn.addEventListener('click', () => {
-                getMap().zoomIn();
-            });
-            
-            zoomOutBtn.addEventListener('click', () => {
-                getMap().zoomOut();
-            });
-            
-            // Recalculate sizes after adding new buttons
-            updateDockElementSizes();
-        } 
-    }).catch(err => {
-        console.error('Error importing utils module:', err);
+    // Don't add zoom buttons on mobile devices (touch-enabled)
+    if ('ontouchstart' in window) {
+        return;
+    }
+    
+    // Create zoom in button
+    const zoomInBtn = document.createElement('button');
+    zoomInBtn.title = 'Zoom In';
+    zoomInBtn.innerHTML = '<span class="material-icons">add</span>';
+    zoomInBtn.addEventListener('click', () => {
+        getMap().zoomIn();
     });
+    
+    // Create zoom out button
+    const zoomOutBtn = document.createElement('button');
+    zoomOutBtn.title = 'Zoom Out';
+    zoomOutBtn.innerHTML = '<span class="material-icons">remove</span>';
+    zoomOutBtn.addEventListener('click', () => {
+        getMap().zoomOut();
+    });
+    
+    // Add buttons to mapDock, right before the more options button
+    const mapDock = document.getElementById('mapDock');
+    const moreOptionsBtn = document.getElementById('moreOptionsBtn');
+    
+    if (moreOptionsBtn) {
+        mapDock.insertBefore(zoomInBtn, moreOptionsBtn);
+        mapDock.insertBefore(zoomOutBtn, moreOptionsBtn);
+    } else {
+        mapDock.appendChild(zoomInBtn);
+        mapDock.appendChild(zoomOutBtn);
+    }
 } 

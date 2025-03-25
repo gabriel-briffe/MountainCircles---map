@@ -165,7 +165,7 @@ h3 {
 }
 
 /* Ensure icons can shrink properly */
-#mapDock .material-icons-round {
+#mapDock .material-icons {
     font-size: calc(var(--dock-button-size) * 0.5); /* 50% of button size */
     height: calc(var(--dock-button-size) * 0.5);
     min-width: 0;
@@ -174,9 +174,29 @@ h3 {
 }
 
 /* Material icons in the dock should scale with button size */
-#mapDock .material-icons-round {
+#mapDock .material-icons {
     font-size: calc(var(--dock-button-size) * 0.5); /* 50% of button size */
     height: calc(var(--dock-button-size) * 0.5);
+}
+
+/* Make sure material-icons have the same styling */
+.material-icons {
+    font-family: 'Material Icons';
+    font-weight: normal;
+    font-style: normal;
+    font-size: calc(var(--dock-button-size) * 0.5);
+    line-height: 1;
+    letter-spacing: normal;
+    text-transform: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: calc(var(--dock-button-size) * 0.5);
+    white-space: nowrap;
+    word-wrap: normal;
+    direction: ltr;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
 }
 
 /* Map Dock Buttons: Remove transition and hover effects */
@@ -705,7 +725,7 @@ h3 {
 }
 
 /* Style for the button icons in popup menu */
-.popup-menu-button .material-icons-round {
+.popup-menu-button .material-icons {
     font-size: 20px; /* Consistent icon size */
     display: flex;
     align-items: center;
@@ -1038,13 +1058,13 @@ h3 {
     gap: 8px;
 }
 
-#peaksToggleBtn .material-icons-round,
-#passesToggleBtn .material-icons-round {
+#peaksToggleBtn .material-icons,
+#passesToggleBtn .material-icons {
     font-size: 20px;
 }
 
 /* Make sure all material icons in buttons are properly aligned */
-button .material-icons-round {
+button .material-icons {
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -1167,7 +1187,7 @@ button .material-icons-round {
     }
     
     /* Global elements */
-    .material-icons-round {
+    .material-icons {
         color: var(--text-dark);
     }
 }
@@ -1288,7 +1308,7 @@ button .material-icons-round {
 /* Dark mode adjustments */
 @media (prefers-color-scheme: dark) {
     /* Global elements */
-    .material-icons-round {
+    .material-icons {
         color: var(--text-dark);
     }
     
@@ -1329,7 +1349,7 @@ button .material-icons-round {
         transform: none;   /* Disable zooming in dark mode as well */
         background: var(--bg-dark);
     }
-    #mapDock .material-icons-round {
+    #mapDock .material-icons {
         color: var(--text-dark);
     }
     

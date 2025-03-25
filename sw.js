@@ -42,7 +42,7 @@ const EXTERNAL_RESOURCES = [
     // External libraries, fonts and resources
     'https://cdn.jsdelivr.net/npm/maplibre-gl@latest/dist/maplibre-gl.js',
     'https://cdn.jsdelivr.net/npm/maplibre-gl@latest/dist/maplibre-gl.css',
-    'https://fonts.googleapis.com/icon?family=Material+Icons+Round',
+    'https://fonts.googleapis.com/icon?family=Material+Icons',
     'https://demotiles.maplibre.org/font/Open%20Sans%20Regular,Arial%20Unicode%20MS%20Regular/0-255.pbf',
     'https://demotiles.maplibre.org/font/Open%20Sans%20Regular,Arial%20Unicode%20MS%20Regular/256-511.pbf'
 ];
@@ -69,6 +69,7 @@ const INITIAL_CACHE_RESOURCES = [
     `${BASE_PATH}/coreFiles.js`,
     `${BASE_PATH}/dock.js`,
     `${BASE_PATH}/edl.js`,
+    `${BASE_PATH}/edlUI.js`,
     `${BASE_PATH}/igc.js`,
     `${BASE_PATH}/init.js`,
     `${BASE_PATH}/install.js`,

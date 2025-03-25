@@ -6,9 +6,9 @@
 import mbtilesHandler from './mbtiles.js';
 
 // Constants from multiload.js
-const isobareList = [50000, 60000, 70000, 80000, 90000];
+export const isobareList = [50000, 60000, 70000, 80000, 90000];
 // const hourList = [7];
-const hourList = [7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21];
+export const hourList = [7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21];
 const mbtilesURLBase = 'https://edl-proxy.gabriel-briffe.workers.dev/?url=https://www.edl-soaring.com/mbtiles/extract_mbtiles_from_date.php';
 
 // Cache name to use for EDL tiles (reusing the same cache for all tiles)
@@ -386,61 +386,6 @@ export function hasEDLTiles() {
 }
 
 /**
- * Checks and adds EDL section to sidebar if needed
- */
-async function refreshSidebarAfterCaching() {
-  try {
-    console.log('[edlCache] Checking if EDL section exists in sidebar');
-    
-    // Wait briefly to ensure the metadata event has been processed
-    await new Promise(resolve => setTimeout(resolve, 300));
-    
-    // Find the sidebar - use the ID that's used in sidebar.js
-    const sidebar = document.getElementById('airspace-sidebar');
-    if (!sidebar) {
-      console.log('[edlCache] Sidebar not found');
-      return;
-    }
-    
-    // Check if EDL section already exists
-    let edlSectionExists = false;
-    const headings = sidebar.querySelectorAll('h3');
-    
-    for (const heading of headings) {
-      if (heading.textContent === 'EDL Weather') {
-        edlSectionExists = true;
-        break;
-      }
-    }
-    
-    // If section doesn't exist but we have EDL tiles, add it
-    if (!edlSectionExists && hasEDLTiles()) {
-      console.log('[edlCache] EDL section not found, adding it after caching');
-      
-      // Import the EDL module dynamically to avoid circular dependencies
-      const edlModule = await import('./edl.js');
-      
-      // Add a divider before the EDL toggle section (matching the pattern in sidebar.js)
-      // Create and add a divider if it's a function imported from sidebar.js
-      try {
-        const { addSidebarDivider } = await import('./sidebar.js');
-        addSidebarDivider(sidebar);
-      } catch (err) {
-        // If we can't import the function, create a divider manually
-        const divider = document.createElement('hr');
-        divider.className = 'sidebar-divider';
-        sidebar.appendChild(divider);
-      }
-      
-      // Add the EDL toggle section
-      edlModule.addEDLToggleToSidebar(sidebar);
-    }
-  } catch (error) {
-    console.error('[edlCache] Error refreshing sidebar:', error);
-  }
-}
-
-/**
  * Processes all EDL MBTiles files sequentially
  * @returns {Promise<Object>} Result of the caching operation
  */
@@ -560,9 +505,6 @@ export async function cacheEDLTiles() {
     
     // Save metadata about the cached tiles
     await saveEDLMetadata(processedFiles);
-    
-    // Check and add EDL section to sidebar if needed
-    await refreshSidebarAfterCaching();
     
     return {
       success: true,

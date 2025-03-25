@@ -141,27 +141,6 @@ export function createTypeCheckboxes(features) {
     // Add peaks and passes toggles
     addPeaksPassesToggle(sidebar);
     
-    // Import and check hasEDLTiles dynamically to avoid circular dependencies
-    import('./cacheEdl.js').then(edlCacheModule => {
-        // Only add EDL toggle if tiles are available
-        if (edlCacheModule.hasEDLTiles()) {
-            // Add a divider for EDL section
-            addSidebarDivider(sidebar);
-            
-            // Import EDL module and add the toggle to sidebar
-            import('./edl.js').then(edlModule => {
-                // Add EDL toggle
-                edlModule.addEDLToggleToSidebar(sidebar);
-            }).catch(error => {
-                console.error('[Sidebar] Error importing EDL module:', error);
-            });
-        } else {
-            console.log('[Sidebar] No EDL tiles available, not adding EDL toggle section');
-        }
-    }).catch(error => {
-        console.error('[Sidebar] Error importing edlCache module:', error);
-    });
-    
     // Add geolocation toggle and navboxes toggle only on mobile devices
     if (isMobileDevice()) {
         // Add a divider
@@ -461,7 +440,7 @@ export function addTextSizeControls(sidebar) {
     // Add decrease text size button
     const decreaseTextBtn = document.createElement('button');
     decreaseTextBtn.className = 'sidebar-config-btn text-size-button';
-    decreaseTextBtn.innerHTML = '<span class="material-icons-round">exposure_minus_1</span>';
+    decreaseTextBtn.innerHTML = '<span class="material-icons">exposure_minus_1</span>';
     decreaseTextBtn.addEventListener('click', () => {
         setBaseTextSize(Math.max(1, getBaseTextSize() - 1));
         updateAllLabelSizes();
@@ -470,7 +449,7 @@ export function addTextSizeControls(sidebar) {
     // Add increase text size button
     const increaseTextBtn = document.createElement('button');
     increaseTextBtn.className = 'sidebar-config-btn text-size-button';
-    increaseTextBtn.innerHTML = '<span class="material-icons-round">exposure_plus_1</span>';
+    increaseTextBtn.innerHTML = '<span class="material-icons">exposure_plus_1</span>';
     increaseTextBtn.addEventListener('click', () => {
         setBaseTextSize(getBaseTextSize() + 1);
         updateAllLabelSizes();
@@ -1230,41 +1209,4 @@ export function addTracklogControls(sidebar) {
     
     // Add to sidebar
     sidebar.appendChild(toggleContainer);
-}
-
-// Add event listener for EDL metadata updates
-window.addEventListener('edl_metadata_updated', (event) => {
-    console.log('[Sidebar] EDL metadata updated, refreshing sidebar');
-    
-    // Get sidebar reference using the ID to be consistent with the rest of the code
-    const sidebar = document.getElementById('airspace-sidebar');
-    if (sidebar) {
-        // Check if EDL section already exists
-        let existingEDLSection = false;
-        
-        // Find all h3 headings in the sidebar and check their text content
-        const headings = sidebar.querySelectorAll('h3');
-        for (const heading of headings) {
-            if (heading.textContent === 'EDL Weather') {
-                existingEDLSection = true;
-                break;
-            }
-        }
-        
-        // Only refresh if EDL section isn't already present
-        if (!existingEDLSection) {
-            console.log('[Sidebar] Adding EDL section after metadata update');
-            
-            // Add a divider first
-            addSidebarDivider(sidebar);
-            
-            // Import the EDL module dynamically to avoid circular dependencies
-            import('./edl.js').then(edlModule => {
-                // Add EDL toggle if it doesn't exist yet
-                edlModule.addEDLToggleToSidebar(sidebar);
-            }).catch(error => {
-                console.error('[Sidebar] Error loading EDL module:', error);
-            });
-        }
-    }
-}); 
+} 
