@@ -297,8 +297,17 @@ self.addEventListener('message', async (event) => {
                         currentFile: file
                     });
                     
+                    // For HTML files, add a cache-busting query parameter
+                    let fetchUrl = url;
+                    if (file.endsWith('.html')) {
+                        fetchUrl = new URL(url);
+                        fetchUrl.searchParams.set('update', Date.now());
+                        fetchUrl = fetchUrl.toString();
+                        console.log(`SW - Using cache-busting URL for HTML: ${fetchUrl}`);
+                    }
+                    
                     // Download the file fresh from network (no cache)
-                    const response = await fetch(url, { cache: 'no-store' });
+                    const response = await fetch(fetchUrl, { cache: 'no-store' });
                     
                     if (response.ok) {
                         // Put the file directly into the cache
@@ -333,11 +342,15 @@ self.addEventListener('message', async (event) => {
             }
             
             if (!failed) {
+                // Keep track of what types of files were updated
+                const updatedFiles = filesToUpdate.slice(0);
+                
                 // Notify completion
                 sendMessageToClients({
                     type: 'appUpdateComplete',
                     message: `Successfully updated ${filesToUpdate.length} app files`,
-                    needsReload: true
+                    needsReload: true,
+                    updatedFiles: updatedFiles
                 });
             } else {
                 sendMessageToClients({

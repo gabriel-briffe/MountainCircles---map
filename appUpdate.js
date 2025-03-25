@@ -85,8 +85,48 @@ function setupMessageHandler(uiElements) {
                         progressFill.style.width = '0%';
                         
                         if (data.needsReload) {
-                            // Reload the page without any cache parameters
-                            window.location.reload();
+                            // Check if HTML files were updated
+                            const htmlFilesUpdated = data.updatedFiles && 
+                                data.updatedFiles.some(file => file.endsWith('.html'));
+                            
+                            if (htmlFilesUpdated) {
+                                // If HTML was updated, use a cache-busting reload approach
+                                const cacheBuster = Date.now();
+                                
+                                // Use BASE_PATH to ensure we respect the deployment location
+                                // Determine the index file path taking BASE_PATH into account
+                                let indexPath;
+                                
+                                if (window.location.pathname === BASE_PATH || 
+                                    window.location.pathname === BASE_PATH + '/' || 
+                                    window.location.pathname === '/') {
+                                    // We're at the root - use the BASE_PATH + index.html
+                                    indexPath = BASE_PATH + '/index.html';
+                                } else {
+                                    // We're at some other path - preserve it
+                                    indexPath = window.location.pathname;
+                                }
+                                
+                                // Remove any double slashes
+                                indexPath = indexPath.replace(/\/\//g, '/');
+                                
+                                // Build URL with cache-busting parameter
+                                // First, create a URL object to properly handle parameters
+                                const url = new URL(window.location.href);
+                                
+                                // Remove any existing 'update' parameters
+                                url.searchParams.delete('update');
+                                
+                                // Set the new path and add a fresh update parameter
+                                url.pathname = indexPath;
+                                url.searchParams.set('update', cacheBuster.toString());
+                                
+                                // Navigate to the clean URL
+                                window.location.href = url.toString();
+                            } else {
+                                // For JS-only updates, a simple reload is sufficient
+                                window.location.reload();
+                            }
                         }
                     }, 2000);
                     navigator.serviceWorker.removeEventListener('message', messageHandler);
