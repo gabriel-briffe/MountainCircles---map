@@ -8,7 +8,10 @@ import {
     setGeolocationEnabled, 
     getNavboxesEnabled, 
     setNavboxesEnabled,
-    getLayerManager
+    getTracklogEnabled,
+    setTracklogEnabled,
+    getLayerManager,
+    getMap
 } from "./state.js";
 import { updateNavboxesState } from "./navboxManager.js";
 import { setupGeolocation, stopGeolocation } from "./location.js";
@@ -18,6 +21,8 @@ import { isMobileDevice } from "./utils.js";
 let locationToggle = null;
 let navboxesToggle = null;
 let navboxesToggleContainer = null;
+let tracklogToggle = null;
+let tracklogToggleContainer = null;
 
 // For debugging
 const DEBUG = true;
@@ -65,6 +70,8 @@ export function initToggleManager() {
     locationToggle = document.getElementById('location-toggle');
     navboxesToggle = document.getElementById('navboxes-toggle');
     navboxesToggleContainer = document.getElementById('navboxes-toggle-container');
+    tracklogToggle = document.getElementById('tracklog-toggle');
+    tracklogToggleContainer = document.getElementById('tracklog-toggle-container');
     
     // Set initial states
     updateToggleStates();
@@ -78,6 +85,7 @@ export function initToggleManager() {
 export function updateToggleStates() {
     updateLocationToggleState();
     updateNavboxesToggleState();
+    updateTracklogToggleState();
 }
 
 /**
@@ -125,6 +133,37 @@ export function updateNavboxesToggleState() {
 }
 
 /**
+ * Updates the tracklog toggle state based on both geolocation and tracklog enabled status
+ */
+export function updateTracklogToggleState() {
+    if (!tracklogToggle || !tracklogToggleContainer) return;
+    
+    const geolocationEnabled = getGeolocationEnabled();
+    const tracklogEnabled = getTracklogEnabled();
+    
+    // Update toggle state
+    if (geolocationEnabled) {
+        // Enable the toggle
+        tracklogToggle.disabled = false;
+        tracklogToggle.style.opacity = '1';
+        tracklogToggle.style.cursor = 'pointer';
+        
+        // Set correct state
+        tracklogToggle.className = `toggle-switch ${tracklogEnabled ? 'active' : ''}`;
+        tracklogToggle.setAttribute('aria-checked', tracklogEnabled.toString());
+    } else {
+        // Disable the toggle and ensure it's off
+        tracklogToggle.disabled = true;
+        tracklogToggle.style.opacity = '0.5';
+        tracklogToggle.style.cursor = 'not-allowed';
+        
+        // Force the visual state to be off
+        tracklogToggle.className = 'toggle-switch';
+        tracklogToggle.setAttribute('aria-checked', 'false');
+    }
+}
+
+/**
  * Set geolocation state AND update slider position
  * @param {boolean} enabled - The new geolocation state
  */
@@ -140,13 +179,20 @@ export function setGeolocationStateAndSlider(enabled) {
         locationToggle.setAttribute('aria-checked', enabled.toString());
     }
     
-    // If turning off geolocation, also turn off navboxes
-    if (!enabled && getNavboxesEnabled()) {
-        setNavboxesStateAndSlider(false);
+    // If turning off geolocation, also turn off navboxes and tracklog
+    if (!enabled) {
+        if (getNavboxesEnabled()) {
+            setNavboxesStateAndSlider(false);
+        }
+        
+        if (getTracklogEnabled()) {
+            setTracklogStateAndSlider(false);
+        }
     }
     
-    // Update navboxes toggle availability 
+    // Update dependent toggles' availability
     updateNavboxesToggleState();
+    updateTracklogToggleState();
     
     // Log debug info about the state change
     // logToggleDebug('Geolocation State Change', { 
@@ -189,6 +235,34 @@ export function setNavboxesStateAndSlider(enabled) {
     //     isToggleInDOM: !!navboxesToggle,
     //     geolocationState: getGeolocationEnabled()
     // });
+}
+
+/**
+ * Set tracklog state AND update slider position
+ * @param {boolean} enabled - The new tracklog state
+ */
+export function setTracklogStateAndSlider(enabled) {
+    const previousState = getTracklogEnabled();
+    
+    // Don't enable tracklog if geolocation is disabled
+    if (enabled && !getGeolocationEnabled()) {
+        return;
+    }
+    
+    // Update state in the data model
+    setTracklogEnabled(enabled);
+    
+    // Update slider UI to match
+    if (tracklogToggle) {
+        tracklogToggle.className = `toggle-switch ${enabled ? 'active' : ''}`;
+        tracklogToggle.setAttribute('aria-checked', enabled.toString());
+    }
+    
+    // Update the tracklog layer visibility
+    const map = getMap();
+    if (map && map.getLayer('tracklog-full-line')) {
+        map.setLayoutProperty('tracklog-full-line', 'visibility', enabled ? 'visible' : 'none');
+    }
 }
 
 /**

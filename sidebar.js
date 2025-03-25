@@ -150,10 +150,6 @@ export function createTypeCheckboxes(features) {
         addLocationToggle(sidebar);
     }
     
-    // Add tracklog section
-    addSidebarDivider(sidebar);
-    addTracklogControls(sidebar);
-    
     // Add a divider
     addSidebarDivider(sidebar);
     
@@ -1113,7 +1109,10 @@ export function addLocationToggle(sidebar) {
     // Now add the Navboxes toggle
     addNavboxesToggle(sidebar);
     
-    // Initialize the toggle manager after both toggles are created
+    // Add the tracklog toggle
+    addTracklogControls(sidebar);
+    
+    // Initialize the toggle manager after all toggles are created
     initToggleManager();
 }
 
@@ -1194,23 +1193,30 @@ export function addTracklogControls(sidebar) {
     toggleContainer.style.justifyContent = 'space-between';
     toggleContainer.style.alignItems = 'center';
     toggleContainer.style.padding = '5px 0';
+    toggleContainer.id = 'tracklog-toggle-container';
     
     // Create label
     const label = document.createElement('span');
     label.textContent = 'Track';
     label.style.marginRight = '10px';
     
-    // Create toggle switch (default to active)
+    // Get current states from settings
+    const isTracklogEnabled = getTracklogEnabled();
+    const geolocationEnabled = getGeolocationEnabled();
+    
+    // Create toggle switch
     const toggleSwitch = document.createElement('button');
-    toggleSwitch.className = 'toggle-switch active';
-    toggleSwitch.setAttribute('aria-checked', 'true');
+    toggleSwitch.className = `toggle-switch ${isTracklogEnabled ? 'active' : ''}`;
+    toggleSwitch.setAttribute('aria-checked', isTracklogEnabled.toString());
     toggleSwitch.setAttribute('role', 'switch');
     toggleSwitch.id = 'tracklog-toggle';
     
-    // Set initial state based on stored preference
-    const isTracklogEnabled = getTracklogEnabled();
-    toggleSwitch.className = isTracklogEnabled ? 'toggle-switch active' : 'toggle-switch';
-    toggleSwitch.setAttribute('aria-checked', isTracklogEnabled.toString());
+    // Disable the toggle if geolocation is disabled
+    if (!geolocationEnabled) {
+        toggleSwitch.disabled = true;
+        toggleSwitch.style.opacity = '0.5';
+        toggleSwitch.style.cursor = 'not-allowed';
+    }
     
     // Create toggle slider
     const toggleSlider = document.createElement('span');
@@ -1219,6 +1225,11 @@ export function addTracklogControls(sidebar) {
     
     // Add click event listener to toggle tracklog visibility
     toggleSwitch.addEventListener('click', () => {
+        // Only allow toggle if geolocation is enabled
+        if (!getGeolocationEnabled()) {
+            return;
+        }
+        
         const isActive = toggleSwitch.classList.toggle('active');
         toggleSwitch.setAttribute('aria-checked', isActive.toString());
         const map = getMap();
