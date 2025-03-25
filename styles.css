@@ -627,13 +627,29 @@ h3 {
 /* =================================
    7. PARAMETERS BOX
    ================================= */
+/* Bottom info container */
+#bottom-info-container {
+    position: fixed;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 1000;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+    max-width: 100%;
+}
+
+/* Hide parameters box when visibility toggle is off */
+.parameters-hidden #parametersBox {
+    display: none;
+}
+
 /* Parameters Box styling */
 #parametersBox {
-    position: fixed;
-    bottom: 0px;
-    left: 50%;
-    transform: translateX(-50%); /* Center horizontally */
-    z-index: 1000;
+    position: relative; /* Changed from fixed */
+    margin-bottom: 5px; /* Add spacing from bottom */
     background: rgba(255, 255, 255, 0.5);
     padding: 5px; /* Add more horizontal padding */
     border-radius: 5px;
@@ -1318,6 +1334,11 @@ button .material-icons {
         color: var(--text-dark);
     }
     
+    /* Bottom info container - no special styling needed besides ensuring proper text color */
+    #bottom-info-container {
+        color: var(--text-dark);
+    }
+    
     /* Navboxes */
     .navboxes-enabled .navbox {
         background-color: var(--bg-dark);
@@ -1615,11 +1636,12 @@ button .material-icons {
 /* Portrait mode for navboxes */
 @media (orientation: portrait) {
     .navboxes-enabled .navbox-container {
+        position: relative; /* Changed from fixed to work inside bottom-info-container */
         right: auto; /* Reset right position */
         top: auto; /* Reset top position */
-        bottom: 45px; /* Position at bottom in portrait */
-        left: 50%; /* Center horizontally in portrait */
-        transform: translateX(-50%); /* Center horizontally in portrait */
+        bottom: auto; /* Reset bottom position */
+        left: auto; /* Reset left position */
+        transform: none; /* Remove transform */
         flex-direction: row; /* Horizontal layout in portrait */
         flex-wrap: nowrap; /* Prevent wrapping to multiple lines */
         width: auto; /* Let content determine width */
@@ -1628,6 +1650,7 @@ button .material-icons {
         scrollbar-width: none; /* Hide scrollbar in Firefox */
         -ms-overflow-style: none; /* Hide scrollbar in IE/Edge */
         padding: 0 4px; /* Add a small horizontal padding */
+        margin-bottom: 5px; /* Add spacing from parametersBox */
     }
     
     /* Hide scrollbar for Chrome, Safari and Opera */
@@ -1639,6 +1662,25 @@ button .material-icons {
     .navboxes-enabled .navbox {
         flex: 1 0 auto; /* Don't shrink, grow if space available */
         min-width: 80px; /* Minimum width to prevent excessive shrinking */
+    }
+}
+
+/* Landscape mode for navboxes */
+@media (orientation: landscape) {
+    .navboxes-enabled .navbox-container {
+        position: fixed; /* Fixed position when in body */
+        top: 50%; /* Center vertically */
+        right: 10px; /* Position on right side */
+        transform: translateY(-50%); /* Center vertically */
+        flex-direction: column; /* Vertical layout in landscape */
+        max-height: 90vh; /* Limit height */
+        left: auto; /* Reset any left positioning */
+        bottom: auto; /* Reset any bottom positioning */
+    }
+    
+    /* Bottom info container in landscape - keep centered at bottom */
+    #bottom-info-container {
+        bottom: 0;
     }
 }
 

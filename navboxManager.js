@@ -63,15 +63,65 @@ export function initNavboxes() {
     navboxContainer = document.createElement('div');
     navboxContainer.id = 'navbox-container';
     navboxContainer.className = 'navbox-container';
-    document.body.appendChild(navboxContainer);
+    
+    // Place the container based on orientation
+    placeNavboxContainerByOrientation();
         
     // Create individual navboxes
     createAltitudeBox();
     createSpeedBox();
     createTrackBox();
     
+    // Add listeners for orientation changes
+    window.addEventListener('orientationchange', handleOrientationChange);
+    window.addEventListener('resize', debounce(handleOrientationChange, 250));
+    
     // Mark as initialized
     initialized = true;
+}
+
+/**
+ * Places the navbox container in the correct parent element based on current orientation
+ */
+function placeNavboxContainerByOrientation() {
+    if (!navboxContainer) return;
+    
+    const isPortrait = window.innerHeight > window.innerWidth;
+    const bottomInfoContainer = document.getElementById('bottom-info-container');
+    
+    if (isPortrait && bottomInfoContainer) {
+        // In portrait mode, place inside bottom-info-container
+        bottomInfoContainer.insertBefore(navboxContainer, bottomInfoContainer.firstChild);
+    } else {
+        // In landscape mode, place directly in body
+        document.body.appendChild(navboxContainer);
+    }
+    
+    console.log(`[NavboxManager] Placed navbox container in ${isPortrait ? 'portrait' : 'landscape'} mode`);
+}
+
+/**
+ * Handles orientation changes by moving the navbox container to the appropriate parent
+ */
+function handleOrientationChange() {
+    if (!navboxContainer || !initialized) return;
+    
+    // Use setTimeout to ensure window dimensions are updated
+    setTimeout(() => {
+        placeNavboxContainerByOrientation();
+    }, 150);
+}
+
+/**
+ * Simple debounce function to limit how often a function is called
+ */
+function debounce(func, wait) {
+    let timeout;
+    return function() {
+        const context = this, args = arguments;
+        clearTimeout(timeout);
+        timeout = setTimeout(() => func.apply(context, args), wait);
+    };
 }
 
 /**

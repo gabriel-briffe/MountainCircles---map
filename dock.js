@@ -183,6 +183,13 @@ export function toggleLayerVisibility() {
     // Update the icon
     updateVisibilityIcon();
     
+    // Add/remove parameters-hidden class to control parameters box visibility
+    if (newState) {
+        document.body.classList.remove('parameters-hidden');
+    } else {
+        document.body.classList.add('parameters-hidden');
+    }
+    
     // Now set layer visibility based on the new state
     const layerIds = ['linestrings-layer', 'linestrings-labels'];
     const newVisibility = newState ? 'visible' : 'none';
@@ -521,6 +528,11 @@ export function setupDockEventListeners() {
 
     // Layer visibility toggle
     document.getElementById('toggleLayerButton').addEventListener('click', toggleLayerVisibility);
+
+    // Initialize parameters visibility based on current toggle state
+    if (!getLayersToggleState()) {
+        document.body.classList.add('parameters-hidden');
+    }
 
     // Sidebar toggle
     document.getElementById('toggleSidebarButton').addEventListener('click', () => {
