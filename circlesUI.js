@@ -38,6 +38,22 @@ function debounce(func, wait) {
 }
 
 /**
+ * Updates the parameters box visibility based on current conditions
+ * Hides parameters box when circles visibility is off OR opacity is 0
+ */
+function updateParametersBoxVisibility() {
+    const isVisible = getLayersToggleState();
+    const opacity = getPolygonOpacity();
+    
+    // Hide parameters box if layers are invisible OR opacity is 0
+    if (!isVisible && opacity === 0) {
+        document.body.classList.add('parameters-hidden');
+    } else {
+        document.body.classList.remove('parameters-hidden');
+    }
+}
+
+/**
  * Initializes the Circles UI
  */
 export function initCirclesUI() {
@@ -54,6 +70,9 @@ export function initCirclesUI() {
     
     // Set initial visibility icon
     updateVisibilityIcon();
+    
+    // Apply initial parameters box visibility
+    updateParametersBoxVisibility();
     
     // Add event listeners
     setupEventListeners();
@@ -76,6 +95,8 @@ function setupEventListeners() {
             getLayerManager().setPaintProperty('polygons-layer', 'fill-opacity', opacity);
             // Store in state immediately
             setPolygonOpacity(opacity);
+            // Update parameters box visibility based on opacity
+            updateParametersBoxVisibility();
             // Debounce the save operation
             debouncedSaveState();
         });
@@ -110,12 +131,8 @@ export function toggleLayerVisibility() {
     // Update the icon
     updateVisibilityIcon();
     
-    // Add/remove parameters-hidden class to control parameters box visibility
-    if (newState) {
-        document.body.classList.remove('parameters-hidden');
-    } else {
-        document.body.classList.add('parameters-hidden');
-    }
+    // Update parameters box visibility based on new state and current opacity
+    updateParametersBoxVisibility();
     
     // Now set layer visibility based on the new state
     const layerIds = ['linestrings-layer', 'linestrings-labels'];
@@ -169,5 +186,7 @@ export function getCirclesOpacity() {
 export function updateOpacitySlider(opacity) {
     if (opacitySlider) {
         opacitySlider.value = opacity;
+        // Update parameters box visibility when opacity is set programmatically
+        updateParametersBoxVisibility();
     }
 }
