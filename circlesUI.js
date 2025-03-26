@@ -68,8 +68,7 @@ export function initCirclesUI() {
         opacitySlider.value = getPolygonOpacity();
     }
     
-    // Set initial visibility icon
-    updateVisibilityIcon();
+    // No need to update icon here - it will be updated by state management
     
     // Apply initial parameters box visibility
     updateParametersBoxVisibility();
@@ -109,27 +108,13 @@ function setupEventListeners() {
 }
 
 /**
- * Updates the visibility icon based on layer toggle state
- */
-export function updateVisibilityIcon() {
-    const toggleState = getLayersToggleState();
-    const icon = document.getElementById('circlesVisibilityIcon');
-    if (icon) {
-        icon.textContent = toggleState ? 'visibility' : 'visibility_off';
-    }
-}
-
-/**
  * Toggles the visibility of circles layers
  */
 export function toggleLayerVisibility() {
-    // Toggle the state first
+    // Toggle the state first (this will now also update the icon)
     const currentState = getLayersToggleState();
     const newState = !currentState;
     setLayersToggleState(newState);
-    
-    // Update the icon
-    updateVisibilityIcon();
     
     // Update parameters box visibility based on new state and current opacity
     updateParametersBoxVisibility();
@@ -158,8 +143,7 @@ export function toggleLayerVisibility() {
         }
     }
     
-    // Save state to Cache API
-    saveStateToLocalStorage().catch(err => console.error('Error saving state:', err));
+    // Note: Save to Cache API is now handled by setLayersToggleState
 }
 
 /**
@@ -169,24 +153,5 @@ export function toggleCirclesNavigationRow(visible) {
     const navRow = document.getElementById('circlesNavRow');
     if (navRow) {
         navRow.style.display = visible ? 'flex' : 'none';
-    }
-}
-
-/**
- * Exports the current polygon opacity
- */
-export function getCirclesOpacity() {
-    return getPolygonOpacity();
-}
-
-/**
- * Updates the CirclesUI opacity slider value
- * @param {number} opacity - The opacity value to set
- */
-export function updateOpacitySlider(opacity) {
-    if (opacitySlider) {
-        opacitySlider.value = opacity;
-        // Update parameters box visibility when opacity is set programmatically
-        updateParametersBoxVisibility();
     }
 }

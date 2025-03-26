@@ -220,6 +220,15 @@ export function getLayersToggleState() {
  */
 export function setLayersToggleState(state) {
     _state.layersToggleState = state;
+    
+    // Update the circles visibility icon
+    const circlesIcon = document.getElementById('circlesVisibilityIcon');
+    if (circlesIcon) {
+        circlesIcon.textContent = state ? 'visibility' : 'visibility_off';
+    }
+    
+    // Save to Cache API whenever we update this
+    saveStateToLocalStorage().catch(err => console.error('Error saving layers toggle state:', err));
 }
 
 /**
@@ -385,6 +394,13 @@ export function getAirspaceVisible() {
  */
 export function setAirspaceVisible(visible) {
     _state.airspaceVisible = visible;
+    
+    // Update the visibility icon directly
+    const icon = document.getElementById('airspaceVisibilityIcon');
+    if (icon) {
+        icon.textContent = visible ? 'grid_on' : 'grid_off';
+    }
+    
     // Save to Cache API whenever we update this
     saveStateToLocalStorage().catch(err => console.error('Error saving airspace visibility state:', err));
 }

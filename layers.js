@@ -6,7 +6,8 @@ import {
     getCurrentConfig,
     getPopup,
     clearPopup,
-    getLayersToggleState
+    getLayersToggleState,
+    setLayersToggleState
 } from "./state.js";
 
 import { 
@@ -14,7 +15,6 @@ import {
     dynamicLabelLayerStyle 
 } from "./layerStyles.js";
 
-import { updateVisibilityIcon } from "./dock.js";
 import { clearMarker } from "./map.js";
 import { clearHighlight } from "./airspace.js";
 import { BASE_PATH } from "./config.js";
@@ -72,8 +72,10 @@ export function handlePointClick(e) {
         clearHighlight();
     }
 
-    // Update visibility icon
-    updateVisibilityIcon();
+    // No need to call updateVisibilityIcon explicitly anymore
+    // The icon will be updated automatically by state management
+    // If we need to ensure icons match state, we can call setLayersToggleState with current state
+    setLayersToggleState(getLayersToggleState());
 }
 
 /**

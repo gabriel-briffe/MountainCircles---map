@@ -89,9 +89,10 @@ export function initializeMap(containerId, onMapReady) {
         mapInstance.once('idle', () => {
             getLayerManager().redrawLayersInOrder();
             
-            // Update the visibility icon to match the current state
-            import('./dock.js').then(module => {
-                module.updateVisibilityIcon();
+            // Make sure any state-dependent UI elements are synced with their states
+            import('./state.js').then(module => {
+                // Just get and set the current state to ensure icons match
+                module.setLayersToggleState(module.getLayersToggleState());
             });
         });
     });

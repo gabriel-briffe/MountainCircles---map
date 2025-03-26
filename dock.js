@@ -35,7 +35,6 @@ import {
     initCirclesUI,
     toggleLayerVisibility,
     toggleCirclesNavigationRow,
-    updateVisibilityIcon as updateCirclesVisibilityIcon
 } from "./circlesUI.js";
 
 // Import from airspace and map modules
@@ -87,15 +86,6 @@ export function updateDockElementSizes() {
     // Allow unlimited shrinking by setting minButtonSize to 0
     const minButtonSize = 0;
     const maxButtonSize = 48;
-    
-    // We need to calculate the button size taking into account that gaps are proportional to button size
-    // This requires solving for buttonSize in the equation:
-    // availableSpace = buttonSize * effectiveCount + (effectiveCount - 1) * (buttonSize * 0.2)
-    // Simplifying:
-    // availableSpace = buttonSize * effectiveCount + buttonSize * 0.2 * (effectiveCount - 1)
-    // availableSpace = buttonSize * (effectiveCount + 0.2 * (effectiveCount - 1))
-    // Therefore: buttonSize = availableSpace / (effectiveCount + 0.2 * (effectiveCount - 1))
-    
     const gapMultiplier = 0.2; // Gap is 20% of button size
     const buttonSizeFactor = effectiveCount + gapMultiplier * (effectiveCount - 1);
     let calculatedButtonSize = availableSpace / buttonSizeFactor;
@@ -112,23 +102,6 @@ export function updateDockElementSizes() {
     
     // Log all sizes for debugging
     // logDockSizes(buttonCount, hasSlider, effectiveCount, availableSpace, buttonSize, sliderLength, !isLandscape); // Inverted for UI orientation
-}
-
-/**
- * Updates the visibility icon in the main dock based on layer toggle state
- */
-export function updateVisibilityIcon() {
-    const toggleState = getLayersToggleState();
-    const mainDockIcon = document.getElementById('visibilityIcon');
-    if (mainDockIcon) {
-        mainDockIcon.textContent = toggleState ? 'visibility' : 'visibility_off';
-    }
-    
-    // Also update the icon in the circles navigation row if it exists
-    const circlesIcon = document.getElementById('circlesVisibilityIcon');
-    if (circlesIcon) {
-        circlesIcon.textContent = toggleState ? 'visibility' : 'visibility_off';
-    }
 }
 
 /**
@@ -191,17 +164,6 @@ export function toggleEDLNavigation() {
     }
 }
 
-/**
- * Adds CSS styles for EDL navigation
- * Styles are now in the main CSS file, this function is kept for backwards compatibility
- */
-function addEDLNavigationStyles() {
-    // Since styles are now in the main CSS file, we don't need to add them dynamically
-    // This function is kept for backwards compatibility
-    if (window.APP_CONFIG?.devMode) {
-        console.log('[Dock] Secondary dock navigation styles now loaded from external CSS file');
-    }
-}
 
 /**
  * Creates the EDL navigation row in the dock
@@ -323,9 +285,6 @@ function createEDLNavigationRow() {
     
     // Add to the body, not the mapDock
     document.body.appendChild(container);
-    
-    // Add styles if needed
-    addEDLNavigationStyles();
     
     console.log('[Dock] EDL navigation row created');
 }
@@ -553,7 +512,7 @@ function createZoomButtonsIfNeeded() {
 export function toggleAirspaceVisibility(isVisible) {
     const map = getMap();
     
-    // First update the state
+    // First update the state (this will now also update the icon)
     setAirspaceVisible(isVisible);
     
     // Then update the layer visibility
@@ -571,23 +530,6 @@ export function toggleAirspaceVisibility(isVisible) {
         clearPopup();
         clearHighlight();
         clearMarker();
-    }
-    
-    // Update the visibility icon directly
-    const icon = document.getElementById('airspaceVisibilityIcon');
-    if (icon) {
-        icon.textContent = isVisible ? 'grid_on' : 'grid_off';
-    }
-}
-
-/**
- * Updates the airspace visibility icon based on airspace toggle state
- */
-export function updateAirspaceVisibilityIcon() {
-    const isVisible = getAirspaceVisible();
-    const icon = document.getElementById('airspaceVisibilityIcon');
-    if (icon) {
-        icon.textContent = isVisible ? 'grid_on' : 'grid_off';
     }
 }
 
@@ -627,8 +569,7 @@ export function setupDockEventListeners() {
     const airspaceToggleBtn = document.getElementById('toggleAirspaceButton');
     if (airspaceToggleBtn) {
         airspaceToggleBtn.addEventListener('click', toggleAirspaceLayer);
-        // Initialize icon state
-        updateAirspaceVisibilityIcon();
+        // The icon is now updated by setAirspaceVisible, no need to call update function
     }
 
     // Create and add zoom buttons only for non-mobile devices
@@ -640,8 +581,7 @@ export function setupDockEventListeners() {
     // Create Circles navigation toggle button
     createCirclesNavigationToggleButton();
     
-    // Ensure visibility icons match the current state
-    updateVisibilityIcon();
+    // No need to update visibility icons here - they're updated by state management
     
     // Initial size calculation
     updateDockElementSizes();
