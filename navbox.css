@@ -1,0 +1,140 @@
+/* =================================
+   NAVBOX COMPONENTS
+   ================================= */
+
+/* Base styles */
+.navboxes-enabled .navbox-container {
+    position: fixed;
+    right: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    z-index: 1000;
+    padding: 0px;
+    border-radius: var(--border-radius-large);
+    font-family: var(--font-family);
+}
+
+.navboxes-enabled .navbox {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 8px;
+    background-color: var(--bg-light);
+    border-radius: var(--border-radius-large);
+    color: var(--text-light);
+    min-width: 60px;
+    box-sizing: border-box;
+    text-align: center;
+    box-shadow: 0 2px 5px var(--shadow-light);
+}
+
+.navboxes-enabled .navbox-value {
+    font-size: var(--font-size-large);
+    font-weight: var(--font-weight-bold);
+    color: var(--text-light);
+}
+
+/* Style for units in navbox values */
+.navboxes-enabled .navbox-value span.unit {
+    font-size: var(--font-size-small);
+    font-weight: var(--font-weight-normal);
+    margin-left: 2px;
+}
+
+/* No margin for degree symbol */
+.navboxes-enabled .navbox-value span.unit.degree {
+    margin-left: 0;
+}
+
+.navboxes-enabled .navbox-label {
+    font-size: var(--font-size-small);
+    margin-top: 4px;
+    color: inherit;
+}
+
+/* Warning and Error states */
+.navboxes-enabled .navboxes-warning .navbox,
+.navboxes-enabled .navbox.navbox-warning {
+    border: 2px solid var(--accent-orange);
+}
+
+.navboxes-enabled .navboxes-error .navbox,
+.navboxes-enabled .navbox.navbox-error {
+    border: 2px solid #FF0000;
+}
+
+/* Portrait mode */
+@media (orientation: portrait) {
+    .navboxes-enabled .navbox-container {
+        position: relative;
+        right: auto;
+        top: auto;
+        bottom: auto;
+        left: auto;
+        transform: none;
+        flex-direction: row;
+        flex-wrap: nowrap;
+        width: auto;
+        max-width: 90%;
+        overflow-x: auto;
+        scrollbar-width: none;
+        -ms-overflow-style: none;
+        padding: 0 4px;
+        margin-bottom: 5px;
+    }
+
+    .navboxes-enabled .navbox-container::-webkit-scrollbar {
+        display: none;
+    }
+
+    .navboxes-enabled .navbox {
+        flex: 1 0 auto;
+        min-width: 80px;
+    }
+}
+
+/* Landscape mode */
+@media (orientation: landscape) {
+    .navboxes-enabled .navbox-container {
+        position: fixed;
+        top: 50%;
+        right: 10px;
+        transform: translateY(-50%);
+        flex-direction: column;
+        max-height: 90vh;
+        left: auto;
+        bottom: auto;
+    }
+}
+
+/* Dark mode */
+@media (prefers-color-scheme: dark) {
+    .navboxes-enabled .navbox {
+        background-color: var(--bg-dark);
+        color: var(--text-dark);
+        box-shadow: 0 2px 5px var(--shadow-dark);
+    }
+
+    .navboxes-enabled .navbox-value {
+        color: var(--text-dark);
+    }
+
+    /* Warning state in dark mode */
+    .navboxes-enabled .navboxes-warning .navbox,
+    .navboxes-enabled .navbox.navbox-warning {
+        border: 2px solid #FFA500;
+        /* Brighter orange for dark mode */
+    }
+
+    /* Error state in dark mode */
+    .navboxes-enabled .navboxes-error .navbox,
+    .navboxes-enabled .navbox.navbox-error {
+        border: 2px solid #FF6347;
+        /* Tomato red for dark mode */
+    }
+
+}

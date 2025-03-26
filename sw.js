@@ -56,7 +56,15 @@ const INITIAL_CACHE_RESOURCES = [
     
     // CSS files
     `${BASE_PATH}/styles.css`,
-    
+    `${BASE_PATH}/airspacePopup.css`,
+    `${BASE_PATH}/installPrompt.css`,
+    `${BASE_PATH}/mapDock.css`,
+    `${BASE_PATH}/menu.css`,
+    `${BASE_PATH}/navbox.css`,
+    `${BASE_PATH}/parameters.css`,
+    `${BASE_PATH}/progressBar.css`,
+    `${BASE_PATH}/secondaryDock.css`,
+    `${BASE_PATH}/sidebar.css`,
     // JS files
     `${BASE_PATH}/airspace.js`,
     `${BASE_PATH}/airspaceStyle.js`,
@@ -64,6 +72,7 @@ const INITIAL_CACHE_RESOURCES = [
     `${BASE_PATH}/cacheConfig.js`,
     `${BASE_PATH}/cacheEdl.js`,
     `${BASE_PATH}/cacheTiles.js`,
+    `${BASE_PATH}/circlesUI.js`,
     `${BASE_PATH}/cleanInstall.js`,
     `${BASE_PATH}/config.js`,
     `${BASE_PATH}/coreFiles.js`,

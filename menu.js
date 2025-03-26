@@ -38,7 +38,7 @@ import { cacheEDLTiles } from "./cacheEdl.js";
  */
 export function setupMenuEventListeners() {
     // Popup menu
-    const popupMenu = document.getElementById('popupMenu');
+    const modalMenu = document.getElementById('modalMenu');
     document.getElementById('moreOptionsBtn').addEventListener('click', () => {
         // Check if the sidebar is visible and close it
         const sidebar = document.getElementById('airspace-sidebar');
@@ -50,14 +50,14 @@ export function setupMenuEventListeners() {
         }
 
         // Show the popup menu
-        popupMenu.style.display = "flex";
+        modalMenu.style.display = "flex";
     });
     document.getElementById('closePopupBtn').addEventListener('click', () => {
-        popupMenu.style.display = "none";
+        modalMenu.style.display = "none";
     });
-    popupMenu.addEventListener('click', (e) => {
-        if(e.target === popupMenu) {
-            popupMenu.style.display = "none";
+    modalMenu.addEventListener('click', (e) => {
+        if(e.target === modalMenu) {
+            modalMenu.style.display = "none";
         }
     });
     

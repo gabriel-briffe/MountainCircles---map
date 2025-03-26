@@ -390,7 +390,7 @@ export function addPolicyConfigButtons(sidebar) {
 export function addConfigButton(container, policy, config) {
     const btn = document.createElement('button');
     btn.textContent = config.split('-')[0];  // Use first part as button label
-    btn.className = 'sidebar-config-btn policy-button';
+    btn.className = 'sidebar-config-btn';
     const fullConfig = policy + '/' + config;
     btn.setAttribute('data-config', fullConfig);
     
@@ -473,7 +473,7 @@ export function updateAirspaceFilter() {
     getLayerManager().setFilter('airspace-outline', filter);
     
     // Wait for the map to finish rendering before refreshing the popup
-    if (document.querySelector('.popup-menu')) {
+    if (document.querySelector('.airspace-popup')) {
         // Use the 'idle' event to ensure the map has finished rendering
         const onceIdle = () => {
             triggerPopupRefresh();

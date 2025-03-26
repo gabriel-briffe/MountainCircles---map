@@ -130,9 +130,9 @@ export async function handleFileSelect(event) {
             progressBar.style.width = "0%";
             
             // Hide the menu after successful processing
-            const popupMenu = document.getElementById('popupMenu');
-            if (popupMenu) {
-                popupMenu.style.display = "none";
+            const modalMenu = document.getElementById('modalMenu');
+            if (modalMenu) {
+                modalMenu.style.display = "none";
             }
         }, 500);
         

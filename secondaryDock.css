@@ -1,0 +1,343 @@
+/* =================================
+   15. SECONDARY DOCK UI
+   ================================= */
+/* Secondary Navigation Container - shared base styles */
+.secondary-dock-container {
+    position: fixed;
+    z-index: 1100;
+    pointer-events: none;
+    /* Let clicks pass through to map unless on elements */
+}
+
+/* Secondary Navigation Row - shared base styles */
+.secondary-dock-row {
+    display: flex;
+    pointer-events: auto;
+    /* Make elements clickable */
+    background: rgba(255, 255, 255, 0.2);
+    backdrop-filter: blur(4px);
+    border-radius: var(--border-radius-large);
+    padding: calc(var(--dock-button-size) * 0.1);
+    gap: calc(var(--dock-button-size) * 0.2);
+}
+
+/* Secondary Navigation Buttons - shared base styles */
+.secondary-btn {
+    background: var(--bg-light);
+    border: none;
+    outline: none;
+    border-radius: var(--border-radius-large);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: var(--dock-button-size);
+    height: var(--dock-button-size);
+    aspect-ratio: 1 / 1;
+}
+
+.secondary-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* Active state for secondary dock toggle buttons */
+.dock-toggle-btn.active {
+    background-color: var(--accent-blue) !important;
+    color: white !important;
+    box-shadow: 0 0 8px rgba(50, 150, 255, 0.5);
+    transform: scale(1.05);
+    transition: all 0.2s ease;
+}
+
+/* Range input slider thumb styling */
+input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: calc(var(--dock-button-size) * 0.4);
+    height: calc(var(--dock-button-size) * 0.4);
+    border-radius: 50%;
+    background: var(--text-light);
+    cursor: pointer;
+    border: none;
+}
+
+input[type=range]::-moz-range-thumb {
+    width: calc(var(--dock-button-size) * 0.4);
+    height: calc(var(--dock-button-size) * 0.4);
+    border-radius: 50%;
+    background: var(--text-light);
+    cursor: pointer;
+    border: none;
+}
+
+/* EDL specific indicators */
+#edlTimeIndicator,
+#edlPressureIndicator {
+    font-size: 0.8em;
+    font-weight: bold;
+}
+
+/* Circles Navigation Slider - Base styling */
+#circlesSliderWrapper {
+    border: none;
+    outline: none;
+    border-radius: var(--border-radius-large);
+    cursor: pointer;
+    background: var(--bg-light);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
+    position: relative;
+    /* For absolute positioning of children */
+}
+
+/* Slider styles - Base styling */
+#circlesOpacitySlider {
+    -webkit-appearance: none;
+    appearance: none;
+    background: var(--slider-track-light);
+    border-radius: 3px;
+    outline: none;
+    border: none;
+    height: 6px;
+}
+
+/* Portrait mode styling for circles slider */
+@media (orientation: portrait) {
+    #circlesSliderWrapper {
+        width: var(--sectors-slider-length);
+        height: var(--dock-button-size);
+    }
+
+    #circlesOpacitySlider {
+        width: calc(var(--sectors-slider-length) - 20px);
+        transform: none;
+        position: relative;
+        height: 6px !important;
+        /* Force consistent height */
+    }
+
+    /* Ensure consistent track height in portrait mode */
+    #circlesOpacitySlider::-webkit-slider-runnable-track {
+        height: calc(var(--dock-button-size) * 0.1);
+        background: var(--slider-track-light);
+        border-radius: calc(var(--dock-button-size) * 0.05);
+    }
+
+    #circlesOpacitySlider::-moz-range-track {
+        height: calc(var(--dock-button-size) * 0.1);
+        background: var(--slider-track-light);
+        border-radius: calc(var(--dock-button-size) * 0.05);
+    }
+
+    /* Thumb styling for portrait mode */
+    #circlesOpacitySlider::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        height: calc(var(--dock-button-size) * 0.4);
+        width: calc(var(--dock-button-size) * 0.4);
+        border-radius: 50%;
+        background: var(--text-light);
+        margin-top: calc(-1 * var(--dock-button-size) * 0.15);
+        cursor: pointer;
+    }
+
+    #circlesOpacitySlider::-moz-range-thumb {
+        height: calc(var(--dock-button-size) * 0.4);
+        width: calc(var(--dock-button-size) * 0.4);
+        border-radius: 50%;
+        background: var(--text-light);
+        cursor: pointer;
+        border: none;
+    }
+}
+
+/* Landscape mode styling for circles slider - with !important to force correct sizing */
+@media (orientation: landscape) {
+    #circlesSliderWrapper {
+        width: var(--dock-button-size) !important;
+        height: var(--sectors-slider-length) !important;
+        min-height: var(--sectors-slider-length) !important;
+        max-height: none !important;
+        flex: none !important;
+    }
+
+    #circlesOpacitySlider {
+        position: absolute !important;
+        top: 50% !important;
+        left: 50% !important;
+        transform: translateX(-50%) translateY(-50%) rotate(-90deg) !important;
+        transform-origin: center center !important;
+        width: calc(var(--sectors-slider-length) - 20px) !important;
+        margin: 0 !important;
+        z-index: 2 !important;
+    }
+}
+
+/* Dark mode styles */
+@media (prefers-color-scheme: dark) {
+    .secondary-btn {
+        background: var(--bg-dark);
+        color: var(--text-dark);
+    }
+
+    .secondary-dock-row {
+        background: rgba(0, 0, 0, 0.2);
+    }
+
+    .dock-toggle-btn.active {
+        color: white !important;
+        box-shadow: 0 0 8px rgba(50, 150, 255, 0.5);
+    }
+
+    /* Generic slider thumb in dark mode */
+    input[type=range]::-webkit-slider-thumb {
+        background: white !important;
+        /* Explicitly set to white in dark mode */
+    }
+
+    input[type=range]::-moz-range-thumb {
+        background: white !important;
+        /* Explicitly set to white in dark mode */
+    }
+
+    /* Dark mode slider styling for secondary docks */
+    .secondary-dock-row input[type=range] {
+        background: var(--slider-track-dark);
+    }
+
+    .secondary-dock-row input[type=range]::-webkit-slider-runnable-track {
+        background: var(--slider-track-dark);
+    }
+
+    .secondary-dock-row input[type=range]::-moz-range-track {
+        background: var(--slider-track-dark);
+    }
+
+    /* Ensure thumb is white in dark mode */
+    .secondary-dock-row input[type=range]::-webkit-slider-thumb {
+        background: white !important;
+    }
+
+    .secondary-dock-row input[type=range]::-moz-range-thumb {
+        background: white !important;
+    }
+
+    /* Dark mode for circles slider */
+    #circlesSliderWrapper {
+        background: var(--bg-dark);
+        color: var(--text-dark);
+    }
+
+    #circlesOpacitySlider {
+        background: var(--slider-track-dark);
+    }
+}
+
+/* Landscape mode for all secondary docks */
+@media (orientation: landscape) {
+    .secondary-dock-container {
+        top: 50%;
+        transform: translateY(-50%);
+        left: calc(var(--dock-button-size) * 1.4);
+    }
+
+    .secondary-dock-row {
+        flex-direction: column;
+    }
+
+    /* Secondary dock slider styles */
+    .secondary-dock-row [id$="SliderWrapper"] {
+        /* Adjust for vertical orientation - match sectors-slider from section 5 */
+        height: var(--sectors-slider-length);
+        width: var(--dock-button-size);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: var(--bg-light);
+        border-radius: var(--border-radius-large);
+        padding: calc(var(--dock-button-size) * 0.1);
+        box-sizing: border-box;
+        position: relative;
+    }
+
+    .secondary-dock-row input[type=range] {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translateX(-50%) translateY(-50%) rotate(-90deg);
+        transform-origin: center center;
+        width: calc(var(--sectors-slider-length) - var(--dock-button-size) * 0.2);
+        -webkit-appearance: none;
+        appearance: none;
+        height: 6px;
+        background: var(--slider-track-light);
+        opacity: 0.9;
+        border-radius: 3px;
+        border: none;
+        outline: none;
+        margin: 0;
+        z-index: 2;
+    }
+
+    /* Track and thumb styling for landscape */
+    .secondary-dock-row input[type=range]::-webkit-slider-runnable-track {
+        width: 100%;
+        height: calc(var(--dock-button-size) * 0.1);
+        background: var(--slider-track-light);
+        border-radius: calc(var(--dock-button-size) * 0.05);
+    }
+
+    .secondary-dock-row input[type=range]::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        height: calc(var(--dock-button-size) * 0.4);
+        width: calc(var(--dock-button-size) * 0.4);
+        border-radius: 50%;
+        background: var(--text-light);
+        margin-top: calc(-1 * var(--dock-button-size) * 0.15);
+        cursor: pointer;
+    }
+
+    .secondary-dock-row input[type=range]::-moz-range-track {
+        width: 100%;
+        height: calc(var(--dock-button-size) * 0.1);
+        background: var(--slider-track-light);
+        border-radius: calc(var(--dock-button-size) * 0.05);
+    }
+
+    .secondary-dock-row input[type=range]::-moz-range-thumb {
+        height: calc(var(--dock-button-size) * 0.4);
+        width: calc(var(--dock-button-size) * 0.4);
+        border-radius: 50%;
+        background: var(--text-light);
+        cursor: pointer;
+        border: none;
+    }
+}
+
+/* Portrait mode for all secondary docks */
+@media (orientation: portrait) {
+    .secondary-dock-container {
+        left: 50%;
+        transform: translateX(-50%);
+        top: calc(var(--dock-button-size) * 1.4);
+    }
+
+    .secondary-dock-row {
+        flex-direction: row;
+    }
+
+    /* Horizontal slider in secondary docks */
+    .secondary-dock-row input[type=range] {
+        transform: none;
+        position: relative;
+        width: calc(var(--sectors-slider-length) - 20px);
+    }
+
+    /* Ensure slider wrappers have proper dimensions in portrait mode */
+    .secondary-dock-row [id$="SliderWrapper"] {
+        width: var(--sectors-slider-length);
+        height: var(--dock-button-size);
+    }
+}

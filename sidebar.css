@@ -1,0 +1,300 @@
+/* =================================
+   SIDEBAR COMPONENTS
+   ================================= */
+
+/* ===== Airspace sidebar ===== */
+#airspace-sidebar {
+    position: absolute;
+    background-color: var(--bg-light);
+    padding: 15px;
+    border-radius: var(--border-radius-large);
+    box-shadow: 0 2px 10px var(--shadow-light);
+    overflow-y: auto;
+    display: none;
+    z-index: 1300; /* Above airspace-popup (1200) */
+    max-width: 250px;
+    font-weight: var(--font-weight-normal);
+    color: var(--text-light);
+    overscroll-behavior: contain; /* Prevent scroll chaining */
+    -webkit-overflow-scrolling: touch; /* Enable smooth scrolling in iOS */
+}
+
+#airspace-sidebar h3 {
+    margin-top: 0;
+    color: var(--text-light);
+    font-size: var(--font-size-base);
+    font-weight: var(--font-weight-bold);
+    text-align: center;
+}
+
+#airspace-sidebar label {
+    display: block;
+    margin-bottom: 8px;
+    cursor: pointer;
+    padding: 3px 0;
+    color: var(--text-light);
+}
+
+#airspace-sidebar label:hover {
+    background-color: var(--hover-bg-light);
+}
+
+#airspace-sidebar input[type="checkbox"] {
+    margin-right: 8px;
+    vertical-align: middle;
+}
+
+/* ===== Sidebar structure components ===== */
+/* Sidebar header container */
+.sidebar-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+    padding-bottom: 10px;
+    border-bottom: none; /* No border */
+}
+
+/* Sidebar header title */
+.sidebar-header h2 {
+    margin: 0;
+    color: var(--text-heading-light);
+    font-size: var(--font-size-large);
+    font-weight: var(--font-weight-bold);
+}
+
+/* Sidebar policy title */
+.sidebar-policy-title {
+    width: 100%;
+    text-align: center;
+    font-weight: var(--font-weight-bold);
+    margin: 5px 0;
+    font-size: var(--font-size-base);
+}
+
+/* Sidebar divider */
+.sidebar-divider {
+    margin: 15px 0;
+    border: none;
+    border-top: 1px solid var(--border-subtle-light);
+}
+
+/* Sidebar section title */
+.sidebar-section-title {
+    width: 100%;
+    text-align: center;
+    font-weight: var(--font-weight-bold);
+    margin: 5px 0 10px 0;
+    font-size: var(--font-size-base);
+}
+
+/* ===== Button components ===== */
+/* Config button container in sidebar */
+.sidebar-config-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    justify-content: space-between;
+    width: 100%;
+    margin-bottom: 15px;
+}
+
+/* Sidebar config button */
+.sidebar-config-btn {
+    flex: 1;
+    min-width: 0;
+    max-width: none;
+    font-weight: var(--font-weight-bold);
+    background: var(--bg-button-light);
+    color: var(--text-light);
+    border: none;
+    border-radius: var(--border-radius-standard);
+    cursor: pointer;
+    padding: 8px 12px;
+    font-family: var(--font-family);
+    font-size: var(--font-size-base);
+    transition: background-color 0.2s;
+}
+
+.sidebar-config-btn:hover {
+    background: var(--bg-button-hover-light);
+}
+
+/* Toggle buttons for peaks and passes */
+#peaksToggleBtn, 
+#passesToggleBtn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--bg-button-light);
+    color: var(--text-light);
+    border: none;
+    border-radius: var(--border-radius-standard);
+    cursor: pointer;
+    padding: 8px 12px;
+    font-family: var(--font-family);
+    font-size: var(--font-size-base);
+    transition: background-color 0.2s;
+}
+
+#peaksToggleBtn:hover, 
+#passesToggleBtn:hover {
+    background: var(--bg-button-hover-light);
+}
+
+#peaksToggleBtn .material-icons,
+#passesToggleBtn .material-icons {
+    font-size: 20px;
+}
+
+/* ===== Policy buttons ===== */
+/* Policy buttons container */
+.policy-buttons-container {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 15px;
+    width: 100%;
+}
+
+/* Row container for policy buttons */
+.policy-row-container {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    width: 100%;
+    margin-bottom: 10px;
+}
+
+/* Policy button */
+.policy-button {
+    flex: 1;
+    min-width: 40px;
+    max-width: none;
+    height: auto;
+    padding: 8px 12px;
+    margin: 0;
+    font-size: var(--font-size-base);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    background: var(--bg-button-light);
+    color: var(--text-light);
+    border: none;
+    border-radius: var(--border-radius-standard);
+    cursor: pointer;
+    font-family: var(--font-family);
+    transition: background-color 0.2s;
+}
+
+.policy-button:hover {
+    background: var(--bg-button-hover-light);
+}
+
+/* Style for cached configuration buttons */
+.cached-config {
+    border: 2px solid var(--accent-green) !important;
+    /* Green border */
+}
+
+/* ===== Text size controls ===== */
+/* Text size container */
+.text-size-container {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 15px;
+    width: 100%;
+}
+
+/* Text size button */
+.text-size-button {
+    flex: 1;
+    font-size: var(--font-size-base);
+    background: var(--bg-button-light);
+    color: var(--text-light);
+    border: none;
+    border-radius: var(--border-radius-standard);
+    cursor: pointer;
+    padding: 8px 12px;
+    font-family: var(--font-family);
+    transition: background-color 0.2s;
+}
+
+.text-size-button:hover {
+    background: var(--bg-button-hover-light);
+}
+
+/* ===== Responsive adjustments ===== */
+/* Portrait mode positioning */
+@media (orientation: portrait) {
+    #airspace-sidebar {
+        top: calc(var(--dock-button-size) * 1.5); /* Below the dock */
+        left: 0;
+        bottom: 0px;
+        height: auto;
+        max-height: none;
+    }
+}
+
+/* Landscape mode positioning */
+@media (orientation: landscape) {
+    #airspace-sidebar {
+        top: 0px;
+        bottom: 0px;
+        left: calc(var(--dock-button-size) * 1.5);
+        height: auto;
+        max-height: none;
+        transform: none;
+    }
+}
+
+/* ===== Dark mode adjustments ===== */
+@media (prefers-color-scheme: dark) {
+    /* Airspace sidebar */
+    #airspace-sidebar {
+        background: var(--bg-dark);
+        color: var(--text-dark);
+    }
+    
+    #airspace-sidebar h3 {
+        color: var(--text-dark);
+    }
+    
+    #airspace-sidebar label {
+        color: var(--text-dark);
+    }
+    
+    #airspace-sidebar label:hover {
+        background-color: var(--hover-bg-dark);
+    }
+    
+    #airspace-sidebar .sidebar-header h2 {
+        color: var(--text-heading-dark);
+    }
+    
+    /* Buttons */
+    .sidebar-config-btn,
+    .policy-button,
+    .text-size-button,
+    #peaksToggleBtn, 
+    #passesToggleBtn {
+        background: var(--bg-button-dark);
+        color: var(--text-dark);
+    }
+    
+    .sidebar-config-btn:hover,
+    .policy-button:hover,
+    .text-size-button:hover,
+    #peaksToggleBtn:hover, 
+    #passesToggleBtn:hover {
+        background: var(--bg-button-hover-dark);
+    }
+    
+    /* Dividers */
+    .sidebar-divider {
+        border-top-color: var(--border-subtle-dark);
+    }
+}
+
+

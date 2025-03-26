@@ -1,0 +1,168 @@
+/* --------------- POPUP STYLES (consolidated) --------------- */
+/* Popup Menu (centered on screen) */
+#modalMenu {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0, 0, 0, 0.2);
+    display: none;
+    /* Hidden by default */
+    align-items: center;
+    justify-content: center;
+    z-index: 1200;
+}
+
+.menu-content {
+    background: var(--bg-light-solid);
+    padding: 20px;
+    border-radius: 12px;
+    max-width: 400px;
+    width: 90%;
+    max-height: 60%;
+    /* Limit the height to 60% of the viewport height */
+    overflow-y: auto;
+    /* Add vertical scrolling if content overflows */
+    position: relative;
+    text-align: center;
+    color: var(--text-light);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+/* Style for the close button in the popup menu using a Material Icon */
+.menu-content .close {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: transparent;
+    border: none;
+    font-size: 24px;
+    cursor: pointer;
+    color: var(--text-light);
+}
+
+/* Standard popup menu button style */
+.menu-btn {
+    border: none;
+    border-radius: var(--border-radius-standard);
+    cursor: pointer;
+    font-family: var(--font-family);
+    font-size: var(--font-size-base);
+    transition: background-color 0.2s, border 0.3s, box-shadow 0.3s;
+    white-space: normal;
+    /* Allow text to wrap for all popup buttons */
+    word-break: break-word;
+    /* Allow words to break if needed */
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: inline-flex;
+    align-items: center;
+    width: auto;
+    /* Take only needed width */
+    padding: 10px 15px;
+    margin: 6px auto;
+    /* Center horizontally with auto margins */
+    background: var(--bg-button-light);
+    color: var(--text-light);
+    gap: 12px;
+    /* Space between icon and text */
+    position: relative;
+    box-sizing: border-box;
+}
+
+.menu-btn:hover {
+    background: var(--bg-button-hover-light);
+}
+
+/* Style for the button icons in popup menu */
+.menu-btn .material-icons {
+    font-size: 20px;
+    /* Consistent icon size */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 20px;
+    /* Ensure icons don't collapse */
+}
+
+/* Add spacing for button containers in popup menu */
+.menu-content>div {
+    margin: 12px 0;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.menu-content {
+    flex: 1;
+    padding-left: 10px;
+    overflow-y: auto;
+}
+
+/* Allow scrolling on specific elements only */
+.menu-content {
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    /* Prevent scroll chaining */
+    -webkit-overflow-scrolling: touch;
+    /* Enable smooth scrolling in iOS */
+}
+
+/* Map download link container */
+.map-link-container {
+    margin-top: 8px;
+    text-align: center;
+    width: 100%;
+}
+
+/* Map download link styling */
+.map-download-link {
+    display: inline-block;
+    color: var(--accent-green);
+    text-decoration: underline;
+    font-size: 14px;
+    padding: 6px 10px;
+    margin: 4px auto;
+    background-color: rgba(50, 50, 50, 0.1);
+    border-radius: var(--border-radius-standard);
+    transition: background-color 0.2s;
+}
+
+.map-download-link:hover {
+    background-color: rgba(50, 50, 50, 0.2);
+}
+
+@media (prefers-color-scheme: dark) {
+
+    /* Main Popup Menu */
+    .menu-content {
+        background: var(--bg-dark);
+        color: var(--text-dark);
+    }
+
+    /* Updated popup menu button styles for dark mode */
+    .menu-btn {
+        background: var(--bg-button-dark);
+        color: var(--text-dark);
+    }
+
+    .menu-btn:hover {
+        background: var(--bg-button-hover-dark);
+    }
+
+    .menu-content .close {
+        color: var(--text-dark);
+    }
+
+    .map-download-link {
+        background-color: rgba(200, 200, 200, 0.1);
+    }
+
+    .map-download-link:hover {
+        background-color: rgba(200, 200, 200, 0.2);
+    }
+}

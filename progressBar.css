@@ -1,0 +1,61 @@
+/* Cache progress bars styling */
+.cache-progress {
+    display: none;
+    /* Hidden by default */
+    flex-direction: column;
+    width: 100%;
+    max-width: 280px;
+    /* Match max button width */
+    align-items: center;
+    margin-top: 10px;
+}
+
+/* Status text for cache progress */
+.status-text {
+    margin-bottom: 5px;
+    width: 100%;
+    text-align: center;
+    font-size: 0.9em;
+    color: inherit;
+}
+
+/* Progress bar status text */
+.progress-status {
+    margin-bottom: 5px;
+    width: 100%;
+    text-align: center;
+    font-size: 0.9em;
+}
+
+.progress-bar-container {
+    width: 80%;
+    max-width: 400px;
+    height: 20px;
+    border-radius: 10px;
+    overflow: hidden;
+    margin-bottom: 10px;
+    background: #eee;
+}
+
+/* Progress bar fill */
+.progress-bar-fill {
+    width: 0%;
+    height: 100%;
+    background: var(--accent-green);
+    border-radius: 3px;
+    transition: width 0.3s ease;
+}
+
+/* Progress bar error state */
+.progress-bar-error {
+    background: #f44336 !important;
+    /* Red for error */
+}
+
+/* Dark mode overrides */
+@media (prefers-color-scheme: dark) {
+
+    .progress-bar-container {
+        background-color: #222;
+    }
+}

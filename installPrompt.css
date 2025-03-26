@@ -1,0 +1,48 @@
+/* =================================
+   16. INSTALL PROMPT
+   ================================= */
+/* Install Prompt */
+#installPrompt {
+    display: none;
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0, 0, 0, 0.8);
+    color: white;
+    padding: 15px;
+    border-radius: var(--border-radius-large);
+    z-index: 3000;
+    text-align: center;
+}
+
+#installPrompt p {
+    margin: 0 0 10px 0;
+}
+
+#installPrompt button {
+    border: none;
+    color: white;
+    padding: 8px 16px;
+    border-radius: var(--border-radius-standard);
+    cursor: pointer;
+    font-family: var(--font-family);
+    font-size: var(--font-size-base);
+}
+
+#installPrompt #installButton {
+    background: var(--accent-green);
+    margin-right: 10px;
+}
+
+#installPrompt #cancelInstall {
+    background: #666;
+}
+
+#installPrompt #installButton:hover {
+    background: #45a049;
+}
+
+#installPrompt #cancelInstall:hover {
+    background: #555;
+}

@@ -74,17 +74,7 @@
             <span class="material-icons" id="sidebarVisibilityIcon">layers</span>
         </button>
         
-        <!-- Toggle Visibility for main layers -->
-        <button title="Toggle Layer Visibility" id="toggleLayerButton">
-            <span class="material-icons" id="visibilityIcon">visibility</span>
-        </button>
-        
-        <!-- Slider wrapper for polygon opacity -->
-        <div class="dock-slider">
-            <input id="polygonOpacitySlider" type="range" min="0" max="0.5" step="0.01" value="0.1">
-        </div>
-        
-        <!-- Zoom buttons will be added dynamically only for desktop devices -->
+        <!-- Toggle Visibility for main layers and Slider for polygon opacity HAVE BEEN MOVED to the Circles UI navigation row -->
         
         <!-- More Options Button -->
         <button title="More Options" id="moreOptionsBtn">
@@ -94,15 +84,15 @@
     </div>
 
     <!-- Popup Menu: For controls not requiring constant map visibility -->
-    <div id="popupMenu">
-        <div class="popup-content">
+    <div id="modalMenu">
+        <div class="menu-content">
             <button class="close" id="closePopupBtn">
                 <span class="material-icons">close</span>
             </button>
             
             <!-- IGC File Control with Icon -->
             <div>
-                <button id="igcFileButton" class="popup-menu-button button-with-icon">
+                <button id="igcFileButton" class="menu-btn button-with-icon">
                     <span class="material-icons">folder_open</span>
                     <span>Open IGC File</span>
                 </button>
@@ -116,7 +106,7 @@
             
             <!-- New App Update section -->
             <div>
-                <button id="appUpdateBtn" class="popup-menu-button button-with-icon">
+                <button id="appUpdateBtn" class="menu-btn button-with-icon">
                     <span class="material-icons">system_update</span>
                     <span>Update App</span>
                 </button>
@@ -130,7 +120,7 @@
             
             <!-- Clean Install Button -->
             <div>
-                <button id="cleanInstallBtn" class="popup-menu-button button-with-icon">
+                <button id="cleanInstallBtn" class="menu-btn button-with-icon">
                     <span class="material-icons">delete_forever</span>
                     <span>Clean Install (Reset All)</span>
                 </button>
@@ -144,7 +134,7 @@
             
             <!-- Add new section for caching EDL tiles - moved before cache current config -->
             <div>
-                <button id="cacheEDLTilesBtn" class="popup-menu-button button-with-icon">
+                <button id="cacheEDLTilesBtn" class="menu-btn button-with-icon">
                     <span class="material-icons">waves</span>
                     <span>Cache today's EDL Weather Forecast</span>
                 </button>
@@ -158,7 +148,7 @@
             
             <!-- Cache Current Config section -->
             <div>
-                <button id="cacheCurrentConfigBtn" class="popup-menu-button button-with-icon">
+                <button id="cacheCurrentConfigBtn" class="menu-btn button-with-icon">
                     <span class="material-icons">download</span>
                     <span>Cache Current Config for Offline Use</span>
                 </button>
@@ -172,7 +162,7 @@
 
             <!-- Add new section for caching background map -->
             <div>
-                <button id="cacheBackgroundMapBtn" class="popup-menu-button button-with-icon">
+                <button id="cacheBackgroundMapBtn" class="menu-btn button-with-icon">
                     <span class="material-icons">map</span>
                     <span>Cache Background Map for Offline Use</span>
                 </button>

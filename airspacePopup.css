@@ -1,0 +1,161 @@
+/* Airspace Popup Menu (for airspace inspection) */
+.airspace-popup {
+    position: absolute;
+    background: var(--bg-light-solid);
+    /* Light background */
+    border: 1px solid var(--border-light);
+    box-shadow: 0 2px 6px var(--shadow-light);
+    padding: 0px;
+    z-index: 1200;
+    /* Higher than the map dock's z-index (1100) */
+    overflow-y: hidden;
+    overflow-x: hidden;
+    display: inline-flex;
+    color: var(--text-light);
+    /* Dark text */
+    font-size: var(--airspace-popup-content);
+}
+
+.airspace-popupSection {
+    font-size: var(--airspace-popup-content);
+    border-bottom: 1px solid var(--border-light);
+    padding: 8px;
+    cursor: pointer;
+    user-select: none;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+}
+
+.airspace-popupSection:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+}
+
+.airspace-popupSection.highlighted {
+    background-color: var(--popup-highlight);
+}
+
+.airspace-popupSection strong {
+    font-size: var(--airspace-popup-header);
+    display: block;
+    margin-bottom: 5px;
+}
+
+.limits-type-container {
+    display: flex;
+    align-items: center;
+}
+
+.limits-div {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+}
+
+.upper-limit {
+    line-height: 1;
+    border-bottom: 1px solid var(--altitude-line);
+    font-size: var(--airspace-popup-content);
+}
+
+.lower-limit {
+    line-height: 1;
+    font-size: var(--airspace-popup-content);
+}
+
+.colorBand {
+    position: absolute;
+    left: -10px;
+    top: 0;
+    width: 10px;
+    height: 100%;
+    opacity: 0.7;
+}
+
+.colorBand-highlighted {
+    opacity: 1 !important;
+}
+
+.cross-section {
+    border-right: 4px solid var(--border-light);
+    padding: 0;
+    background: #f0f0f0;
+    /* Light background */
+    position: relative;
+}
+
+.airspace-bar {
+    position: absolute;
+    opacity: 0.7;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border-radius: 10px;
+}
+
+.airspace-bar.highlighted-bar {
+    border: 2px solid rgba(64, 224, 208, 1);
+    margin-left: -2px;
+    margin-bottom: -2px;
+    opacity: 1 !important;
+}
+
+.altitude-label {
+    font-size: var(--airspace-popup-label);
+    line-height: 1;
+    font-weight: var(--font-weight-bold);
+    padding: 0;
+    white-space: auto;
+    text-align: center;
+    background-color: rgba(255, 255, 255, 0.5);
+    color: var(--text-light);
+    /* Dark text */
+    border-radius: 10px;
+    padding-left: 2px;
+    padding-right: 2px;
+    user-select: none;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    pointer-events: none;
+}
+
+.altitude-line {
+    position: absolute;
+    height: 1px;
+    background: var(--altitude-line);
+    /* Dark lines */
+    left: 0;
+}
+
+@media (prefers-color-scheme: dark) {
+
+    /* Airspace Popup - Force Light Theme (even in dark mode) */
+    .airspace-popup {
+        background: var(--bg-light-solid) !important;
+        color: var(--text-light) !important;
+        border-color: var(--border-light) !important;
+    }
+
+    .airspace-popupSection {
+        border-bottom-color: var(--border-light) !important;
+        color: var(--text-light) !important;
+    }
+
+    .cross-section {
+        background: #f0f0f0 !important;
+        border-right-color: var(--border-light) !important;
+    }
+
+    .altitude-label {
+        background-color: rgba(255, 255, 255, 0.5) !important;
+        color: var(--text-light) !important;
+    }
+
+    .altitude-line {
+        background: var(--altitude-line) !important;
+    }
+}

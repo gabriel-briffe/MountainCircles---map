@@ -255,7 +255,7 @@ export function buildPopupSection(index) {
 
     // Create the section
     const section = document.createElement('div');
-    section.className = 'popup-section';
+    section.className = 'airspace-popupSection';
     section.style.position = 'relative';
     section.dataset.featureKey = featureKey;
 
@@ -347,7 +347,7 @@ export function createAirspacePopup() {
 
     // Create the popup container
     const popup = document.createElement('div');
-    popup.className = 'popup-menu';
+    popup.className = 'airspace-popup';
     popup.style.display = 'inline-flex';
 
     // Store popup in state
@@ -670,7 +670,7 @@ export function addAltitudeLabels(width) {
  * Triggers a refresh of the airspace popup
  */
 export function triggerPopupRefresh() {
-    if (document.querySelector('.popup-menu')) {
+    if (document.querySelector('.airspace-popup')) {
         refreshAirspacePopup();
     }
 }

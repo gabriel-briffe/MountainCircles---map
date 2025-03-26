@@ -20,6 +20,15 @@ export function getCoreFiles() {
         
         // CSS files
         `${BASE_PATH}/styles.css`,
+        `${BASE_PATH}/airspacePopup.css`,
+        `${BASE_PATH}/installPrompt.css`,
+        `${BASE_PATH}/mapDock.css`,
+        `${BASE_PATH}/menu.css`,
+        `${BASE_PATH}/navbox.css`,
+        `${BASE_PATH}/parameters.css`,
+        `${BASE_PATH}/progressBar.css`,
+        `${BASE_PATH}/secondaryDock.css`,
+        `${BASE_PATH}/sidebar.css`,
         
         // JS files
         `${BASE_PATH}/airspace.js`,
@@ -28,6 +37,7 @@ export function getCoreFiles() {
         `${BASE_PATH}/cacheConfig.js`,
         `${BASE_PATH}/cacheEdl.js`,
         `${BASE_PATH}/cacheTiles.js`,
+        `${BASE_PATH}/circlesUI.js`,
         `${BASE_PATH}/cleanInstall.js`,
         `${BASE_PATH}/config.js`,
         `${BASE_PATH}/coreFiles.js`,
@@ -56,9 +66,9 @@ export function getCoreFiles() {
         `${BASE_PATH}/utils.js`,
         
         // GeoJSON files
-        `${BASE_PATH}/peaks.geojson`,
-        `${BASE_PATH}/passes.geojson`,
-        `${BASE_PATH}/airspace.geojson`,
+        // `${BASE_PATH}/peaks.geojson`,
+        // `${BASE_PATH}/passes.geojson`,
+        // `${BASE_PATH}/airspace.geojson`,
         
         // Icons
         `${BASE_PATH}/icons/icon-192.png`,
