@@ -1,9 +1,9 @@
 // Application initialization for MountainCircles Map
 import { initializeMap } from "./mapInitializer.js";
-import { addGeoJSONLayers, updateParametersBox, switchConfig, toggleAirspaceVisibility, updateSidebarConfigButtonStyles } from "./sidebar.js";
+import { addGeoJSONLayers, updateParametersBox, switchConfig, updateSidebarConfigButtonStyles } from "./sidebar.js";
 import { setupLayerEventHandlers } from "./layers.js";
 import { initializeAirspaceData, setupAirspacePopupHandler } from "./map.js";
-import { setupDockEventListeners } from "./dock.js";
+import { setupDockEventListeners, toggleAirspaceVisibility } from "./dock.js";
 import { updatePopupStyle } from "./airspace.js";
 import { 
     getCurrentConfig,
@@ -188,15 +188,11 @@ export async function initializeApp(mapContainerId = 'map') {
                     // Apply the saved airspace visibility state
                     const airspaceVisible = getAirspaceVisible();
                     
-                    // The toggle in the sidebar might not be created yet, so we directly set layer visibility
-                    getLayerManager().setVisibility('airspace-fill', airspaceVisible);
-                    getLayerManager().setVisibility('airspace-outline', airspaceVisible);
+                    // Use the toggleAirspaceVisibility function to set visibility
+                    toggleAirspaceVisibility(airspaceVisible);
                     
                     // Update any checkbox states once the sidebar is ready
-                    const airspaceCheckboxes = document.querySelectorAll('#airspace-sidebar input[type="checkbox"][id^="toggle-"]');
-                    airspaceCheckboxes.forEach(cb => {
-                        cb.disabled = !airspaceVisible;
-                    });
+                    // This is now handled by the toggleAirspaceVisibility function
                 }
                 
                 // Update the config button styles to show which configs are cached

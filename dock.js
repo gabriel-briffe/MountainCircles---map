@@ -11,7 +11,10 @@ import {
     setLayersToggleState,
     getPolygonOpacity,
     setPolygonOpacity,
-    saveStateToLocalStorage
+    saveStateToLocalStorage,
+    getAirspaceVisible,
+    setAirspaceVisible,
+    clearPopup
 } from "./state.js";
 
 // Import EDL UI functions
@@ -34,6 +37,10 @@ import {
     toggleCirclesNavigationRow,
     updateVisibilityIcon as updateCirclesVisibilityIcon
 } from "./circlesUI.js";
+
+// Import from airspace and map modules
+import { clearHighlight } from "./airspace.js";
+import { clearMarker } from "./map.js";
 
 // Flags to track navigation row visibility
 let edlNavigationVisible = false;
@@ -422,22 +429,7 @@ function createCirclesNavigationRow() {
     // Add to the body, not the mapDock
     document.body.appendChild(container);
     
-    // Add styles if needed - now using the shared styles
-    addCirclesSpecificStyles();
-    
     console.log('[Dock] Circles navigation row created');
-}
-
-/**
- * Adds CSS styles specific to Circles navigation 
- * Styles are now in the main CSS file, this function is kept for backwards compatibility
- */
-function addCirclesSpecificStyles() {
-    // Since styles are now in the main CSS file, we don't need to add them dynamically
-    // This function is kept for backwards compatibility
-    if (window.APP_CONFIG?.devMode) {
-        console.log('[Dock] Circles-specific navigation styles now loaded from external CSS file');
-    }
 }
 
 /**
@@ -533,7 +525,7 @@ function createZoomButtonsIfNeeded() {
     // Create zoom in button
     const zoomInBtn = document.createElement('button');
     zoomInBtn.title = 'Zoom In';
-    zoomInBtn.innerHTML = '<span class="material-icons">add</span>';
+    zoomInBtn.innerHTML = '<span class="material-icons">zoom_in</span>';
     zoomInBtn.addEventListener('click', () => {
         getMap().zoomIn();
     });
@@ -541,7 +533,7 @@ function createZoomButtonsIfNeeded() {
     // Create zoom out button
     const zoomOutBtn = document.createElement('button');
     zoomOutBtn.title = 'Zoom Out';
-    zoomOutBtn.innerHTML = '<span class="material-icons">remove</span>';
+    zoomOutBtn.innerHTML = '<span class="material-icons">zoom_out</span>';
     zoomOutBtn.addEventListener('click', () => {
         getMap().zoomOut();
     });
@@ -550,22 +542,73 @@ function createZoomButtonsIfNeeded() {
     const mapDock = document.getElementById('mapDock');
     const moreOptionsBtn = document.getElementById('moreOptionsBtn');
     
-    if (moreOptionsBtn) {
-        mapDock.insertBefore(zoomInBtn, moreOptionsBtn);
-        mapDock.insertBefore(zoomOutBtn, moreOptionsBtn);
-    } else {
-        mapDock.appendChild(zoomInBtn);
-        mapDock.appendChild(zoomOutBtn);
+    mapDock.appendChild(zoomInBtn);
+    mapDock.appendChild(zoomOutBtn);
+}
+
+/**
+ * Toggles visibility of all airspace layers
+ * @param {boolean} isVisible - Whether the airspace should be visible
+ */
+export function toggleAirspaceVisibility(isVisible) {
+    const map = getMap();
+    
+    // First update the state
+    setAirspaceVisible(isVisible);
+    
+    // Then update the layer visibility
+    getLayerManager().setVisibility('airspace-fill', isVisible);
+    getLayerManager().setVisibility('airspace-outline', isVisible);
+    
+    // Update checkbox states - only for airspace type checkboxes (not peaks/passes)
+    const airspaceCheckboxes = document.querySelectorAll('#airspace-sidebar input[type="checkbox"][id^="toggle-"]');
+    airspaceCheckboxes.forEach(cb => {
+        cb.disabled = !isVisible;
+    });
+    
+    // If hiding airspace, clear any popup and marker
+    if (!isVisible) {
+        clearPopup();
+        clearHighlight();
+        clearMarker();
     }
+    
+    // Update the visibility icon directly
+    const icon = document.getElementById('airspaceVisibilityIcon');
+    if (icon) {
+        icon.textContent = isVisible ? 'grid_on' : 'grid_off';
+    }
+}
+
+/**
+ * Updates the airspace visibility icon based on airspace toggle state
+ */
+export function updateAirspaceVisibilityIcon() {
+    const isVisible = getAirspaceVisible();
+    const icon = document.getElementById('airspaceVisibilityIcon');
+    if (icon) {
+        icon.textContent = isVisible ? 'grid_on' : 'grid_off';
+    }
+}
+
+/**
+ * Toggles the airspace layer visibility
+ */
+export function toggleAirspaceLayer() {
+    // First get the current visibility state
+    const currentState = getAirspaceVisible();
+    
+    // Calculate the new state (opposite of current)
+    const newState = !currentState;
+    
+    // Use the toggleAirspaceVisibility function to handle the rest
+    toggleAirspaceVisibility(newState);
 }
 
 /**
  * Sets up all dock event listeners
  */
 export function setupDockEventListeners() {
-    // Polygon opacity slider - REMOVED FROM HERE, NOW IN CIRCLES UI
-    
-    // Layer visibility toggle - REMOVED FROM HERE, NOW IN CIRCLES UI
 
     // Initialize parameters visibility based on current toggle state
     if (!getLayersToggleState()) {
@@ -579,6 +622,14 @@ export function setupDockEventListeners() {
             module.toggleSidebar();
         });
     });
+    
+    // Airspace visibility toggle
+    const airspaceToggleBtn = document.getElementById('toggleAirspaceButton');
+    if (airspaceToggleBtn) {
+        airspaceToggleBtn.addEventListener('click', toggleAirspaceLayer);
+        // Initialize icon state
+        updateAirspaceVisibilityIcon();
+    }
 
     // Create and add zoom buttons only for non-mobile devices
     createZoomButtonsIfNeeded();
@@ -589,7 +640,7 @@ export function setupDockEventListeners() {
     // Create Circles navigation toggle button
     createCirclesNavigationToggleButton();
     
-    // Ensure visibility icon matches the current state
+    // Ensure visibility icons match the current state
     updateVisibilityIcon();
     
     // Initial size calculation

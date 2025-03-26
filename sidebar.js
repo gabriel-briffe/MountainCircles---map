@@ -43,6 +43,9 @@ import {
     setTracklogEnabled
 } from "./state.js";
 
+// Import from dock.js for airspace visibility control
+import { toggleAirspaceVisibility } from "./dock.js";
+
 // Import from utils
 import { isMobileDevice } from "./utils.js";
 
@@ -126,11 +129,10 @@ export function createTypeCheckboxes(features) {
     // Clear existing content
     sidebar.innerHTML = '';
     
-    // Create a nice header with toggle and title
-    createSidebarHeader(sidebar);
-    
-    // Add a divider
-    addSidebarDivider(sidebar);
+    // Add a section title instead of header
+    const title = document.createElement('h3');
+    title.textContent = 'Airspace Types';
+    sidebar.appendChild(title);
     
     // Add airspace type checkboxes
     addAirspaceTypeCheckboxes(sidebar, features);
@@ -171,80 +173,10 @@ export function createTypeCheckboxes(features) {
 /**
  * Creates the sidebar header with title and toggle
  * @param {HTMLElement} sidebar - The sidebar element
+ * @deprecated This function is no longer used. Airspace visibility is now controlled from the dock.
  */
-export function createSidebarHeader(sidebar) {
-    const map = getMap();
-    
-    // Create header container
-    const header = document.createElement('div');
-    header.className = 'sidebar-header';
-    
-    // Create title
-    const title = document.createElement('h2');
-    title.textContent = 'Airspace';
-    header.appendChild(title);
-    
-    // Create toggle switch for all airspace
-    const toggleContainer = document.createElement('div');
-    toggleContainer.className = 'toggle-container';
-    
-    // Create Mac-style toggle switch
-    const toggleSwitch = document.createElement('div');
-    toggleSwitch.className = `toggle-switch ${getAirspaceVisible() ? 'active' : ''}`;
-    toggleSwitch.id = 'airspace-master-toggle';
-    
-    // Add the slider inside the toggle
-    const slider = document.createElement('div');
-    slider.className = 'toggle-slider';
-    toggleSwitch.appendChild(slider);
-    
-    // Add click event listener to toggle visibility
-    toggleSwitch.addEventListener('click', () => {
-        const newState = !toggleSwitch.classList.contains('active');
-        toggleAirspaceVisibility(newState);
-    });
-    
-    toggleContainer.appendChild(toggleSwitch);
-    
-    header.appendChild(toggleContainer);
-    sidebar.appendChild(header);
-}
-
-/**
- * Toggles visibility of all airspace layers
- * @param {boolean} isVisible - Whether the airspace should be visible
- */
-export function toggleAirspaceVisibility(isVisible) {
-    const map = getMap();
-    
-    getLayerManager().setVisibility('airspace-fill', isVisible);
-    getLayerManager().setVisibility('airspace-outline', isVisible);
-    
-    // Update checkbox states - only for airspace type checkboxes (not peaks/passes)
-    const airspaceCheckboxes = document.querySelectorAll('#airspace-sidebar input[type="checkbox"][id^="toggle-"]');
-    airspaceCheckboxes.forEach(cb => {
-        cb.disabled = !isVisible;
-    });
-    
-    // If hiding airspace, clear any popup and marker
-    if (!isVisible) {
-        clearPopup();
-        clearHighlight();
-        clearMarker();
-    }
-    
-    // Update UI toggle
-    const toggleSwitch = document.getElementById('airspace-master-toggle');
-    if (toggleSwitch) {
-        if (isVisible) {
-            toggleSwitch.classList.add('active');
-        } else {
-            toggleSwitch.classList.remove('active');
-        }
-    }
-    
-    // Save state
-    setAirspaceVisible(isVisible);
+function createSidebarHeader(sidebar) {
+    console.warn('createSidebarHeader is deprecated. Airspace visibility is now controlled from the dock.');
 }
 
 /**

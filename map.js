@@ -8,7 +8,8 @@ import {
     getPopup,
     clearPopup,
     getCurrentConfig,
-    getLastPopupLngLat
+    getLastPopupLngLat,
+    setAirspaceVisible
 } from "./state.js";
 
 import {
@@ -129,9 +130,8 @@ export async function initializeAirspaceData() {
             const { createTypeCheckboxes } = await import('./sidebar.js');
             createTypeCheckboxes(data.features, getMap());
             
-            // Ensure airspace layers are visible by default
-            getLayerManager().setVisibility('airspace-fill', true);
-            getLayerManager().setVisibility('airspace-outline', true);
+            // No need to force airspace to be visible here
+            // This will be handled by init.js using the saved state
         } else {
             console.warn('Airspace data is empty or missing features');
         }
