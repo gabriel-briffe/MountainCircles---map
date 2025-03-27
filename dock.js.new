@@ -504,7 +504,9 @@ function setupCirclesNavigationRowEvents() {
     // Visibility Toggle button
     const visibilityButton = document.getElementById('circlesVisibilityBtn');
     if (visibilityButton) {
-        visibilityButton.addEventListener('click', toggleLayerVisibility);
+        visibilityButton.addEventListener('click', () => {
+            toggleLayerVisibility();
+        });
     }
     
     // Opacity slider
