@@ -273,33 +273,6 @@
             ];
         }
         
-        // Explicitly check if bootstrap.html is in cache and remove it
-        async function removeBootstrapFromCache() {
-            logInfo("Checking if bootstrap.html is cached and removing if found");
-            
-            if (!('caches' in window)) {
-                logWarning("Cache API not available, cannot check for cached bootstrap.html");
-                return;
-            }
-            
-            try {
-                const cacheNames = await caches.keys();
-                for (const cacheName of cacheNames) {
-                    const cache = await caches.open(cacheName);
-                    const requests = await cache.keys();
-                    
-                    for (const request of requests) {
-                        if (request.url.includes('bootstrap.html')) {
-                            await cache.delete(request);
-                            logSuccess(`Removed bootstrap.html from cache: ${cacheName}`);
-                        }
-                    }
-                }
-            } catch (error) {
-                logWarning(`Error checking for cached bootstrap.html: ${error.message}`);
-            }
-        }
-        
         // Function to show completion UI instead of alert
         function showCompletionUI() {
             // completionMessage.style.display = 'block';
@@ -468,9 +441,6 @@
             updateProgress(5);
             
             try {
-                // Check if bootstrap.html is cached and remove it
-                await removeBootstrapFromCache();
-                
                 // Check what kind of update was requested
                 const urlParams = new URLSearchParams(window.location.search);
                 const updateType = urlParams.get('update');
@@ -641,9 +611,6 @@
                     logWarning(`Failed to delete temporary cache: ${err.message}`);
                 }
                 updateProgress(95);
-                
-                // Check one more time if bootstrap.html got cached during the process
-                await removeBootstrapFromCache();
                 
                 // 13. Done!
                 logSuccess("Bootstrap update completed successfully!");
