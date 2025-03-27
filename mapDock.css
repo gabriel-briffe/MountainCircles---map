@@ -127,8 +127,14 @@
     }
 }
 
-@media (prefers-color-scheme: dark) {
+/* North Up button styles - apply in both light and dark modes */
+#northUpButton.locked .material-icons {
+    color: darkred !important; /* Use !important to override other styles */
+    text-shadow: 0 0 2px rgba(255, 255, 255, 0.5);
+}
 
+/* Dark mode styles */
+@media (prefers-color-scheme: dark) {
     /* Map Dock and buttons */
     #mapDock button {
         background: var(--bg-dark);

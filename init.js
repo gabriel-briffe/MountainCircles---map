@@ -33,9 +33,16 @@ async function checkAndCleanEDLCache() {
         console.log('[Init] No EDL metadata found');
         return;
     }
+    console.log('[Init] EDL metadata:', metadata);
 
-    // Get today's date in YYYY-MM-DD format
-    const today = new Date().toISOString().slice(0, 10);
+    // Get today's date in YYYY-MM-DD format for France timezone (Europe/Paris)
+    const now = new Date();
+    const options = { timeZone: 'Europe/Paris' };
+    const year = new Intl.DateTimeFormat('en', {...options, year: 'numeric'}).format(now);
+    const month = new Intl.DateTimeFormat('en', {...options, month: '2-digit'}).format(now);
+    const day = new Intl.DateTimeFormat('en', {...options, day: '2-digit'}).format(now);
+    const today = `${year}-${month}-${day}`;
+    console.log('[Init] Today\'s date (France local time):', today);
     
     // Check if metadata has data for today
     const hasToday = metadata.availableLayers && 

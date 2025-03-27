@@ -72,7 +72,8 @@ export function updateDockElementSizes() {
 
     // Count number of buttons in the dock
     const buttons = mapDock.querySelectorAll('button');
-    const buttonCount = buttons.length;
+    // const buttonCount = buttons.length;
+    const buttonCount = 6.5;
         
     // Determine effective count (slider counts as 3 buttons)
     const effectiveCount = buttonCount;
@@ -548,6 +549,66 @@ export function toggleAirspaceLayer() {
 }
 
 /**
+ * Sets up the North Up button click event with toggle functionality
+ */
+function setupNorthUpButton() {
+    const button = document.getElementById('northUpButton');
+    if (!button) return;
+    
+    // Variable to track if north is locked
+    let northLocked = false;
+    
+    // Function to update button appearance based on state
+    function updateButtonState() {
+        if (northLocked) {
+            button.classList.add('locked');
+            button.title = 'Unlock Map Rotation';
+        } else {
+            button.classList.remove('locked');
+            button.title = 'Lock North Up';
+        }
+    }
+    
+    // Set click event
+    button.addEventListener('click', () => {
+        const map = getMap();
+        if (!map) return;
+        
+        if (!northLocked) {
+            // Lock north up - rotate to north and disable rotation
+            map.easeTo({ bearing: 0 });
+            
+            // Disable map rotation
+            if (map.dragRotate.isEnabled()) {
+                map.dragRotate.disable();
+            }
+            if (map.touchZoomRotate) {
+                map.touchZoomRotate.disableRotation();
+            }
+            
+            northLocked = true;
+        } else {
+            // Unlock - allow free rotation
+            if (!map.dragRotate.isEnabled()) {
+                map.dragRotate.enable();
+            }
+            if (map.touchZoomRotate) {
+                map.touchZoomRotate.enableRotation();
+            }
+            
+            northLocked = false;
+        }
+        
+        updateButtonState();
+        console.log(`[Dock] North lock ${northLocked ? 'enabled' : 'disabled'}`);
+    });
+    
+    // Initial state
+    updateButtonState();
+    console.log('[Dock] North Up button event listener added');
+}
+
+/**
  * Sets up all dock event listeners
  */
 export function setupDockEventListeners() {
@@ -571,6 +632,9 @@ export function setupDockEventListeners() {
         airspaceToggleBtn.addEventListener('click', toggleAirspaceLayer);
         // The icon is now updated by setAirspaceVisible, no need to call update function
     }
+    
+    // Setup North Up button
+    setupNorthUpButton();
 
     // Create and add zoom buttons only for non-mobile devices
     createZoomButtonsIfNeeded();

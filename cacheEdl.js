@@ -309,7 +309,6 @@ async function saveEDLMetadata(processedFiles) {
     
     // Extract key information from processed files
     const metadata = {
-      lastUpdated: new Date().toISOString(),
       availableLayers: {}
     };
     
