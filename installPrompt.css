@@ -32,7 +32,7 @@
 
 #installPrompt #installButton {
     background: var(--accent-green);
-    margin-right: 10px;
+    margin: 5px;
 }
 
 #installPrompt #cancelInstall {

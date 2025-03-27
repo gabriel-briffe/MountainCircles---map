@@ -231,9 +231,17 @@ export function navigateToCurrentTime() {
         return false;
     }
     
-    // Find the nearest available hour to current time
+    // Get current hour and minutes to properly round to nearest hour
     const currentHour = today.getHours();
-    const nearestHour = findNearestValue(currentHour, availableHours);
+    const currentMinutes = today.getMinutes();
+    
+    // Round to the nearest hour based on minutes
+    // If minutes < 30, use current hour; if minutes >= 30, use next hour
+    const targetHour = currentMinutes < 30 ? currentHour : (currentHour + 1) % 24;
+    console.log(`[EDL UI] Current time is ${currentHour}:${currentMinutes}, rounding to ${targetHour}:00`);
+    
+    // Find the nearest available hour to the target hour
+    const nearestHour = findNearestValue(targetHour, availableHours);
     
     // Get available pressures for this hour
     const availablePressures = metadata.availableLayers[closestDate][nearestHour] || [];
@@ -568,19 +576,6 @@ export function updateNavigationButtonsState() {
         // Update date indicator using the helper function
         updateDateIndicator();
         
-        // Also update the button title with date and pressure information
-        if (nowButton && currentLayerInfo.date) {
-            const dateObj = new Date(currentLayerInfo.date);
-            const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 
-                               'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-            const formattedDate = `${dateObj.getDate()} ${monthNames[dateObj.getMonth()]}`;
-            
-            // Format pressure in hPa
-            const pressureHpa = currentLayerInfo.pressure ? currentLayerInfo.pressure / 100 : null;
-            const pressureText = pressureHpa ? ` at ${pressureHpa} hPa` : '';
-            
-            nowButton.title = `${formattedDate} at ${formattedHour}${pressureText}`;
-        }
     }
 }
 

@@ -111,11 +111,6 @@ export function updateDockElementSizes() {
 export function toggleEDLNavigation() {
     console.log('[Dock] Toggling EDL navigation row');
     
-    // Create EDL navigation row if it doesn't exist
-    if (!document.getElementById('edlNavRow')) {
-        createEDLNavigationRow();
-    }
-    
     // If circles navigation is currently visible, hide it
     if (circlesNavigationVisible) {
         circlesNavigationVisible = false;
@@ -132,6 +127,10 @@ export function toggleEDLNavigation() {
     edlNavigationVisible = !edlNavigationVisible;
     
     // Update UI
+    const edlNavContainer = document.getElementById('edlNavContainer');
+    if (edlNavContainer) {
+        edlNavContainer.style.display = edlNavigationVisible ? 'block' : 'none';
+    }
     toggleEDLNavigationRow(edlNavigationVisible);
     
     // Update button visual
@@ -167,170 +166,11 @@ export function toggleEDLNavigation() {
     }
 }
 
-
-/**
- * Creates the EDL navigation row in the dock
- */
-function createEDLNavigationRow() {
-    console.log('[Dock] Creating EDL navigation row');
-    
-    // Create row container
-    const navRow = document.createElement('div');
-    navRow.id = 'edlNavRow';
-    navRow.className = 'secondary-dock-row'; // Removed redundant edl-nav-row class
-    navRow.style.display = 'none'; // Initially hidden
-    
-    // Previous hour button
-    const prevButton = document.createElement('button');
-    prevButton.id = 'edlPrevHourBtn';
-    prevButton.className = 'secondary-btn';
-    prevButton.title = 'Previous Hour';
-    prevButton.innerHTML = '<span class="material-icons">keyboard_double_arrow_left</span>';
-    prevButton.addEventListener('click', () => {
-        console.log('[Dock] Previous hour button clicked');
-        navigateToPreviousHour();
-    });
-    
-    // Current time button
-    const nowButton = document.createElement('button');
-    nowButton.id = 'edlNowBtn';
-    nowButton.className = 'secondary-btn';
-    nowButton.title = 'Current Time';
-    
-    // Create a container for time and date
-    const timeContainer = document.createElement('div');
-    timeContainer.className = 'edl-time-container';
-    
-    // Time indicator span
-    const timeIndicator = document.createElement('span');
-    timeIndicator.id = 'edlTimeIndicator';
-    timeIndicator.textContent = 'Now';
-    
-    // Date indicator span
-    const dateIndicator = document.createElement('span');
-    dateIndicator.id = 'edlDateIndicator';
-    dateIndicator.textContent = ''; // Will be populated by edlUI.js
-    
-    // Add time and date to container
-    timeContainer.appendChild(timeIndicator);
-    timeContainer.appendChild(dateIndicator);
-    
-    // Add container to button
-    nowButton.appendChild(timeContainer);
-    
-    nowButton.addEventListener('click', () => {
-        console.log('[Dock] Now button clicked');
-        navigateToCurrentTime();
-    });
-    
-    // Next hour button
-    const nextButton = document.createElement('button');
-    nextButton.id = 'edlNextHourBtn';
-    nextButton.className = 'secondary-btn';
-    nextButton.title = 'Next Hour';
-    nextButton.innerHTML = '<span class="material-icons">keyboard_double_arrow_right</span>';
-    nextButton.addEventListener('click', () => {
-        console.log('[Dock] Next hour button clicked');
-        navigateToNextHour();
-    });
-    
-    // Pressure Up button
-    const pressureUpButton = document.createElement('button');
-    pressureUpButton.id = 'edlPressureUpBtn';
-    pressureUpButton.className = 'secondary-btn';
-    pressureUpButton.title = 'Higher Altitude (Lower Pressure)';
-    pressureUpButton.innerHTML = '<span class="material-icons">keyboard_double_arrow_up</span>';
-    pressureUpButton.addEventListener('click', () => {
-        console.log('[Dock] Pressure up button clicked');
-        import('./edlUI.js').then(module => {
-            module.navigateToHigherAltitude();
-        });
-    });
-    
-    // Pressure display button
-    const pressureButton = document.createElement('button');
-    pressureButton.id = 'edlPressureBtn';
-    pressureButton.className = 'secondary-btn';
-    pressureButton.title = 'Current Pressure Level';
-    
-    // Create a container for pressure and altitude
-    const pressureContainer = document.createElement('div');
-    pressureContainer.className = 'edl-pressure-container';
-    
-    // Altitude indicator span
-    const altitudeIndicator = document.createElement('span');
-    altitudeIndicator.id = 'edlAltitudeIndicator';
-    altitudeIndicator.textContent = '5600m';
-    
-    // Pressure indicator span
-    const pressureIndicator = document.createElement('span');
-    pressureIndicator.id = 'edlPressureIndicator';
-    pressureIndicator.textContent = '500hPa';
-
-    // Add pressure and altitude to container
-    pressureContainer.appendChild(altitudeIndicator);
-    pressureContainer.appendChild(pressureIndicator);
-    
-    // Add container to button
-    pressureButton.appendChild(pressureContainer);
-    
-    // Pressure Down button
-    const pressureDownButton = document.createElement('button');
-    pressureDownButton.id = 'edlPressureDownBtn';
-    pressureDownButton.className = 'secondary-btn';
-    pressureDownButton.title = 'Lower Altitude (Higher Pressure)';
-    pressureDownButton.innerHTML = '<span class="material-icons">keyboard_double_arrow_down</span>';
-    pressureDownButton.addEventListener('click', () => {
-        console.log('[Dock] Pressure down button clicked');
-        import('./edlUI.js').then(module => {
-            module.navigateToLowerAltitude();
-        });
-    });
-    
-    // EDL Visibility Toggle button
-    const visibilityButton = document.createElement('button');
-    visibilityButton.id = 'edlVisibilityBtn';
-    visibilityButton.className = 'secondary-btn';
-    visibilityButton.title = 'Toggle EDL Layer Visibility';
-    visibilityButton.innerHTML = '<span class="material-icons">visibility</span>';
-    visibilityButton.addEventListener('click', () => {
-        console.log('[Dock] EDL visibility button clicked');
-        import('./edlUI.js').then(module => {
-            module.toggleEDLLayerVisibility();
-        });
-    });
-    
-    // Add all buttons to row in a single line
-    navRow.appendChild(prevButton);
-    navRow.appendChild(nowButton);
-    navRow.appendChild(nextButton);
-    navRow.appendChild(pressureUpButton);
-    navRow.appendChild(pressureButton);
-    navRow.appendChild(pressureDownButton);
-    navRow.appendChild(visibilityButton);
-    
-    // Create a container for the EDL navigation that's separate from the main dock
-    const container = document.createElement('div');
-    container.id = 'edlNavContainer';
-    container.className = 'secondary-dock-container';
-    container.appendChild(navRow);
-    
-    // Add to the body, not the mapDock
-    document.body.appendChild(container);
-    
-    console.log('[Dock] EDL navigation row created');
-}
-
 /**
  * Toggles the Circles navigation row
  */
 export function toggleCirclesNavigation() {
     console.log('[Dock] Toggling Circles navigation row');
-    
-    // Create Circles navigation row if it doesn't exist
-    if (!document.getElementById('circlesNavRow')) {
-        createCirclesNavigationRow();
-    }
     
     // If EDL navigation is currently visible, hide it
     if (edlNavigationVisible) {
@@ -348,6 +188,10 @@ export function toggleCirclesNavigation() {
     circlesNavigationVisible = !circlesNavigationVisible;
     
     // Update UI
+    const circlesNavContainer = document.getElementById('circlesNavContainer');
+    if (circlesNavContainer) {
+        circlesNavContainer.style.display = circlesNavigationVisible ? 'block' : 'none';
+    }
     toggleCirclesNavigationRow(circlesNavigationVisible);
     
     // Update button visual
@@ -368,175 +212,59 @@ export function toggleCirclesNavigation() {
 }
 
 /**
- * Creates the Circles navigation row in the dock
- */
-function createCirclesNavigationRow() {
-    console.log('[Dock] Creating Circles navigation row');
-    
-    // Create row container
-    const navRow = document.createElement('div');
-    navRow.id = 'circlesNavRow';
-    navRow.className = 'secondary-dock-row'; // Removed redundant circles-nav-row class
-    navRow.style.display = 'none'; // Initially hidden
-    
-    // Visibility Toggle button
-    const visibilityButton = document.createElement('button');
-    visibilityButton.id = 'circlesVisibilityBtn';
-    visibilityButton.className = 'secondary-btn';
-    visibilityButton.title = 'Toggle Circles Layer Visibility';
-    
-    // Visibility icon
-    const visibilityIcon = document.createElement('span');
-    visibilityIcon.id = 'circlesVisibilityIcon';
-    visibilityIcon.className = 'material-icons';
-    visibilityIcon.textContent = getLayersToggleState() ? 'visibility' : 'visibility_off';
-    
-    visibilityButton.appendChild(visibilityIcon);
-    
-    // Opacity slider wrapper
-    const sliderWrapper = document.createElement('div');
-    sliderWrapper.className = 'sectors-slider';
-    sliderWrapper.id = 'circlesSliderWrapper';
-    
-    // Opacity slider
-    const opacitySlider = document.createElement('input');
-    opacitySlider.id = 'circlesOpacitySlider';
-    opacitySlider.type = 'range';
-    opacitySlider.min = '0';
-    opacitySlider.max = '0.5';
-    opacitySlider.step = '0.01';
-    opacitySlider.value = getPolygonOpacity();
-    
-    sliderWrapper.appendChild(opacitySlider);
-    
-    // Add all elements to row
-    navRow.appendChild(visibilityButton);
-    navRow.appendChild(sliderWrapper);
-    
-    // Create a container for the Circles navigation that's separate from the main dock
-    const container = document.createElement('div');
-    container.id = 'circlesNavContainer';
-    container.className = 'secondary-dock-container';
-    container.appendChild(navRow);
-    
-    // Add to the body, not the mapDock
-    document.body.appendChild(container);
-    
-    console.log('[Dock] Circles navigation row created');
-}
-
-/**
  * Creates a button to toggle EDL navigation
  */
 function createEDLNavigationToggleButton() {
     console.log('[Dock] Creating EDL navigation toggle button');
 
-    // Check if EDL metadata exists before creating the button
+    // Check if EDL metadata exists before showing the button
     import('./cacheEdl.js').then(module => {
         if (!module.hasEDLTiles()) {
-            console.log('[Dock] No EDL tiles available, not creating EDL navigation button');
+            console.log('[Dock] No EDL tiles available, not showing EDL navigation button');
             return;
         }
 
-        // Create button
-        const button = document.createElement('button');
-        button.id = 'toggleEDLNavigationBtn';
-        button.className = 'dock-toggle-btn';
-        button.title = 'Toggle EDL Weather Navigation';
-        
-        // Use airwave icon with Material Icons
-        button.innerHTML = '<span class="material-icons">waves</span>';
-        
-        // Add click event
-        button.addEventListener('click', toggleEDLNavigation);
-        
-        // Add to dock, right before the "more options" button
-        const mapDock = document.getElementById('mapDock');
-        const moreOptionsBtn = document.getElementById('moreOptionsBtn');
-        
-        if (moreOptionsBtn) {
-            mapDock.insertBefore(button, moreOptionsBtn);
-        } else {
-            mapDock.appendChild(button);
+        // Find the button and make it visible
+        const button = document.getElementById('toggleEDLNavigationBtn');
+        if (button) {
+            button.style.display = '';
+            console.log('[Dock] EDL navigation toggle button shown');
+            
+            // Recalculate the dock element sizes to account for the now visible button
+            updateDockElementSizes();
         }
-        
-        console.log('[Dock] EDL navigation toggle button created');
-        
-        // Recalculate the dock element sizes to account for the new button
-        updateDockElementSizes();
     });
-}
-
-/**
- * Creates a button to toggle Circles navigation
- */
-function createCirclesNavigationToggleButton() {
-    console.log('[Dock] Creating Circles navigation toggle button');
-
-    // Create button
-    const button = document.createElement('button');
-    button.id = 'toggleCirclesNavigationBtn';
-    button.className = 'dock-toggle-btn';
-    button.title = 'Toggle Circles Controls';
-    
-    // Use target icon with Material Icons
-    button.innerHTML = '<span class="material-icons">track_changes</span>';
-    
-    // Add click event
-    button.addEventListener('click', toggleCirclesNavigation);
-    
-    // Add to dock, right after the EDL button
-    const mapDock = document.getElementById('mapDock');
-    const edlToggleButton = document.getElementById('toggleEDLNavigationBtn');
-    
-    if (edlToggleButton) {
-        mapDock.insertBefore(button, edlToggleButton.nextSibling);
-    } else {
-        const moreOptionsBtn = document.getElementById('moreOptionsBtn');
-        if (moreOptionsBtn) {
-            mapDock.insertBefore(button, moreOptionsBtn);
-        } else {
-            mapDock.appendChild(button);
-        }
-    }
-    
-    console.log('[Dock] Circles navigation toggle button created');
-    
-    // Recalculate the dock element sizes to account for the new button
-    updateDockElementSizes();
 }
 
 /**
  * Creates and adds zoom buttons only for non-mobile devices
  */
 function createZoomButtonsIfNeeded() {
-    // Don't add zoom buttons on mobile devices (touch-enabled)
+    // Don't show zoom buttons on mobile devices (touch-enabled)
     if ('ontouchstart' in window) {
         return;
     }
     
-    // Create zoom in button
-    const zoomInBtn = document.createElement('button');
-    zoomInBtn.title = 'Zoom In';
-    zoomInBtn.innerHTML = '<span class="material-icons">zoom_in</span>';
-    zoomInBtn.addEventListener('click', () => {
-        getMap().zoomIn();
-    });
+    // Find and show the existing zoom buttons
+    const zoomInBtn = document.getElementById('zoomInBtn');
+    const zoomOutBtn = document.getElementById('zoomOutBtn');
     
-    // Create zoom out button
-    const zoomOutBtn = document.createElement('button');
-    zoomOutBtn.title = 'Zoom Out';
-    zoomOutBtn.innerHTML = '<span class="material-icons">zoom_out</span>';
-    zoomOutBtn.addEventListener('click', () => {
-        getMap().zoomOut();
-    });
+    if (zoomInBtn) {
+        zoomInBtn.style.display = '';
+        zoomInBtn.addEventListener('click', () => {
+            getMap().zoomIn();
+        });
+    }
     
-    // Add buttons to mapDock, right before the more options button
-    const mapDock = document.getElementById('mapDock');
-    const moreOptionsBtn = document.getElementById('moreOptionsBtn');
+    if (zoomOutBtn) {
+        zoomOutBtn.style.display = '';
+        zoomOutBtn.addEventListener('click', () => {
+            getMap().zoomOut();
+        });
+    }
     
-    mapDock.appendChild(zoomInBtn);
-    mapDock.appendChild(zoomOutBtn);
+    // Recalculate the dock element sizes to account for the now visible buttons
+    updateDockElementSizes();
 }
 
 /**
@@ -672,11 +400,26 @@ export function setupDockEventListeners() {
     // Create and add zoom buttons only for non-mobile devices
     createZoomButtonsIfNeeded();
     
-    // Create EDL navigation toggle button
+    // Set up EDL navigation button event listener
+    const edlToggleBtn = document.getElementById('toggleEDLNavigationBtn');
+    if (edlToggleBtn) {
+        edlToggleBtn.addEventListener('click', toggleEDLNavigation);
+    }
+    
+    // Create EDL navigation toggle button (make it visible if EDL tiles are available)
     createEDLNavigationToggleButton();
     
-    // Create Circles navigation toggle button
-    createCirclesNavigationToggleButton();
+    // Set up EDL navigation row buttons
+    setupEDLNavigationRowEvents();
+    
+    // Set up Circles navigation button event listener
+    const circlesToggleBtn = document.getElementById('toggleCirclesNavigationBtn');
+    if (circlesToggleBtn) {
+        circlesToggleBtn.addEventListener('click', toggleCirclesNavigation);
+    }
+    
+    // Set up Circles navigation row buttons
+    setupCirclesNavigationRowEvents();
     
     // No need to update visibility icons here - they're updated by state management
     
@@ -687,4 +430,96 @@ export function setupDockEventListeners() {
     const debouncedResize = debounce(updateDockElementSizes, 150);
     window.addEventListener('resize', debouncedResize);
     window.addEventListener('orientationchange', updateDockElementSizes);
+}
+
+/**
+ * Sets up event listeners for all EDL navigation row buttons
+ */
+function setupEDLNavigationRowEvents() {
+    // Previous hour button
+    const prevButton = document.getElementById('edlPrevHourBtn');
+    if (prevButton) {
+        prevButton.addEventListener('click', () => {
+            console.log('[Dock] Previous hour button clicked');
+            navigateToPreviousHour();
+        });
+    }
+    
+    // Current time (Now) button
+    const nowButton = document.getElementById('edlNowBtn');
+    if (nowButton) {
+        nowButton.addEventListener('click', () => {
+            console.log('[Dock] Now button clicked');
+            navigateToCurrentTime();
+        });
+    }
+    
+    // Next hour button
+    const nextButton = document.getElementById('edlNextHourBtn');
+    if (nextButton) {
+        nextButton.addEventListener('click', () => {
+            console.log('[Dock] Next hour button clicked');
+            navigateToNextHour();
+        });
+    }
+    
+    // Pressure Up button
+    const pressureUpButton = document.getElementById('edlPressureUpBtn');
+    if (pressureUpButton) {
+        pressureUpButton.addEventListener('click', () => {
+            console.log('[Dock] Pressure up button clicked');
+            import('./edlUI.js').then(module => {
+                module.navigateToHigherAltitude();
+            });
+        });
+    }
+    
+    // Pressure Down button
+    const pressureDownButton = document.getElementById('edlPressureDownBtn');
+    if (pressureDownButton) {
+        pressureDownButton.addEventListener('click', () => {
+            console.log('[Dock] Pressure down button clicked');
+            import('./edlUI.js').then(module => {
+                module.navigateToLowerAltitude();
+            });
+        });
+    }
+    
+    // EDL Visibility Toggle button
+    const visibilityButton = document.getElementById('edlVisibilityBtn');
+    if (visibilityButton) {
+        visibilityButton.addEventListener('click', () => {
+            console.log('[Dock] EDL visibility button clicked');
+            import('./edlUI.js').then(module => {
+                module.toggleEDLLayerVisibility();
+            });
+        });
+    }
+}
+
+/**
+ * Sets up event listeners for all Circles navigation row buttons
+ */
+function setupCirclesNavigationRowEvents() {
+    // Visibility Toggle button
+    const visibilityButton = document.getElementById('circlesVisibilityBtn');
+    if (visibilityButton) {
+        visibilityButton.addEventListener('click', () => {
+            toggleLayerVisibility();
+        });
+    }
+    
+    // Opacity slider
+    const opacitySlider = document.getElementById('circlesOpacitySlider');
+    if (opacitySlider) {
+        // Set initial value from state
+        opacitySlider.value = getPolygonOpacity();
+        
+        // Add input event for live updating
+        opacitySlider.addEventListener('input', () => {
+            const opacity = parseFloat(opacitySlider.value);
+            setPolygonOpacity(opacity);
+            saveStateToLocalStorage();
+        });
+    }
 } 

@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -13,39 +14,42 @@
     <script>
         // Automatically determine if we're on GitHub Pages or running locally
         function getBasePath() {
-            
+
             // Check for GitHub Pages project site
             if (window.location.hostname === 'gabriel-briffe.github.io') {
                 // Use the exact case for the repository name that matches the URL
                 return '/MountainCircles---map';
             }
-            
+
             // Check for repository name in path as fallback
             const pathname = window.location.pathname;
             const pathSegments = pathname.split('/').filter(segment => segment);
-                        
+
             // If path includes our repository name with correct case
             if (pathSegments.length > 0 && pathSegments[0] === 'MountainCircles---map') {
                 return '/MountainCircles---map';
             }
-            
+
             // Otherwise, we're running locally
             return '.';
         }
-        
+
         // Set the base path early and create a base element dynamically
         window.BASE_PATH = getBasePath();
         document.write(`<base href="${window.BASE_PATH}/">`);
     </script>
-    <link href="styles.css" rel="stylesheet" onerror="console.error('Failed to load styles.css')" onload="console.log('Successfully loaded styles.css')"/>
+    <link href="styles.css" rel="stylesheet" onerror="console.error('Failed to load styles.css')"
+        onload="console.log('Successfully loaded styles.css')" />
     <!-- Add error handlers to resources -->
-    <link rel="manifest" href="manifest.json" onerror="console.error('Failed to load manifest.json')" onload="console.log('Successfully loaded manifest.json')"/>
+    <link rel="manifest" href="manifest.json" onerror="console.error('Failed to load manifest.json')"
+        onload="console.log('Successfully loaded manifest.json')" />
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black">
     <meta name="apple-mobile-web-app-title" content="MC Map">
     <meta name="theme-color" content="#000000">
 </head>
+
 <body>
     <!-- Spinner for GeoJSON loading -->
     <div id="spinner">
@@ -73,24 +77,42 @@
         <button title="Toggle Airspace Types" id="toggleSidebarButton">
             <span class="material-icons" id="sidebarVisibilityIcon">layers</span>
         </button>
-        
+
         <!-- North Up Button -->
         <button title="Reset North Up" id="northUpButton">
             <span class="material-icons">navigation</span>
         </button>
-        
+
         <!-- Toggle Airspace Visibility Button -->
         <button title="Toggle Airspace Visibility" id="toggleAirspaceButton">
             <span class="material-icons" id="airspaceVisibilityIcon">grid_on</span>
         </button>
         
-        <!-- Toggle Visibility for main layers and Slider for polygon opacity HAVE BEEN MOVED to the Circles UI navigation row -->
+        <!-- Toggle EDL Navigation Button (initially hidden) -->
+        <button title="Toggle EDL Weather Navigation" id="toggleEDLNavigationBtn" class="dock-toggle-btn" style="display: none;">
+            <span class="material-icons">waves</span>
+        </button>
         
+        <!-- Toggle Circles Navigation Button -->
+        <button title="Toggle Circles Controls" id="toggleCirclesNavigationBtn" class="dock-toggle-btn">
+            <span class="material-icons">track_changes</span>
+        </button>
+
         <!-- More Options Button -->
         <button title="More Options" id="moreOptionsBtn">
             <span class="material-icons">menu</span>
         </button>
         
+        <!-- Zoom In Button (initially hidden) -->
+        <button title="Zoom In" id="zoomInBtn" style="display: none;">
+            <span class="material-icons">zoom_in</span>
+        </button>
+        
+        <!-- Zoom Out Button (initially hidden) -->
+        <button title="Zoom Out" id="zoomOutBtn" style="display: none;">
+            <span class="material-icons">zoom_out</span>
+        </button>
+
     </div>
 
     <!-- Popup Menu: For controls not requiring constant map visibility -->
@@ -99,21 +121,25 @@
             <button class="close" id="closePopupBtn">
                 <span class="material-icons">close</span>
             </button>
-            
-            <!-- IGC File Control with Icon -->
+
+
+
+
+            <!-- Add new section for caching EDL tiles - moved before cache current config -->
             <div>
-                <button id="igcFileButton" class="menu-btn button-with-icon">
-                    <span class="material-icons">folder_open</span>
-                    <span>Open IGC File</span>
+                <button id="cacheEDLTilesBtn" class="menu-btn button-with-icon">
+                    <span class="material-icons">waves</span>
+                    <span>Download today's EDL Wave Forecast</span>
                 </button>
-                <div id="igcProgress" class="cache-progress">
-                    <div class="progress-status">Processing IGC file...</div>
+                <div id="edlCacheProgress" class="cache-progress">
+                    <div class="progress-status">Caching files: <span id="edlCacheCount">0</span>/<span
+                            id="edlTotalFiles">0</span></div>
                     <div class="progress-bar-container">
-                        <div id="igcProgressBar" class="progress-bar-fill"></div>
+                        <div id="edlProgressBar" class="progress-bar-fill"></div>
                     </div>
                 </div>
             </div>
-            
+
             <!-- New App Update section -->
             <div>
                 <button id="appUpdateBtn" class="menu-btn button-with-icon">
@@ -127,43 +153,16 @@
                     </div>
                 </div>
             </div>
-            
-            <!-- Clean Install Button -->
-            <div>
-                <button id="cleanInstallBtn" class="menu-btn button-with-icon">
-                    <span class="material-icons">delete_forever</span>
-                    <span>Clean Install (Reset All)</span>
-                </button>
-                <div id="cleanInstallProgress" class="cache-progress">
-                    <div class="progress-status">Resetting application...</div>
-                    <div class="progress-bar-container">
-                        <div id="cleanInstallProgressBar" class="progress-bar-fill"></div>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- Add new section for caching EDL tiles - moved before cache current config -->
-            <div>
-                <button id="cacheEDLTilesBtn" class="menu-btn button-with-icon">
-                    <span class="material-icons">waves</span>
-                    <span>Cache today's EDL Weather Forecast</span>
-                </button>
-                <div id="edlCacheProgress" class="cache-progress">
-                    <div class="progress-status">Caching files: <span id="edlCacheCount">0</span>/<span id="edlTotalFiles">0</span></div>
-                    <div class="progress-bar-container">
-                        <div id="edlProgressBar" class="progress-bar-fill"></div>
-                    </div>
-                </div>
-            </div>
-            
+
             <!-- Cache Current Config section -->
             <div>
                 <button id="cacheCurrentConfigBtn" class="menu-btn button-with-icon">
                     <span class="material-icons">download</span>
-                    <span>Cache Current Config for Offline Use</span>
+                    <span>Cache Current L/D Circles for Offline Use</span>
                 </button>
                 <div id="cacheProgress" class="cache-progress">
-                    <div class="progress-status">Caching files: <span id="cacheCount">0</span>/<span id="totalFiles">0</span></div>
+                    <div class="progress-status">Caching files: <span id="cacheCount">0</span>/<span
+                            id="totalFiles">0</span></div>
                     <div class="progress-bar-container">
                         <div id="progressBar" class="progress-bar-fill"></div>
                     </div>
@@ -177,32 +176,110 @@
                     <span>Cache Background Map for Offline Use</span>
                 </button>
                 <div id="mapCacheProgress" class="cache-progress">
-                    <div class="progress-status">Caching tiles: <span id="mapCacheCount">0</span>/<span id="mapTotalTiles">0</span></div>
+                    <div class="progress-status">Caching tiles: <span id="mapCacheCount">0</span>/<span
+                            id="mapTotalTiles">0</span></div>
                     <div class="progress-bar-container">
                         <div id="mapProgressBar" class="progress-bar-fill"></div>
                     </div>
                 </div>
                 <!-- Link to map download -->
                 <div class="map-link-container">
-                    <a href="https://drive.google.com/file/d/10hk7NRZp3o9hZg92tnGXo8VO1nBra62S/view?usp=drive_link" 
-                       class="map-download-link"
-                       target="_blank">
+                    <a href="https://drive.google.com/file/d/10hk7NRZp3o9hZg92tnGXo8VO1nBra62S/view?usp=drive_link"
+                        class="map-download-link" target="_blank">
                         → link to map
                     </a>
                 </div>
             </div>
-            
+
+            <!-- IGC File Control with Icon -->
+            <div>
+                <button id="igcFileButton" class="menu-btn button-with-icon">
+                    <span class="material-icons">folder_open</span>
+                    <span>Open IGC File</span>
+                </button>
+                <div id="igcProgress" class="cache-progress">
+                    <div class="progress-status">Processing IGC file...</div>
+                    <div class="progress-bar-container">
+                        <div id="igcProgressBar" class="progress-bar-fill"></div>
+                    </div>
+                </div>
+            </div>
+
+
             <h3>Warning</h3>
             <p>Airspace from openAip and no automatic update so far - will contain mistakes</p>
-            <p>This is a new experimental tool. Problems will arise that have not been encountered before in the gliding community.</p>
+            <p>This is a new experimental tool. Problems will arise that have not been encountered before in the gliding
+                community.</p>
             <p>I am not sure that 100m above ground is big enough a margin to be safe above the passes.</p>
-            <p>Airspace is not taken into account. Downdrafts are not taken into account. Wind is not taken into account.</p>
+            <p>Airspace is not taken into account. Downdrafts are not taken into account. Wind is not taken into
+                account.</p>
             <p>The airfield list might not be accurate, some airfields might be unservicable or closed.</p>
             <p>Check on a real map that the indications make sense.</p>
-            <p>Speak with the owner of the glider (your club's instructors for example) about using this tool. They might foresee problems that you and the author have not anticipated and save your life.</p>
+            <p>Speak with the owner of the glider (your club's instructors for example) about using this tool. They
+                might foresee problems that you and the author have not anticipated and save your life.</p>
             <p>The author is not liable for any damage or injury that might occur by using this tool.</p>
             <!-- Hidden file input triggered by the IGC file button -->
             <input type="file" id="igcFileInput" accept="*/*" style="display: none;">
+
+            <!-- Clean Install Button -->
+            <div>
+                <button id="cleanInstallBtn" class="menu-btn button-with-icon">
+                    <span class="material-icons">delete_forever</span>
+                    <span>Clean Install (Reset All)</span>
+                </button>
+                <div id="cleanInstallProgress" class="cache-progress">
+                    <div class="progress-status">Resetting application...</div>
+                    <div class="progress-bar-container">
+                        <div id="cleanInstallProgressBar" class="progress-bar-fill"></div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- EDL Navigation Container (initially hidden) -->
+    <div id="edlNavContainer" class="secondary-dock-container" style="display: none;">
+        <div id="edlNavRow" class="secondary-dock-row">
+            <button id="edlPrevHourBtn" class="secondary-btn" title="Previous Hour">
+                <span class="material-icons">keyboard_double_arrow_left</span>
+            </button>
+            <button id="edlNowBtn" class="secondary-btn" title="Current Time">
+                <div class="edl-time-container">
+                    <span id="edlTimeIndicator">Now</span>
+                    <span id="edlDateIndicator"></span>
+                </div>
+            </button>
+            <button id="edlNextHourBtn" class="secondary-btn" title="Next Hour">
+                <span class="material-icons">keyboard_double_arrow_right</span>
+            </button>
+            <button id="edlPressureUpBtn" class="secondary-btn" title="Higher Altitude (Lower Pressure)">
+                <span class="material-icons">keyboard_double_arrow_up</span>
+            </button>
+            <button id="edlPressureBtn" class="secondary-btn" title="Current Pressure Level">
+                <div class="edl-pressure-container">
+                    <span id="edlAltitudeIndicator">5600m</span>
+                    <span id="edlPressureIndicator">500hPa</span>
+                </div>
+            </button>
+            <button id="edlPressureDownBtn" class="secondary-btn" title="Lower Altitude (Higher Pressure)">
+                <span class="material-icons">keyboard_double_arrow_down</span>
+            </button>
+            <button id="edlVisibilityBtn" class="secondary-btn" title="Toggle EDL Layer Visibility">
+                <span class="material-icons">visibility</span>
+            </button>
+        </div>
+    </div>
+    
+    <!-- Circles Navigation Container (initially hidden) -->
+    <div id="circlesNavContainer" class="secondary-dock-container" style="display: none;">
+        <div id="circlesNavRow" class="secondary-dock-row">
+            <button id="circlesVisibilityBtn" class="secondary-btn" title="Toggle Circles Layer Visibility">
+                <span id="circlesVisibilityIcon" class="material-icons">visibility</span>
+            </button>
+            <div class="sectors-slider" id="circlesSliderWrapper">
+                <input id="circlesOpacitySlider" type="range" min="0" max="0.5" step="0.01" value="0.2">
+            </div>
         </div>
     </div>
 
@@ -220,7 +297,7 @@
                 console.log('Registering service worker with BASE_PATH:', window.BASE_PATH);
                 console.log('Service worker URL:', `${window.BASE_PATH}/sw.js`);
                 console.log('Service worker scope:', `${window.BASE_PATH}/`);
-                
+
                 navigator.serviceWorker.register(`${window.BASE_PATH}/sw.js`, { scope: `${window.BASE_PATH}/` })
                     .then(registration => {
                         console.log('Service Worker registered:', registration.scope);
@@ -271,7 +348,7 @@
                     }).catch(err => {
                         console.error('Failed to import sidebar.js for updating config button styles:', err);
                     });
-                    
+
                     // Add a 5-second delay before hiding the progress bar
                     setTimeout(() => {
                         document.getElementById('cacheProgress').style.display = 'none';
@@ -285,8 +362,10 @@
             });
         }
     </script>
-    
+
     <!-- Import the main JavaScript file -->
-    <script type="module" src="main.js" onerror="console.error('Failed to load main.js')" onload="console.log('Successfully loaded main.js')"></script>
+    <script type="module" src="main.js" onerror="console.error('Failed to load main.js')"
+        onload="console.log('Successfully loaded main.js')"></script>
 </body>
+
 </html>
