@@ -156,9 +156,11 @@
 
             <!-- Cache Current Config section -->
             <div>
+                <p>To embark all the circles for a L/D configuration, select it in the sidebar and press Import Current L/D Circles:
+                    (sidebar button outlined green when offline-ready)</p>
                 <button id="cacheCurrentConfigBtn" class="menu-btn button-with-icon">
                     <span class="material-icons">download</span>
-                    <span>Cache Current L/D Circles for Offline Use</span>
+                    <span>Import Current L/D Circles</span>
                 </button>
                 <div id="cacheProgress" class="cache-progress">
                     <div class="progress-status">Caching files: <span id="cacheCount">0</span>/<span
@@ -171,9 +173,17 @@
 
             <!-- Add new section for caching background map -->
             <div>
+                <p>To be sure you have the whole background map at all zoom levels while flying, download the map and import it</p>
+                <!-- Link to map download -->
+                <div class="map-link-container">
+                    <a href="https://drive.google.com/file/d/10hk7NRZp3o9hZg92tnGXo8VO1nBra62S/view?usp=drive_link"
+                        class="map-download-link" target="_blank">
+                        → Download Map
+                    </a>
+                </div>
                 <button id="cacheBackgroundMapBtn" class="menu-btn button-with-icon">
                     <span class="material-icons">map</span>
-                    <span>Cache Background Map for Offline Use</span>
+                    <span>Import Map</span>
                 </button>
                 <div id="mapCacheProgress" class="cache-progress">
                     <div class="progress-status">Caching tiles: <span id="mapCacheCount">0</span>/<span
@@ -181,13 +191,6 @@
                     <div class="progress-bar-container">
                         <div id="mapProgressBar" class="progress-bar-fill"></div>
                     </div>
-                </div>
-                <!-- Link to map download -->
-                <div class="map-link-container">
-                    <a href="https://drive.google.com/file/d/10hk7NRZp3o9hZg92tnGXo8VO1nBra62S/view?usp=drive_link"
-                        class="map-download-link" target="_blank">
-                        → link to map
-                    </a>
                 </div>
             </div>
 

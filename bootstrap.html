@@ -302,8 +302,12 @@
         
         // Function to show completion UI instead of alert
         function showCompletionUI() {
-            completionMessage.style.display = 'block';
-            returnButton.style.display = 'block';
+            // completionMessage.style.display = 'block';
+            // returnButton.style.display = 'block';
+            
+            // Automatically return to application after 2 seconds
+            const BASE_PATH = getBasePath();
+            window.location.href = `${BASE_PATH}/index.html?updated=${Date.now()}`;
         }
         
         // Function to show error UI instead of alert
