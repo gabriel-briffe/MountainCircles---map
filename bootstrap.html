@@ -1,0 +1,659 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Add cache control headers to prevent browser caching -->
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <!-- Add service worker scope control -->
+    <meta name="service-worker-allowed" content="none">
+    <!-- Add random timestamp to help avoid caching -->
+    <meta name="generated" content="<%=Date.now()%>">
+    <title>MountainCircles Map - Bootstrap Update</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        
+        html, body {
+            height: 100%;
+            width: 100%;
+            overflow: hidden;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+            background-color: #f5f5f5;
+            color: #333;
+        }
+        
+        .container {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            width: 100%;
+            max-width: 100%;
+            padding: 10px;
+        }
+
+        .progress-container {
+            width: 100%;
+            background-color: #ddd;
+            border-radius: 5px;
+            height: 20px;
+            margin-bottom: 10px;
+        }
+
+        .progress-bar {
+            height: 100%;
+            background-color: #006400;
+            border-radius: 5px;
+            width: 0;
+            transition: width 0.3s;
+        }
+
+        #console {
+            flex: 1;
+            background-color: #000;
+            color: #00ff00;
+            font-family: monospace;
+            padding: 10px;
+            border-radius: 5px;
+            overflow-y: auto;
+            margin-bottom: 10px;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            min-height: 100px;
+        }
+
+        .bottom-container {
+            width: 100%;
+        }
+
+        .completion-message {
+            text-align: center;
+            font-weight: bold;
+            color: #006400;
+            margin-bottom: 10px;
+            display: none;
+        }
+
+        #returnButton {
+            display: none;
+            background-color: #006400;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            padding: 12px;
+            font-size: 16px;
+            width: 100%;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        
+        #returnButton:hover {
+            background-color: #008800;
+        }
+
+        .error {
+            color: #ff0000;
+        }
+
+        .warning {
+            color: #ffcc00;
+        }
+
+        .success {
+            color: #00ff00;
+        }
+
+        .info {
+            color: #00ccff;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="progress-container">
+            <div class="progress-bar" id="progress"></div>
+        </div>
+        <div id="console"></div>
+        <div class="bottom-container">
+            <div class="completion-message" id="completionMessage">
+                Update completed successfully!
+            </div>
+            <button id="returnButton">Return to Application</button>
+        </div>
+    </div>
+
+    <script>
+        // Immediately unregister any service worker that might control this page
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.getRegistration().then(registration => {
+                if (registration) {
+                    console.log("Unregistering service worker for bootstrap page");
+                    registration.unregister();
+                }
+            });
+        }
+        
+        // Console element to log messages
+        const consoleEl = document.getElementById('console');
+        const progressBar = document.getElementById('progress');
+        const returnButton = document.getElementById('returnButton');
+        const completionMessage = document.getElementById('completionMessage');
+        
+        // Add event listener for return button
+        returnButton.addEventListener('click', () => {
+            const BASE_PATH = getBasePath();
+            window.location.href = `${BASE_PATH}/index.html?updated=${Date.now()}`;
+        });
+        
+        // Logging functions
+        function log(message, type = 'normal') {
+            const timestamp = new Date().toISOString().substring(11, 23);
+            const entry = document.createElement('div');
+            entry.className = type;
+            entry.textContent = `[${timestamp}] ${message}`;
+            consoleEl.appendChild(entry);
+            consoleEl.scrollTop = consoleEl.scrollHeight;
+        }
+        
+        function logError(message) {
+            log(message, 'error');
+        }
+        
+        function logWarning(message) {
+            log(message, 'warning');
+        }
+        
+        function logSuccess(message) {
+            log(message, 'success');
+        }
+        
+        function logInfo(message) {
+            log(message, 'info');
+        }
+        
+        // Progress indicator
+        function updateProgress(percent) {
+            progressBar.style.width = `${percent}%`;
+        }
+        
+        // Determine BASE_PATH - same logic as in app
+        function getBasePath() {
+            logInfo("Determining base path for application");
+            try {
+                // Check for GitHub Pages project site
+                if (window.location.hostname === 'gabriel-briffe.github.io') {
+                    logInfo("Detected GitHub Pages hosting");
+                    return '/MountainCircles---map';
+                }
+                
+                // Check for repository name in path as fallback
+                const pathname = window.location.pathname;
+                const pathSegments = pathname.split('/').filter(segment => segment);
+                
+                // If path includes our repository name with correct case
+                if (pathSegments.length > 0 && pathSegments[0] === 'MountainCircles---map') {
+                    logInfo("Detected repository name in path");
+                    return '/MountainCircles---map';
+                }
+                
+                // Otherwise, we're running locally
+                logInfo("Assuming local development environment");
+                return '';
+            } catch (e) {
+                logError(`Error determining BASE_PATH: ${e.message}`);
+                return '';
+            }
+        }
+        
+        // Get core files list - similar to coreFiles.js
+        async function getCoreFiles(basePath) {
+            logInfo("Generating list of core files to update");
+            return [
+                // HTML files
+                `${basePath}/index.html`,
+                
+                // CSS files
+                `${basePath}/styles.css`,
+                `${basePath}/airspacePopup.css`,
+                `${basePath}/installPrompt.css`,
+                `${basePath}/mapDock.css`,
+                `${basePath}/menu.css`,
+                `${basePath}/navbox.css`,
+                `${basePath}/parameters.css`,
+                `${basePath}/progressBar.css`,
+                `${basePath}/secondaryDock.css`,
+                `${basePath}/sidebar.css`,
+                
+                // JS files
+                `${basePath}/airspace.js`,
+                `${basePath}/airspaceStyle.js`,
+                `${basePath}/appUpdate.js`,
+                `${basePath}/cacheConfig.js`,
+                `${basePath}/cacheEdl.js`,
+                `${basePath}/cacheTiles.js`,
+                `${basePath}/circlesUI.js`,
+                `${basePath}/cleanInstall.js`,
+                `${basePath}/config.js`,
+                `${basePath}/dock.js`,
+                `${basePath}/edl.js`,
+                `${basePath}/edlUI.js`,
+                `${basePath}/igc.js`,
+                `${basePath}/init.js`,
+                `${basePath}/install.js`,
+                `${basePath}/LayerManager.js`,
+                `${basePath}/layers.js`,
+                `${basePath}/layerStyles.js`,
+                `${basePath}/location.js`,
+                `${basePath}/main.js`,
+                `${basePath}/map.js`,
+                `${basePath}/mapInitializer.js`,
+                `${basePath}/mappings.js`,
+                `${basePath}/mbtiles.js`,
+                `${basePath}/menu.js`,
+                `${basePath}/navboxManager.js`,
+                `${basePath}/sidebar.js`,
+                `${basePath}/state.js`,
+                `${basePath}/sw.js`,
+                `${basePath}/toggleManager.js`,
+                `${basePath}/tracking.js`,
+                `${basePath}/utils.js`,
+            ];
+        }
+        
+        // Explicitly check if bootstrap.html is in cache and remove it
+        async function removeBootstrapFromCache() {
+            logInfo("Checking if bootstrap.html is cached and removing if found");
+            
+            if (!('caches' in window)) {
+                logWarning("Cache API not available, cannot check for cached bootstrap.html");
+                return;
+            }
+            
+            try {
+                const cacheNames = await caches.keys();
+                for (const cacheName of cacheNames) {
+                    const cache = await caches.open(cacheName);
+                    const requests = await cache.keys();
+                    
+                    for (const request of requests) {
+                        if (request.url.includes('bootstrap.html')) {
+                            await cache.delete(request);
+                            logSuccess(`Removed bootstrap.html from cache: ${cacheName}`);
+                        }
+                    }
+                }
+            } catch (error) {
+                logWarning(`Error checking for cached bootstrap.html: ${error.message}`);
+            }
+        }
+        
+        // Function to show completion UI instead of alert
+        function showCompletionUI() {
+            completionMessage.style.display = 'block';
+            returnButton.style.display = 'block';
+        }
+        
+        // Function to show error UI instead of alert
+        function showErrorUI(errorMessage) {
+            completionMessage.style.display = 'block';
+            completionMessage.textContent = `Update failed: ${errorMessage}`;
+            completionMessage.style.color = '#ff0000';
+            returnButton.style.display = 'block';
+            returnButton.textContent = 'Return to Application Anyway';
+        }
+        
+        // Function to clear all caches
+        async function clearAllCaches() {
+            logInfo("Clearing all browser caches");
+            if (!('caches' in window)) {
+                logWarning("Cache API not available, skipping cache clearing");
+                return false;
+            }
+            
+            try {
+                const cacheNames = await caches.keys();
+                logInfo(`Found ${cacheNames.length} caches to clear: ${cacheNames.join(', ')}`);
+                
+                await Promise.all(
+                    cacheNames.map(async cacheName => {
+                        try {
+                            await caches.delete(cacheName);
+                            logSuccess(`Deleted cache: ${cacheName}`);
+                        } catch (err) {
+                            logError(`Failed to delete cache ${cacheName}: ${err.message}`);
+                        }
+                    })
+                );
+                
+                // Verify caches are cleared
+                const remainingCaches = await caches.keys();
+                if (remainingCaches.length > 0) {
+                    logWarning(`${remainingCaches.length} caches could not be cleared: ${remainingCaches.join(', ')}`);
+                } else {
+                    logSuccess("All caches successfully cleared");
+                }
+                
+                return true;
+            } catch (error) {
+                logError(`Error clearing caches: ${error.message}`);
+                return false;
+            }
+        }
+        
+        // Function to clear localStorage
+        function clearLocalStorage() {
+            logInfo("Clearing localStorage");
+            try {
+                const itemCount = localStorage.length;
+                localStorage.clear();
+                logSuccess(`Cleared ${itemCount} items from localStorage`);
+                return true;
+            } catch (error) {
+                logError(`Error clearing localStorage: ${error.message}`);
+                return false;
+            }
+        }
+        
+        // Function to clear sessionStorage
+        function clearSessionStorage() {
+            logInfo("Clearing sessionStorage");
+            try {
+                const itemCount = sessionStorage.length;
+                sessionStorage.clear();
+                logSuccess(`Cleared ${itemCount} items from sessionStorage`);
+                return true;
+            } catch (error) {
+                logError(`Error clearing sessionStorage: ${error.message}`);
+                return false;
+            }
+        }
+        
+        // Function to clear all IndexedDB databases
+        async function clearIndexedDB() {
+            logInfo("Clearing IndexedDB databases");
+            if (!('indexedDB' in window) || !('databases' in indexedDB)) {
+                logWarning("IndexedDB or databases API not available");
+                return false;
+            }
+            
+            try {
+                const databases = await indexedDB.databases();
+                logInfo(`Found ${databases.length} IndexedDB databases: ${databases.map(db => db.name).join(', ')}`);
+                
+                for (const db of databases) {
+                    try {
+                        await new Promise((resolve, reject) => {
+                            const request = indexedDB.deleteDatabase(db.name);
+                            request.onsuccess = () => {
+                                logSuccess(`Deleted IndexedDB database: ${db.name}`);
+                                resolve();
+                            };
+                            request.onerror = () => {
+                                logError(`Failed to delete IndexedDB database: ${db.name}`);
+                                reject(request.error);
+                            };
+                        });
+                    } catch (err) {
+                        logError(`Error deleting IndexedDB database ${db.name}: ${err.message}`);
+                    }
+                }
+                
+                return true;
+            } catch (error) {
+                logError(`Error clearing IndexedDB: ${error.message}`);
+                return false;
+            }
+        }
+        
+        // Function to perform complete data wipe
+        async function performCompleteDataWipe() {
+            logInfo("Starting COMPLETE DATA WIPE operation");
+            updateProgress(10);
+            
+            // Clear all caches first
+            await clearAllCaches();
+            updateProgress(40);
+            
+            // Clear localStorage
+            clearLocalStorage();
+            updateProgress(60);
+            
+            // Clear sessionStorage
+            clearSessionStorage();
+            updateProgress(70);
+            
+            // Clear IndexedDB
+            await clearIndexedDB();
+            updateProgress(90);
+            
+            // Unregister service workers
+            try {
+                if ('serviceWorker' in navigator) {
+                    const registrations = await navigator.serviceWorker.getRegistrations();
+                    for (const registration of registrations) {
+                        await registration.unregister();
+                        logSuccess("Service worker unregistered successfully");
+                    }
+                }
+            } catch (err) {
+                logError(`Error unregistering service workers: ${err.message}`);
+            }
+            
+            updateProgress(100);
+            logSuccess("COMPLETE DATA WIPE completed successfully!");
+            log("All app data has been removed from the browser");
+            log("The application will start fresh on next launch");
+            log("Re-import the map and cache the configs you use to recover offline capabilities");
+        }
+        
+        // Main bootstrap function
+        async function bootstrapUpdate() {
+            log("Starting MountainCircles Map bootstrap process");
+            updateProgress(5);
+            
+            try {
+                // Check if bootstrap.html is cached and remove it
+                await removeBootstrapFromCache();
+                
+                // Check what kind of update was requested
+                const urlParams = new URLSearchParams(window.location.search);
+                const updateType = urlParams.get('update');
+                
+                // Handle complete wipe if requested
+                if (updateType === 'all') {
+                    logInfo("COMPLETE DATA WIPE requested (update=all)");
+                    await performCompleteDataWipe();
+                    showCompletionUI();
+                    completionMessage.textContent = "Complete data wipe successful!";
+                    return;
+                }
+                
+                // Otherwise proceed with normal core files update
+                const updateRequested = updateType === 'coreFiles';
+                
+                if (!updateRequested) {
+                    logWarning("No valid update parameter found. Expected ?update=coreFiles or ?update=all");
+                    updateProgress(100);
+                    showErrorUI("Invalid update parameter. Use ?update=coreFiles for normal update or ?update=all for complete data wipe.");
+                    return;
+                }
+                
+                logSuccess("Core files update requested with correct parameter");
+                updateProgress(10);
+                
+                // 2. Check cache and service worker availability
+                if (!('caches' in window)) {
+                    logError("Cache API not available in this browser");
+                    showErrorUI("Your browser doesn't support Cache API which is required for updates.");
+                    return;
+                }
+                
+                if (!('serviceWorker' in navigator)) {
+                    logError("Service Worker API not available in this browser");
+                    showErrorUI("Your browser doesn't support Service Worker API which is required for updates.");
+                    return;
+                }
+                
+                logSuccess("Required browser APIs are available");
+                updateProgress(15);
+                
+                // 3. Determine the base path
+                const BASE_PATH = getBasePath();
+                log(`Using BASE_PATH: ${BASE_PATH}`);
+                updateProgress(20);
+                
+                // 4. Get the list of core files to update
+                const coreFiles = await getCoreFiles(BASE_PATH);
+                log(`Found ${coreFiles.length} core files to update`);
+                updateProgress(25);
+                
+                // 5. Check existing caches
+                const cacheNames = await caches.keys();
+                log(`Found ${cacheNames.length} caches: ${cacheNames.join(', ')}`);
+                updateProgress(30);
+                
+                // 6. Find the main application cache (typically 'mountaincircles-cache')
+                const appCacheName = cacheNames.find(name => name === 'mountaincircles-cache') || cacheNames[0];
+                if (!appCacheName) {
+                    logWarning("Application cache not found, will create it");
+                } else {
+                    log(`Using application cache: ${appCacheName}`);
+                }
+                
+                // 7. Open the cache for operations
+                const appCache = await caches.open(appCacheName || 'mountaincircles-cache');
+                logInfo("Cache opened successfully");
+                updateProgress(35);
+                
+                // 8. Create a new fresh cache for updated files
+                const tempCacheName = `bootstrap-update-${Date.now()}`;
+                const tempCache = await caches.open(tempCacheName);
+                logInfo(`Created temporary cache: ${tempCacheName}`);
+                updateProgress(40);
+                
+                // 9. Delete each core file from the main cache
+                let deletedCount = 0;
+                log("Removing core files from main cache");
+                for (const file of coreFiles) {
+                    try {
+                        const deleted = await appCache.delete(file);
+                        if (deleted) {
+                            deletedCount++;
+                            log(`Deleted: ${file}`);
+                        } else {
+                            logInfo(`File not in cache: ${file}`);
+                        }
+                    } catch (err) {
+                        logWarning(`Failed to delete ${file}: ${err.message}`);
+                    }
+                }
+                logSuccess(`Removed ${deletedCount} files from main cache`);
+                updateProgress(50);
+                
+                // 10. Fetch fresh copies of critical files
+                log("Fetching fresh copies of critical files");
+                const criticalFiles = [
+                    `${BASE_PATH}/index.html`, 
+                    `${BASE_PATH}/sw.js`, 
+                    `${BASE_PATH}/main.js`,
+                    `${BASE_PATH}/init.js`
+                ];
+                
+                let fetchedCount = 0;
+                for (const file of criticalFiles) {
+                    try {
+                        const cacheBuster = Date.now();
+                        const url = `${file}?update=${cacheBuster}`;
+                        log(`Fetching: ${url}`);
+                        
+                        const response = await fetch(url, { 
+                            cache: 'no-store',
+                            headers: {
+                                'Cache-Control': 'no-cache, no-store, must-revalidate',
+                                'Pragma': 'no-cache'
+                            }
+                        });
+                        
+                        if (response.ok) {
+                            // Store in temp cache first
+                            await tempCache.put(file, response.clone());
+                            // Then copy to main app cache
+                            await appCache.put(file, response);
+                            fetchedCount++;
+                            log(`Cached fresh copy of: ${file}`);
+                        } else {
+                            logError(`Failed to fetch ${file}: ${response.status} ${response.statusText}`);
+                        }
+                    } catch (err) {
+                        logError(`Error fetching ${file}: ${err.message}`);
+                    }
+                }
+                logSuccess(`Fetched and cached ${fetchedCount} critical files`);
+                updateProgress(70);
+                
+                // 11. Unregister and re-register service worker
+                log("Updating service worker");
+                try {
+                    const registration = await navigator.serviceWorker.getRegistration();
+                    if (registration) {
+                        log("Unregistering existing service worker");
+                        await registration.unregister();
+                        logSuccess("Service worker unregistered successfully");
+                    } else {
+                        logWarning("No service worker registration found");
+                    }
+                    
+                    // Re-register the service worker
+                    const cacheBuster = Date.now();
+                    log(`Registering fresh service worker with cache-busting: ?update=${cacheBuster}`);
+                    const newRegistration = await navigator.serviceWorker.register(
+                        `${BASE_PATH}/sw.js?update=${cacheBuster}`, 
+                        { scope: `${BASE_PATH}/` }
+                    );
+                    logSuccess(`Service worker registered with scope: ${newRegistration.scope}`);
+                } catch (err) {
+                    logError(`Error updating service worker: ${err.message}`);
+                }
+                updateProgress(85);
+                
+                // 12. Clean up temporary cache
+                log("Cleaning up temporary cache");
+                try {
+                    await caches.delete(tempCacheName);
+                    logSuccess(`Temporary cache ${tempCacheName} deleted`);
+                } catch (err) {
+                    logWarning(`Failed to delete temporary cache: ${err.message}`);
+                }
+                updateProgress(95);
+                
+                // Check one more time if bootstrap.html got cached during the process
+                await removeBootstrapFromCache();
+                
+                // 13. Done!
+                logSuccess("Bootstrap update completed successfully!");
+                log("The application core files have been updated while preserving your data.");
+                log("Click the button below when you're ready to return to the application.");
+                updateProgress(100);
+                
+                // Show completion UI instead of alert
+                showCompletionUI();
+                
+            } catch (error) {
+                // Handle any unexpected errors
+                logError(`Bootstrap update failed: ${error.message}`);
+                console.error(error);
+                updateProgress(100);
+                showErrorUI(error.message);
+            }
+        }
+        
+        // Start the bootstrap process when page loads
+        window.addEventListener('DOMContentLoaded', bootstrapUpdate);
+    </script>
+</body>
+</html> 

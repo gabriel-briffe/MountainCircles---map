@@ -2,5 +2,5 @@
 *.mbtiles
 **/.DS_Store
 edl_clone**
-clone.py
+zclone.py
 .cursor**

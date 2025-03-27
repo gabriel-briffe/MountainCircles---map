@@ -18,14 +18,8 @@ import {
     TILE_CACHE_SETTINGS
 } from "./config.js";
 
-// Import from appUpdate
-import { updateApp } from "./appUpdate.js";
-
 // Import from cacheConfig
 import { cacheConfigurationFiles } from "./cacheConfig.js";
-
-// Import clean install functionality
-import { cleanInstall } from "./cleanInstall.js";
 
 // Import tile caching functionality
 import { cacheTiles } from "./cacheTiles.js";
@@ -72,10 +66,16 @@ export function setupMenuEventListeners() {
     
     // App update button
     const appUpdateBtn = document.getElementById('appUpdateBtn');
-    appUpdateBtn.addEventListener('click', updateApp);
+    appUpdateBtn.addEventListener('click', () => {
+        window.location.href = `${BASE_PATH}/bootstrap.html?update=coreFiles`;
+    });
     
     // Clean Install button
-    document.getElementById('cleanInstallBtn').addEventListener('click', cleanInstall);
+    document.getElementById('cleanInstallBtn').addEventListener('click', () => {
+        if (confirm('WARNING: This will delete ALL app data including cached maps, saved settings, and offline data. The app will start fresh. Continue?')) {
+            window.location.href = `${BASE_PATH}/bootstrap.html?update=all`;
+        }
+    });
 
     // Add a hidden emergency reset function
     // This can be triggered by clicking a specific sequence or from the console
