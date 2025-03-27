@@ -187,6 +187,7 @@ input[type=range]::-moz-range-thumb {
     }
 
     .dock-toggle-btn.active {
+        background-color: var(--accent-blue) !important;
         color: white !important;
         box-shadow: 0 0 8px rgba(50, 150, 255, 0.5);
     }

@@ -137,9 +137,11 @@ export function toggleEDLNavigation() {
     // Update button visual
     const toggleButton = document.getElementById('toggleEDLNavigationBtn');
     if (toggleButton) {
-        toggleButton.classList.remove('active');
+        // Set class explicitly based on state instead of removing first
         if (edlNavigationVisible) {
             toggleButton.classList.add('active');
+        } else {
+            toggleButton.classList.remove('active');
         }
     }
     
@@ -322,9 +324,11 @@ export function toggleCirclesNavigation() {
     // Update button visual
     const toggleButton = document.getElementById('toggleCirclesNavigationBtn');
     if (toggleButton) {
-        toggleButton.classList.remove('active');
+        // Set class explicitly based on state instead of removing first
         if (circlesNavigationVisible) {
             toggleButton.classList.add('active');
+        } else {
+            toggleButton.classList.remove('active');
         }
     }
     
