@@ -197,12 +197,27 @@ function createEDLNavigationRow() {
     nowButton.className = 'secondary-btn';
     nowButton.title = 'Current Time';
     
+    // Create a container for time and date
+    const timeContainer = document.createElement('div');
+    timeContainer.className = 'edl-time-container';
+    
     // Time indicator span
     const timeIndicator = document.createElement('span');
     timeIndicator.id = 'edlTimeIndicator';
     timeIndicator.textContent = 'Now';
     
-    nowButton.appendChild(timeIndicator);
+    // Date indicator span
+    const dateIndicator = document.createElement('span');
+    dateIndicator.id = 'edlDateIndicator';
+    dateIndicator.textContent = ''; // Will be populated by edlUI.js
+    
+    // Add time and date to container
+    timeContainer.appendChild(timeIndicator);
+    timeContainer.appendChild(dateIndicator);
+    
+    // Add container to button
+    nowButton.appendChild(timeContainer);
+    
     nowButton.addEventListener('click', () => {
         console.log('[Dock] Now button clicked');
         navigateToCurrentTime();
@@ -238,12 +253,26 @@ function createEDLNavigationRow() {
     pressureButton.className = 'secondary-btn';
     pressureButton.title = 'Current Pressure Level';
     
+    // Create a container for pressure and altitude
+    const pressureContainer = document.createElement('div');
+    pressureContainer.className = 'edl-pressure-container';
+    
+    // Altitude indicator span
+    const altitudeIndicator = document.createElement('span');
+    altitudeIndicator.id = 'edlAltitudeIndicator';
+    altitudeIndicator.textContent = '5600m';
+    
     // Pressure indicator span
     const pressureIndicator = document.createElement('span');
     pressureIndicator.id = 'edlPressureIndicator';
     pressureIndicator.textContent = '500hPa';
+
+    // Add pressure and altitude to container
+    pressureContainer.appendChild(altitudeIndicator);
+    pressureContainer.appendChild(pressureIndicator);
     
-    pressureButton.appendChild(pressureIndicator);
+    // Add container to button
+    pressureButton.appendChild(pressureContainer);
     
     // Pressure Down button
     const pressureDownButton = document.createElement('button');

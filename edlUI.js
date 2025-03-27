@@ -25,10 +25,30 @@ export function initEDLUI(initialLayer) {
     console.log('[EDL UI] Initializing EDL UI with:', initialLayer);
     if (initialLayer && initialLayer.info) {
         currentLayerInfo = { ...initialLayer.info };
+        console.log('[EDL UI] Current layer info set:', currentLayerInfo);
     }
     
     // Set layer visibility to false initially
     edlLayerVisible = false;
+    
+    // Update date indicator if it exists
+    const dateIndicator = document.getElementById('edlDateIndicator');
+    if (dateIndicator && currentLayerInfo.date) {
+        // Parse the date from YYYY-MM-DD to DD/MM format
+        const dateParts = currentLayerInfo.date.split('-');
+        if (dateParts.length === 3) {
+            const day = dateParts[2];
+            const month = dateParts[1];
+            dateIndicator.textContent = `${day}/${month}`;
+            console.log(`[EDL UI] Date indicator initialized: ${day}/${month}`);
+        }
+    }
+    
+    // Update altitude indicator if pressure info exists
+    if (currentLayerInfo.pressure) {
+        updateAltitudeIndicator();
+        console.log('[EDL UI] Altitude indicator initialized');
+    }
     
     // Initial UI update
     updateNavigationButtonsState();
@@ -90,6 +110,10 @@ export function navigateToPreviousHour() {
         };
         
         console.log(`[EDL UI] Updated to hour ${previousHour} (${previousHour}:00)`);
+        
+        // Update date indicator
+        updateDateIndicator();
+        
         updateNavigationButtonsState();
         return true;
     }
@@ -153,6 +177,10 @@ export function navigateToNextHour() {
         };
         
         console.log(`[EDL UI] Updated to hour ${nextHour} (${nextHour}:00)`);
+        
+        // Update date indicator
+        updateDateIndicator();
+        
         updateNavigationButtonsState();
         return true;
     }
@@ -227,6 +255,10 @@ export function navigateToCurrentTime() {
         };
         
         console.log(`[EDL UI] Updated to current time: ${closestDate} ${nearestHour}:00`);
+        
+        // Update date indicator
+        updateDateIndicator();
+        
         updateNavigationButtonsState();
         return true;
     }
@@ -293,6 +325,10 @@ export function navigateToHigherAltitude() {
         };
         
         console.log(`[EDL UI] Updated to pressure ${newPressure} Pa (${newPressure/100} hPa)`);
+        
+        // Update altitude indicator
+        updateAltitudeIndicator();
+        
         updateNavigationButtonsState();
         return true;
     }
@@ -359,6 +395,10 @@ export function navigateToLowerAltitude() {
         };
         
         console.log(`[EDL UI] Updated to pressure ${newPressure} Pa (${newPressure/100} hPa)`);
+        
+        // Update altitude indicator
+        updateAltitudeIndicator();
+        
         updateNavigationButtonsState();
         return true;
     }
@@ -504,6 +544,9 @@ export function updateNavigationButtonsState() {
     if (pressureIndicator && currentLayerInfo.pressure) {
         const pressureHpa = currentLayerInfo.pressure / 100;
         pressureIndicator.textContent = `${pressureHpa}hPa`;
+        
+        // Update altitude indicator
+        updateAltitudeIndicator();
     }
     
     // Log button states
@@ -521,6 +564,9 @@ export function updateNavigationButtonsState() {
             'Now';
         
         timeIndicator.textContent = formattedHour;
+        
+        // Update date indicator using the helper function
+        updateDateIndicator();
         
         // Also update the button title with date and pressure information
         if (nowButton && currentLayerInfo.date) {
@@ -566,5 +612,58 @@ export function toggleEDLNavigationRow(visible) {
     const navContainer = document.getElementById('edlNavContainer');
     if (navContainer) {
         navContainer.style.display = visible ? 'block' : 'none';
+    }
+}
+
+/**
+ * Helper function to update the date indicator
+ */
+function updateDateIndicator() {
+    const dateIndicator = document.getElementById('edlDateIndicator');
+    if (dateIndicator && currentLayerInfo.date) {
+        // Parse the date from YYYY-MM-DD to DD/MM format
+        const dateParts = currentLayerInfo.date.split('-');
+        if (dateParts.length === 3) {
+            const day = dateParts[2];
+            const month = dateParts[1];
+            dateIndicator.textContent = `${day}/${month}`;
+            console.log(`[EDL UI] Date indicator updated: ${day}/${month}`);
+        }
+    }
+}
+
+/**
+ * Helper function to get altitude in meters from pressure in hPa
+ * @param {number} pressureHpa - Pressure in hPa
+ * @returns {number} Approximate altitude in meters
+ */
+function getAltitudeFromPressure(pressureHpa) {
+    // Using the pressure-altitude conversion table provided
+    switch(true) {
+        case pressureHpa <= 500:
+            return 5600;
+        case pressureHpa <= 600:
+            return 4200;
+        case pressureHpa <= 700:
+            return 3000;
+        case pressureHpa <= 800:
+            return 1950;
+        case pressureHpa <= 900:
+            return 1000;
+        default:
+            return "---"; // Default altitude for pressure > 900hPa
+    }
+}
+
+/**
+ * Helper function to update the altitude indicator
+ */
+function updateAltitudeIndicator() {
+    const altitudeIndicator = document.getElementById('edlAltitudeIndicator');
+    if (altitudeIndicator && currentLayerInfo.pressure) {
+        const pressureHpa = currentLayerInfo.pressure / 100;
+        const altitude = getAltitudeFromPressure(pressureHpa);
+        altitudeIndicator.textContent = `${altitude}m`;
+        console.log(`[EDL UI] Altitude indicator updated: ${altitude}m for ${pressureHpa}hPa`);
     }
 } 
