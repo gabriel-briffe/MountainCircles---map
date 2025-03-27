@@ -229,9 +229,6 @@ function createEDLNavigationToggleButton() {
         if (button) {
             button.style.display = '';
             console.log('[Dock] EDL navigation toggle button shown');
-            
-            // Recalculate the dock element sizes to account for the now visible button
-            updateDockElementSizes();
         }
     });
 }
@@ -262,9 +259,6 @@ function createZoomButtonsIfNeeded() {
             getMap().zoomOut();
         });
     }
-    
-    // Recalculate the dock element sizes to account for the now visible buttons
-    updateDockElementSizes();
 }
 
 /**
@@ -429,7 +423,6 @@ export function setupDockEventListeners() {
     // Add resize listener
     const debouncedResize = debounce(updateDockElementSizes, 150);
     window.addEventListener('resize', debouncedResize);
-    window.addEventListener('orientationchange', updateDockElementSizes);
 }
 
 /**
