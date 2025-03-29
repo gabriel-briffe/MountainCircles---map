@@ -6,10 +6,11 @@
 import mbtilesHandler from './mbtiles.js';
 
 // Constants from multiload.js
-export const isobareList = [50000, 60000, 70000, 80000, 90000];
+export const isobareList = [500, 600, 700, 800, 900];
 // const hourList = [7];
 export const hourList = [7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21];
-const mbtilesURLBase = 'https://edl-proxy.gabriel-briffe.workers.dev/?url=https://www.edl-soaring.com/mbtiles/extract_mbtiles_from_date.php';
+const mbtilesURLBase = 'https://edl-proxy.gabriel-briffe.workers.dev/?url=https://github.com/gabriel-briffe/arome/releases/download/';
+console.log('[MODIFIED] cacheEdl.js - Changed isobareList to use hPa values and updated mbtilesURLBase');
 
 // Cache name to use for EDL tiles (reusing the same cache for all tiles)
 const TILE_CACHE_NAME = 'mountaincircles-tiles-v1';
@@ -61,7 +62,7 @@ function getProgressUI() {
  * @returns {Array} Array of URL objects with metadata
  */
 function buildMBTilesUrlList() {
-  // Only use current date
+  // Use current date in UTC
   const cdate = new Date();
   const dayList = [cdate];
   
@@ -71,23 +72,29 @@ function buildMBTilesUrlList() {
   dayList.forEach(day => {
     hourList.forEach(hre => {
       isobareList.forEach(isb => {
-        // Set the hour
-        day.setHours(hre, 0, 0);
+        // Set the hour in UTC
+        const utcDay = new Date(Date.UTC(day.getUTCFullYear(), day.getUTCMonth(), day.getUTCDate(), hre, 0, 0));
         
-        // Format exactly as in the original multiload.js script:
-        // day.toISOString().slice(0,13)+':00:00&isobare='+isb
-        const formattedDate = day.toISOString().slice(0, 13); // YYYY-MM-DDTHH
-        const url = `${mbtilesURLBase}?fdate=${formattedDate}:00:00&isobare=${isb}`;
+        // Format date for URL: YYYY-MM-DD using UTC date
+        const dateStr = utcDay.toISOString().slice(0, 10);
+        console.log(`[MODIFIED] cacheEdl.js - Using correct UTC date for URL: ${dateStr} (local date may be different)`);
         
-        console.log(`[edlCache] Created URL: ${url}`);
+        // Format new style URL using GitHub release pattern
+        // Format: arome_vv_YYYY-MM-DD_HH_PRESSURE.mbtiles
+        const formattedDateForPath = dateStr;
+        const releaseTag = `arome-${formattedDateForPath}`;
+        const filename = `arome_vv_${formattedDateForPath}_${hre.toString().padStart(2, '0')}_${isb}.mbtiles`;
+        const url = `${mbtilesURLBase}${releaseTag}/${filename}`;
+        
+        console.log(`[MODIFIED] cacheEdl.js - Created new URL format with correct UTC date: ${url}`);
         
         urlList.push({
-          date: new Date(day),
-          isobare: isb,
+          date: new Date(utcDay), // Use the UTC date
+          isobare: isb, // Now in hPa
           hour: hre,
-          label: `${day.toISOString().slice(0, 10)} ${hre}:00 - ${isb/100}hPa`,
+          label: `${dateStr} ${hre}:00 - ${isb}hPa`, // Updated label
           url: url,
-          tilePath: `edl_tiles/${day.toISOString().slice(0, 10)}_${hre}_${isb}`
+          tilePath: `edl_tiles/${dateStr}_${hre}_${isb}` // Keeping same cache path format
         });
       });
     });
@@ -219,18 +226,27 @@ async function downloadAndExtractMBTiles(urlInfo, progressCallback) {
  */
 async function testEDLProxy() {
   try {
-    console.log('[edlCache] Testing EDL proxy...');
+    console.log('[edlCache] Testing EDL proxy with new GitHub URL format...');
     
-    // Create a test URL
+    // Create a test URL using today's UTC date
     const currentDate = new Date();
-    currentDate.setHours(12, 0, 0); // Noon
+    const hour = 7; // Use 7 as default test hour
     
-    // Format exactly as in the original multiload.js script:
-    // day.toISOString().slice(0,13)+':00:00&isobare='+isb
-    const formattedDate = currentDate.toISOString().slice(0, 13); // YYYY-MM-DDTHH
-    const testUrl = `${mbtilesURLBase}?fdate=${formattedDate}:00:00&isobare=50000`;
+    // Create a Date object with UTC time
+    const utcDate = new Date(Date.UTC(currentDate.getUTCFullYear(), currentDate.getUTCMonth(), currentDate.getUTCDate(), hour, 0, 0));
     
-    console.log(`[edlCache] Test URL: ${testUrl}`);
+    // Format date for URL: YYYY-MM-DD using UTC date
+    const dateStr = utcDate.toISOString().slice(0, 10);
+    console.log(`[MODIFIED] cacheEdl.js - Using correct UTC date for test URL: ${dateStr} (local date: ${new Date().toISOString().slice(0, 10)})`);
+    
+    const pressure = 500; // Use 500 hPa as default test pressure
+    
+    // Format using GitHub release pattern
+    const releaseTag = `arome-${dateStr}`;
+    const filename = `arome_vv_${dateStr}_${hour.toString().padStart(2, '0')}_${pressure}.mbtiles`;
+    const testUrl = `${mbtilesURLBase}${releaseTag}/${filename}`;
+    
+    console.log(`[MODIFIED] cacheEdl.js - Test URL with correct UTC date: ${testUrl}`);
     console.log(`[edlCache] Attempting to fetch (HEAD): ${testUrl}`);
     
     // Attempt a simple HEAD request to check if the endpoint is available

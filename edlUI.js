@@ -205,9 +205,14 @@ export function navigateToCurrentTime() {
         return false;
     }
     
-    // Get today's date
+    // Get today's date in UTC
     const today = new Date();
-    const dateString = today.toISOString().slice(0, 10);
+    
+    // Create a proper UTC date with same year, month, day as UTC
+    const utcToday = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate()));
+    const dateString = utcToday.toISOString().slice(0, 10);
+    
+    console.log(`[MODIFIED] edlUI.js - Using correct UTC date: ${dateString} (local date: ${new Date().toLocaleDateString()})`);
     
     // Find closest available date
     const availableDates = Object.keys(metadata.availableLayers).sort();
@@ -232,13 +237,14 @@ export function navigateToCurrentTime() {
     }
     
     // Get current hour and minutes to properly round to nearest hour
-    const currentHour = today.getHours();
-    const currentMinutes = today.getMinutes();
+    const currentHour = today.getUTCHours();
+    const currentMinutes = today.getUTCMinutes();
+    console.log(`[MODIFIED] edlUI.js - Using UTC time: ${currentHour}:${currentMinutes} (local time: ${today.getHours()}:${today.getMinutes()})`);
     
     // Round to the nearest hour based on minutes
     // If minutes < 30, use current hour; if minutes >= 30, use next hour
     const targetHour = currentMinutes < 30 ? currentHour : (currentHour + 1) % 24;
-    console.log(`[EDL UI] Current time is ${currentHour}:${currentMinutes}, rounding to ${targetHour}:00`);
+    console.log(`[EDL UI] Current UTC time is ${currentHour}:${currentMinutes}, rounding to ${targetHour}:00`);
     
     // Find the nearest available hour to the target hour
     const nearestHour = findNearestValue(targetHour, availableHours);
@@ -262,7 +268,7 @@ export function navigateToCurrentTime() {
             pressure: newPressure
         };
         
-        console.log(`[EDL UI] Updated to current time: ${closestDate} ${nearestHour}:00`);
+        console.log(`[EDL UI] Updated to current UTC time: ${closestDate} ${nearestHour}:00`);
         
         // Update date indicator
         updateDateIndicator();
@@ -332,7 +338,8 @@ export function navigateToHigherAltitude() {
             pressure: newPressure
         };
         
-        console.log(`[EDL UI] Updated to pressure ${newPressure} Pa (${newPressure/100} hPa)`);
+        console.log(`[EDL UI] Updated to pressure ${newPressure} hPa`);
+        console.log('[MODIFIED] edlUI.js - Now showing pressure directly in hPa without conversion');
         
         // Update altitude indicator
         updateAltitudeIndicator();
@@ -402,7 +409,8 @@ export function navigateToLowerAltitude() {
             pressure: newPressure
         };
         
-        console.log(`[EDL UI] Updated to pressure ${newPressure} Pa (${newPressure/100} hPa)`);
+        console.log(`[EDL UI] Updated to pressure ${newPressure} hPa`);
+        console.log('[MODIFIED] edlUI.js - Now showing pressure directly in hPa without conversion');
         
         // Update altitude indicator
         updateAltitudeIndicator();
@@ -550,7 +558,7 @@ export function updateNavigationButtonsState() {
     
     // Update pressure indicator
     if (pressureIndicator && currentLayerInfo.pressure) {
-        const pressureHpa = currentLayerInfo.pressure / 100;
+        const pressureHpa = currentLayerInfo.pressure;
         pressureIndicator.textContent = `${pressureHpa}hPa`;
         
         // Update altitude indicator
@@ -656,9 +664,11 @@ function getAltitudeFromPressure(pressureHpa) {
 function updateAltitudeIndicator() {
     const altitudeIndicator = document.getElementById('edlAltitudeIndicator');
     if (altitudeIndicator && currentLayerInfo.pressure) {
-        const pressureHpa = currentLayerInfo.pressure / 100;
+        // No need to divide by 100 since pressure is already in hPa
+        const pressureHpa = currentLayerInfo.pressure;
         const altitude = getAltitudeFromPressure(pressureHpa);
         altitudeIndicator.textContent = `${altitude}m`;
         console.log(`[EDL UI] Altitude indicator updated: ${altitude}m for ${pressureHpa}hPa`);
+        console.log('[MODIFIED] edlUI.js - Using pressure directly in hPa for altitude calculation');
     }
 } 

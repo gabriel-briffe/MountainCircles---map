@@ -8,9 +8,10 @@ import { getLayerManager } from './state.js';
 import { getEDLMetadata, hasEDLTiles } from './cacheEdl.js';
 
 // Constants for EDL layer
-const DEFAULT_PRESSURE = 50000; // 500 hPa
+const DEFAULT_PRESSURE = 500; // Changed from 50000 (500 hPa)
 const DEFAULT_OPACITY = 1;
-const PRESSURE_LEVELS = [50000, 60000, 70000, 80000, 90000]; // in Pa
+const PRESSURE_LEVELS = [500, 600, 700, 800, 900]; // Changed from Pa to hPa
+console.log('[MODIFIED] edl.js - Updated pressure constants to use hPa instead of Pa');
 
 // Global reference to the current EDL layer
 let currentEDLLayer = null;
@@ -54,7 +55,12 @@ export function createEDLLayer(map, options = {}) {
     
     // Find the nearest available hour to current time
     const today = new Date();
-    const hour = today.getHours();
+    
+    // Make sure we're working with UTC hours
+    const hour = today.getUTCHours(); 
+    console.log(`[MODIFIED] edl.js - Using UTC hours: ${hour} (local hour: ${today.getHours()})`);
+    console.log(`[MODIFIED] edl.js - Date being used: ${dateString}`);
+    
     const nearestHour = findNearestValue(hour, availableHours);
     
     // Check if the selected pressure is available for this date/hour
@@ -68,7 +74,9 @@ export function createEDLLayer(map, options = {}) {
     // For debugging, log available options
     console.log(`[EDL] Available dates: ${availableDates.join(', ')}`);
     console.log(`[EDL] Available hours: ${availableHours.join(', ')}`);
-    console.log(`[EDL] Available pressure levels: ${availablePressures.map(p => p/100).join(', ')} hPa`);
+    // Updated log to show pressures in hPa directly (no division needed)
+    console.log(`[EDL] Available pressure levels: ${availablePressures.join(', ')} hPa`);
+    console.log('[MODIFIED] edl.js - Now showing pressure levels directly in hPa without conversion');
     
     // Initial layer info
     currentLayerInfo = {
@@ -228,7 +236,7 @@ export function setEDLLayerOpacity(opacity) {
  * Gets available pressure levels from metadata or fallback to defaults
  * @param {string} date - Date string in YYYY-MM-DD format
  * @param {number} hour - Hour 
- * @returns {Array} Available pressure levels in Pa
+ * @returns {Array} Available pressure levels in hPa
  */
 export function getAvailablePressureLevels(date, hour) {
     // Check metadata first
@@ -238,7 +246,7 @@ export function getAvailablePressureLevels(date, hour) {
         return metadata.availableLayers[date][hour];
     }
     
-    // Fall back to default pressure levels
+    // Fall back to default pressure levels (now in hPa)
     return PRESSURE_LEVELS;
 }
 
@@ -269,8 +277,12 @@ export function getAvailableDates() {
         return Object.keys(metadata.availableLayers).sort();
     }
     
-    // Fall back to today's date
-    return [new Date().toISOString().slice(0, 10)];
+    // Fall back to today's date in UTC
+    const today = new Date();
+    const utcToday = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate()));
+    const utcDateString = utcToday.toISOString().slice(0, 10);
+    console.log(`[MODIFIED] edl.js - Fallback to UTC date: ${utcDateString} (local date: ${new Date().toLocaleDateString()})`);
+    return [utcDateString];
 }
 
 /**
