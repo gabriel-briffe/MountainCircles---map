@@ -150,7 +150,6 @@ export function navigateToPreviousHour() {
         return false;
     }
     
-    // Standard previous hour logic (within same day)
     const previousHour = availableHours[currentIndex - 1];
     
     // Get available pressures for the new hour
@@ -176,7 +175,7 @@ export function navigateToPreviousHour() {
         
         // Update indicators
         updateDateIndicator();
-        updateTimeIndicator();
+        updateTimeIndicator(); // Ensure time indicator is updated with local time
         
         updateNavigationButtonsState();
         return true;
@@ -278,7 +277,6 @@ export function navigateToNextHour() {
         return false;
     }
     
-    // Standard next hour logic (within same day)
     const nextHour = availableHours[currentIndex + 1];
     
     // Get available pressures for the new hour
@@ -304,7 +302,7 @@ export function navigateToNextHour() {
         
         // Update indicators
         updateDateIndicator();
-        updateTimeIndicator();
+        updateTimeIndicator(); // Ensure time indicator is updated with local time
         
         updateNavigationButtonsState();
         return true;
@@ -397,7 +395,7 @@ export function navigateToCurrentTime() {
         
         // Update indicators
         updateDateIndicator();
-        updateTimeIndicator();
+        updateTimeIndicator(); // Ensure time indicator is updated with local time
         
         updateNavigationButtonsState();
         return true;
@@ -469,6 +467,7 @@ export function navigateToHigherAltitude() {
         
         // Update altitude indicator
         updateAltitudeIndicator();
+        updateTimeIndicator(); // Ensure time indicator stays in local time
         
         updateNavigationButtonsState();
         return true;
@@ -540,6 +539,7 @@ export function navigateToLowerAltitude() {
         
         // Update altitude indicator
         updateAltitudeIndicator();
+        updateTimeIndicator(); // Ensure time indicator stays in local time
         
         updateNavigationButtonsState();
         return true;
@@ -563,6 +563,9 @@ export function toggleEDLLayerVisibility() {
         layerManager.setVisibility('edl-layer', edlLayerVisible);
         console.log(`[EDL UI] EDL layer visibility set to: ${edlLayerVisible ? 'visible' : 'hidden'}`);
     }
+    
+    // Ensure time indicator shows local time
+    updateTimeIndicator();
     
     // Update the UI
     updateNavigationButtonsState();
@@ -621,7 +624,6 @@ export function updateNavigationButtonsState() {
         return;
     }
     
-    // Get metadata for button state calculation
     const metadata = getEDLMetadata();
     if (!metadata || !metadata.availableLayers) {
         console.warn('[EDL UI] No metadata available');
@@ -637,14 +639,53 @@ export function updateNavigationButtonsState() {
         .map(h => parseInt(h))
         .sort((a, b) => a - b);
     
+    if (availableHours.length === 0) {
+        // Disable all buttons if no hours available
+        prevButton.disabled = true;
+        nextButton.disabled = true;
+        if (pressureUpButton) pressureUpButton.disabled = true;
+        if (pressureDownButton) pressureDownButton.disabled = true;
+        return;
+    }
+    
     // Get current hour index
     const currentHourIndex = availableHours.indexOf(currentLayerInfo.hour);
     
-    // Prev button should be disabled if we're at the earliest hour of the earliest date
-    prevButton.disabled = (currentDateIndex === 0 && currentHourIndex === 0);
+    // Check if we can go to previous hour or previous date
+    let canGoPrevious = false;
+    if (currentHourIndex > 0) {
+        // Can go to previous hour on same date
+        canGoPrevious = true;
+        console.log('[EDL UI] Previous hour available on current date');
+    } else if (currentDateIndex > 0) {
+        // Can go to previous date - check if it has any hours
+        const prevDate = availableDates[currentDateIndex - 1];
+        const prevDateHours = Object.keys(metadata.availableLayers[prevDate] || {}).length;
+        if (prevDateHours > 0) {
+            canGoPrevious = true;
+            console.log(`[EDL UI] Previous date available: ${prevDate} with ${prevDateHours} hours`);
+        }
+    }
     
-    // Next button should be disabled if we're at the latest hour of the latest date
-    nextButton.disabled = (currentDateIndex === availableDates.length - 1 && currentHourIndex === availableHours.length - 1);
+    // Check if we can go to next hour or next date
+    let canGoNext = false;
+    if (currentHourIndex < availableHours.length - 1) {
+        // Can go to next hour on same date
+        canGoNext = true;
+        console.log('[EDL UI] Next hour available on current date');
+    } else if (currentDateIndex < availableDates.length - 1) {
+        // Can go to next date - check if it has any hours
+        const nextDate = availableDates[currentDateIndex + 1];
+        const nextDateHours = Object.keys(metadata.availableLayers[nextDate] || {}).length;
+        if (nextDateHours > 0) {
+            canGoNext = true;
+            console.log(`[EDL UI] Next date available: ${nextDate} with ${nextDateHours} hours`);
+        }
+    }
+    
+    // Update button states based on availability
+    prevButton.disabled = !canGoPrevious;
+    nextButton.disabled = !canGoNext;
     
     // Get available pressures for current date/hour
     const availablePressures = metadata.availableLayers[currentLayerInfo.date]?.[currentLayerInfo.hour] || [];
@@ -693,9 +734,16 @@ export function updateNavigationButtonsState() {
     if (pressureIndicator && currentLayerInfo.pressure) {
         const pressureHpa = currentLayerInfo.pressure;
         pressureIndicator.textContent = `${pressureHpa}hPa`;
+        
+        // Update altitude indicator
+        updateAltitudeIndicator();
     }
     
-    console.log(`[EDL UI] Button states - prev: ${!prevButton.disabled}, next: ${!nextButton.disabled}`);
+    // Log button states
+    console.log(`[EDL UI] Button states - Prev: ${!prevButton.disabled}, Next: ${!nextButton.disabled}`);
+    
+    // Update date indicator only (time indicator is now handled by updateTimeIndicator)
+    updateDateIndicator();
 }
 
 /**
@@ -790,9 +838,32 @@ function updateAltitudeIndicator() {
 function updateTimeIndicator() {
     const timeIndicator = document.getElementById('edlTimeIndicator');
     if (timeIndicator && currentLayerInfo.hour !== null) {
-        // Format hour with leading zero if needed and add :00
-        const formattedHour = `${currentLayerInfo.hour.toString().padStart(2, '0')}:00`;
-        timeIndicator.textContent = formattedHour;
-        console.log(`[EDL UI] Time indicator updated: ${formattedHour}`);
+        // Create a date object from the UTC time data
+        const utcDate = new Date(Date.UTC(
+            parseInt(currentLayerInfo.date.split('-')[0]), // year
+            parseInt(currentLayerInfo.date.split('-')[1]) - 1, // month (0-based)
+            parseInt(currentLayerInfo.date.split('-')[2]), // day
+            currentLayerInfo.hour // hour
+        ));
+        
+        // Get local hour from UTC date
+        const localHour = utcDate.getHours();
+        const localMinutes = utcDate.getMinutes();
+        
+        // Format with leading zero if needed
+        const formattedLocalTime = `${localHour.toString().padStart(2, '0')}:${localMinutes.toString().padStart(2, '0')}`;
+        
+        // Show both UTC and local time if they're different
+        if (localHour !== currentLayerInfo.hour) {
+            const utcTime = `${currentLayerInfo.hour.toString().padStart(2, '0')}:00`;
+            timeIndicator.innerHTML = `<span title="UTC time: ${utcTime}">${formattedLocalTime}</span>`;
+            console.log(`[EDL UI] Time indicator updated: ${formattedLocalTime} (UTC: ${utcTime})`);
+        } else {
+            // If they're the same, just show the time
+            timeIndicator.textContent = formattedLocalTime;
+            console.log(`[EDL UI] Time indicator updated: ${formattedLocalTime}`);
+        }
+        
+        console.log('[MODIFIED] edlUI.js - Now showing local time in the time indicator');
     }
-} 
+}

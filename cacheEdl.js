@@ -8,7 +8,7 @@ import mbtilesHandler from './mbtiles.js';
 // Constants from multiload.js
 export const isobareList = [500, 600, 700, 800, 900];
 // const hourList = [7];
-export const hourList = [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21];
+export const hourList = [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19];
 const mbtilesURLBase = 'https://edl-proxy.gabriel-briffe.workers.dev/?url=https://github.com/gabriel-briffe/arome/releases/download/';
 console.log('[MODIFIED] cacheEdl.js - Changed isobareList to use hPa values and updated mbtilesURLBase');
 
@@ -59,55 +59,60 @@ function getProgressUI() {
 
 /**
  * Builds a list of all MBTiles URLs to cache
+ * @param {boolean} isTomorrow - Whether to get tomorrow's forecast
  * @returns {Array} Array of URL objects with metadata
  */
-function buildMBTilesUrlList() {
+function buildMBTilesUrlList(isTomorrow = false) {
   // Use current date in UTC
   const cdate = new Date();
   const dayList = [cdate];
   
   const urlList = [];
   
-  // Generate combinations for current date + tomorrow
-  dayList.forEach(day => {
-    // Get the forecast date (today in UTC)
-    const utcToday = new Date(Date.UTC(day.getUTCFullYear(), day.getUTCMonth(), day.getUTCDate()));
-    const forecastDateStr = utcToday.toISOString().slice(0, 10);
+  // Get the forecast date (today in UTC)
+  const utcToday = new Date(Date.UTC(cdate.getUTCFullYear(), cdate.getUTCMonth(), cdate.getUTCDate()));
+  const forecastDateStr = utcToday.toISOString().slice(0, 10);
+  
+  // Create a list of dates to fetch - today or tomorrow based on parameter
+  const targetDates = [];
+  
+  if (isTomorrow) {
+    // Create tomorrow's date by adding 24 hours (86400000 milliseconds) to today's UTC date
+    // This properly handles month/year boundaries
+    const utcTomorrow = new Date(utcToday.getTime() + 86400000);
+    targetDates.push(utcTomorrow);
+    console.log('[MODIFIED] cacheEdl.js - Getting tomorrow\'s forecast for date:', utcTomorrow.toISOString().slice(0, 10));
+  } else {
+    // Today
+    targetDates.push(utcToday);
+    console.log('[MODIFIED] cacheEdl.js - Getting today\'s forecast for date:', utcToday.toISOString().slice(0, 10));
+  }
+  
+  targetDates.forEach(targetDate => {
+    const targetDateStr = targetDate.toISOString().slice(0, 10);
     
-    // Create a list of dates to fetch - today and tomorrow
-    const targetDates = [
-      // Today
-      new Date(Date.UTC(day.getUTCFullYear(), day.getUTCMonth(), day.getUTCDate())),
-      // Tomorrow
-      new Date(Date.UTC(day.getUTCFullYear(), day.getUTCMonth(), day.getUTCDate() + 1))
-    ];
-    
-    targetDates.forEach(targetDate => {
-      const targetDateStr = targetDate.toISOString().slice(0, 10);
-      
-      hourList.forEach(hre => {
-        isobareList.forEach(isb => {
-          // Format using new URL pattern:
-          // arome_vv_forecastDate_forDate_forHour_for_pressure.mbtiles
-          const releaseTag = `arome-${forecastDateStr}`;
-          const filename = `arome_vv_${forecastDateStr}_${targetDateStr}_${hre.toString().padStart(2, '0')}_${isb}.mbtiles`;
-          const url = `${mbtilesURLBase}${releaseTag}/${filename}`;
-          
-          console.log(`[MODIFIED] cacheEdl.js - Created new URL format with forecast/target dates: ${url}`);
-          
-          // Cache path with target date and hour. 
-          // This will be used for extracted tiles and should match the path expected by the app
-          const tilePath = `edl_tiles/${targetDateStr}_${hre}_${isb}`;
-          
-          urlList.push({
-            forecastDate: new Date(utcToday), // The date the forecast was issued
-            date: new Date(targetDate), // The date the forecast is for
-            isobare: isb, // Now in hPa
-            hour: hre,
-            label: `${targetDateStr} ${hre}:00 - ${isb}hPa`, // Updated label with target date 
-            url: url,
-            tilePath: tilePath
-          });
+    hourList.forEach(hre => {
+      isobareList.forEach(isb => {
+        // Format using new URL pattern:
+        // arome_vv_forecastDate_forDate_forHour_for_pressure.mbtiles
+        const releaseTag = `arome-${forecastDateStr}`;
+        const filename = `arome_vv_${forecastDateStr}_${targetDateStr}_${hre.toString().padStart(2, '0')}_${isb}.mbtiles`;
+        const url = `${mbtilesURLBase}${releaseTag}/${filename}`;
+        
+        console.log(`[MODIFIED] cacheEdl.js - Created URL for ${isTomorrow ? 'tomorrow' : 'today'}: ${url}`);
+        
+        // Cache path with target date and hour. 
+        // This will be used for extracted tiles and should match the path expected by the app
+        const tilePath = `edl_tiles/${targetDateStr}_${hre}_${isb}`;
+        
+        urlList.push({
+          forecastDate: new Date(utcToday), // The date the forecast was issued
+          date: new Date(targetDate), // The date the forecast is for
+          isobare: isb, // Now in hPa
+          hour: hre,
+          label: `${targetDateStr} ${hre}:00 - ${isb}hPa`, // Updated label with target date 
+          url: url,
+          tilePath: tilePath
         });
       });
     });
@@ -246,16 +251,16 @@ async function testEDLProxy() {
     const hour = 15; // Use 15 as default test hour
     const pressure = 700; // Use 700 hPa as default test pressure
     
-    // Create a Date object with UTC time
+    // Create a Date object with proper UTC time
     const utcDate = new Date(Date.UTC(currentDate.getUTCFullYear(), currentDate.getUTCMonth(), currentDate.getUTCDate()));
     
     // Forecast date is today
     const forecastDate = utcDate.toISOString().slice(0, 10);
     
-    // Target date is today
-    const targetDate = utcDate.toISOString().slice(0, 10);
+    // Target date is also today for the test
+    const targetDate = forecastDate;
     
-    console.log(`[MODIFIED] cacheEdl.js - Using forecast date: ${forecastDate}, target date: ${targetDate}`);
+    console.log(`[MODIFIED] cacheEdl.js - Using forecast date: ${forecastDate}, target date: ${targetDate} for testing`);
     
     // Format using new URL pattern:
     // arome_vv_forecastDate_forDate_forHour_for_pressure.mbtiles
@@ -340,10 +345,23 @@ async function saveEDLMetadata(processedFiles) {
   try {
     console.log('[edlCache] Saving EDL metadata to localStorage');
     
-    // Extract key information from processed files
-    const metadata = {
-      availableLayers: {}
-    };
+    // Get existing metadata first
+    let metadata = { availableLayers: {} };
+    const existingMetadataStr = localStorage.getItem('edl_metadata');
+    
+    if (existingMetadataStr) {
+      try {
+        const existingMetadata = JSON.parse(existingMetadataStr);
+        if (existingMetadata && existingMetadata.availableLayers) {
+          // Use existing metadata as base
+          metadata = existingMetadata;
+          console.log('[edlCache] Merging with existing metadata:', metadata);
+        }
+      } catch (parseError) {
+        console.error('[edlCache] Error parsing existing metadata, starting fresh:', parseError);
+        // Continue with empty metadata
+      }
+    }
     
     // Organize by date, then by hour, then list available pressure levels
     processedFiles.forEach(file => {
@@ -428,10 +446,11 @@ export function hasEDLTiles() {
 
 /**
  * Processes all EDL MBTiles files sequentially
+ * @param {boolean} isTomorrow - Whether to cache tomorrow's forecast
  * @returns {Promise<Object>} Result of the caching operation
  */
-export async function cacheEDLTiles() {
-  console.debug('[edlCache] Starting cacheEDLTiles function');
+export async function cacheEDLTiles(isTomorrow = false) {
+  console.debug(`[edlCache] Starting cacheEDLTiles function for ${isTomorrow ? 'tomorrow' : 'today'}`);
   
   // Get UI elements
   const ui = getProgressUI();
@@ -439,7 +458,7 @@ export async function cacheEDLTiles() {
   // Show progress UI
   ui.container.style.display = 'flex';
   ui.progressBar.style.width = '0%';
-  ui.statusElement.textContent = 'Preparing EDL tiles caching...';
+  ui.statusElement.textContent = `Preparing EDL tiles caching for ${isTomorrow ? 'tomorrow' : 'today'}...`;
   ui.countElement.textContent = '0';
   
   try {
@@ -451,12 +470,12 @@ export async function cacheEDLTiles() {
       throw new Error('EDL proxy test failed. The server may be unavailable or not returning proper MBTiles files.');
     }
     
-    // Build URL list
-    const urlList = buildMBTilesUrlList();
+    // Build URL list with the isTomorrow parameter
+    const urlList = buildMBTilesUrlList(isTomorrow);
     const totalFiles = urlList.length;
     ui.totalElement.textContent = totalFiles;
     
-    console.debug(`[edlCache] Starting to cache ${totalFiles} EDL MBTiles files`);
+    console.debug(`[edlCache] Starting to cache ${totalFiles} EDL MBTiles files for ${isTomorrow ? 'tomorrow' : 'today'}`);
     
     // Process files sequentially
     let processed = 0;

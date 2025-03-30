@@ -61,8 +61,25 @@ export function setupMenuEventListeners() {
     // Cache background map button
     document.getElementById('cacheBackgroundMapBtn').addEventListener('click', cacheTiles);
 
-    // Cache EDL tiles button
-    document.getElementById('cacheEDLTilesBtn').addEventListener('click', cacheEDLTiles);
+    // Cache EDL Today tiles button
+    document.getElementById('cacheEDLTodayBtn').addEventListener('click', () => {
+        console.log('[Menu] Caching today\'s EDL forecast');
+        cacheEDLTiles(false); // false = today
+    });
+    
+    // Cache EDL Tomorrow tiles button
+    document.getElementById('cacheEDLTomorrowBtn').addEventListener('click', () => {
+        console.log('[Menu] Caching tomorrow\'s EDL forecast');
+        cacheEDLTiles(true); // true = tomorrow
+    });
+    
+    // Clean EDL Cache button
+    document.getElementById('cleanEDLCacheBtn').addEventListener('click', () => {
+        console.log('[Menu] Cleaning EDL cache');
+        if (confirm('Are you sure you want to delete all EDL cached data? This will remove all cached weather forecast tiles.')) {
+            window.location.href = `${BASE_PATH}/bootstrap.html?cleanEdl=true`;
+        }
+    });
     
     // App update button
     const appUpdateBtn = document.getElementById('appUpdateBtn');

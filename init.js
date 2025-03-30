@@ -18,66 +18,6 @@ import { setupMenuEventListeners } from "./menu.js";
 import { getLayerManager } from "./state.js";
 import { isMobileDevice, requestWakeLock } from "./utils.js";
 import { initializeTracking } from "./tracking.js";
-import { getEDLMetadata } from "./cacheEdl.js";
-
-/**
- * Checks if EDL metadata exists and is from today
- * If it exists but is not from today, deletes the cache and metadata
- */
-async function checkAndCleanEDLCache() {
-    console.log('[Init] Checking EDL metadata');
-    const metadata = getEDLMetadata();
-    
-    // If no metadata exists, nothing to clean up
-    if (!metadata) {
-        console.log('[Init] No EDL metadata found');
-        return;
-    }
-    console.log('[Init] EDL metadata:', metadata);
-
-    // Get today's date in YYYY-MM-DD format for France timezone (Europe/Paris)
-    const now = new Date();
-    const options = { timeZone: 'Europe/Paris' };
-    const year = new Intl.DateTimeFormat('en', {...options, year: 'numeric'}).format(now);
-    const month = new Intl.DateTimeFormat('en', {...options, month: '2-digit'}).format(now);
-    const day = new Intl.DateTimeFormat('en', {...options, day: '2-digit'}).format(now);
-    const today = `${year}-${month}-${day}`;
-    console.log('[Init] Today\'s date (France local time):', today);
-    
-    // Check if metadata has data for today
-    const hasToday = metadata.availableLayers && 
-                     Object.keys(metadata.availableLayers).includes(today);
-    
-    if (!hasToday) {
-        console.log('[Init] EDL metadata is outdated, cleaning cache');
-        try {
-            // Delete the EDL cache tiles
-            if ('caches' in window) {
-                const cache = await caches.open('mountaincircles-tiles-v1');
-                const requests = await cache.keys();
-                
-                // Filter for EDL tiles
-                const edlRequests = requests.filter(req => 
-                    req.url.includes('/edl_tiles/')
-                );
-                
-                // Delete each EDL tile from cache
-                for (const request of edlRequests) {
-                    await cache.delete(request);
-                }
-                console.log(`[Init] Deleted ${edlRequests.length} EDL tiles from cache`);
-            }
-            
-            // Delete metadata from localStorage
-            localStorage.removeItem('edl_metadata');
-            console.log('[Init] Deleted EDL metadata from localStorage');
-        } catch (error) {
-            console.error('[Init] Error cleaning EDL cache:', error);
-        }
-    } else {
-        console.log('[Init] EDL metadata is current (today)');
-    }
-}
 
 /**
  * Initializes the application
@@ -89,9 +29,6 @@ export async function initializeApp(mapContainerId = 'map') {
     window.APP_CONFIG = {
         isMobile: isMobileDevice()
     };
-    
-    // Check and clean EDL cache if needed
-    await checkAndCleanEDLCache();
     
     // Try to load saved state from Cache API
     const stateLoaded = await loadStateFromLocalStorage();

@@ -127,9 +127,17 @@
 
             <!-- Add new section for caching EDL tiles - moved before cache current config -->
             <div>
-                <button id="cacheEDLTilesBtn" class="menu-btn button-with-icon">
+                <button id="cacheEDLTodayBtn" class="menu-btn button-with-icon">
                     <span class="material-icons">waves</span>
-                    <span>Download today's EDL Wave Forecast</span>
+                    <span>Download Today's EDL Wave Forecast</span>
+                </button>
+                <button id="cacheEDLTomorrowBtn" class="menu-btn button-with-icon">
+                    <span class="material-icons">waves</span>
+                    <span>Download Tomorrow's EDL Wave Forecast</span>
+                </button>
+                <button id="cleanEDLCacheBtn" class="menu-btn button-with-icon">
+                    <span class="material-icons">delete</span>
+                    <span>Clean EDL Wave Forecast Cache</span>
                 </button>
                 <div id="edlCacheProgress" class="cache-progress">
                     <div class="progress-status">Caching files: <span id="edlCacheCount">0</span>/<span

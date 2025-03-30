@@ -395,6 +395,63 @@
             }
         }
         
+        // Function to clear EDL cache and metadata
+        async function cleanEDLCache() {
+            logInfo("Starting EDL cache cleaning operation");
+            updateProgress(10);
+            
+            // Clear EDL metadata from localStorage
+            try {
+                localStorage.removeItem('edl_metadata');
+                logSuccess("Removed EDL metadata from localStorage");
+            } catch (error) {
+                logError(`Error removing EDL metadata: ${error.message}`);
+            }
+            updateProgress(40);
+            
+            // Clear EDL tiles from cache
+            if (!('caches' in window)) {
+                logWarning("Cache API not available, skipping EDL cache cleaning");
+                updateProgress(100);
+                return false;
+            }
+            
+            try {
+                const cache = await caches.open('mountaincircles-tiles-v1');
+                const requests = await cache.keys();
+                
+                // Filter for EDL tiles
+                const edlRequests = requests.filter(req => 
+                    req.url.includes('/edl_tiles/')
+                );
+                
+                logInfo(`Found ${edlRequests.length} EDL tiles to remove from cache`);
+                updateProgress(60);
+                
+                // Delete each EDL tile from cache
+                let deletedCount = 0;
+                for (const request of edlRequests) {
+                    await cache.delete(request);
+                    deletedCount++;
+                    
+                    // Update progress every 50 files
+                    if (deletedCount % 50 === 0) {
+                        const progress = 60 + (deletedCount / edlRequests.length) * 40;
+                        updateProgress(Math.min(99, progress));
+                        logInfo(`Deleted ${deletedCount}/${edlRequests.length} EDL tiles`);
+                    }
+                }
+                
+                logSuccess(`Deleted ${deletedCount} EDL tiles from cache`);
+                updateProgress(100);
+                return true;
+            } catch (error) {
+                logError(`Error cleaning EDL cache: ${error.message}`);
+                updateProgress(100);
+                return false;
+            }
+        }
+        
         // Function to perform complete data wipe
         async function performCompleteDataWipe() {
             logInfo("Starting COMPLETE DATA WIPE operation");
@@ -444,6 +501,17 @@
                 // Check what kind of update was requested
                 const urlParams = new URLSearchParams(window.location.search);
                 const updateType = urlParams.get('update');
+                const cleanEdl = urlParams.get('cleanEdl');
+                
+                // Handle EDL cache cleaning if requested
+                if (cleanEdl === 'true') {
+                    logInfo("EDL CACHE CLEANING requested (cleanEdl=true)");
+                    await cleanEDLCache();
+                    logSuccess("EDL cache cleaning completed successfully!");
+                    completionMessage.textContent = "EDL cache cleaned successfully!";
+                    showCompletionUI();
+                    return;
+                }
                 
                 // Handle complete wipe if requested
                 if (updateType === 'all') {
