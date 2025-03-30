@@ -133,12 +133,6 @@ export function createEDLLayer(map, options = {}) {
             info: currentLayerInfo
         };
         
-        // Navigate to current time after the layer is created
-        // This will ensure we always show the most current data available
-        setTimeout(() => {
-            console.log('[EDL] Navigating to current time after layer creation');
-            navigateToCurrentTime();
-        }, 500);
         
         // Return the layer
         return layerResult;
