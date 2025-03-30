@@ -44,6 +44,9 @@ export function initEDLUI(initialLayer) {
         }
     }
     
+    // Update time indicator if it exists
+    updateTimeIndicator();
+    
     // Update altitude indicator if pressure info exists
     if (currentLayerInfo.pressure) {
         updateAltitudeIndicator();
@@ -83,11 +86,71 @@ export function navigateToPreviousHour() {
     
     // Find the previous hour
     const currentIndex = availableHours.indexOf(currentLayerInfo.hour);
+    
+    // If we're at the first hour of the day, try to go to the previous day
     if (currentIndex <= 0) {
-        console.log('[EDL UI] Already at earliest hour for this date');
+        console.log('[EDL UI] At earliest hour for current date, checking for previous date');
+        
+        // Get all available dates
+        const availableDates = Object.keys(metadata.availableLayers).sort();
+        const currentDateIndex = availableDates.indexOf(currentLayerInfo.date);
+        
+        // If we're at the earliest date, can't go back further
+        if (currentDateIndex <= 0) {
+            console.log('[EDL UI] Already at earliest hour of earliest date');
+            return false;
+        }
+        
+        // Get the previous date
+        const previousDate = availableDates[currentDateIndex - 1];
+        console.log(`[EDL UI] Moving to previous date: ${previousDate}`);
+        
+        // Get available hours for the previous date
+        const previousDateHours = Object.keys(metadata.availableLayers[previousDate] || {})
+            .map(h => parseInt(h))
+            .sort((a, b) => a - b);
+        
+        if (previousDateHours.length === 0) {
+            console.warn(`[EDL UI] No hours available for previous date ${previousDate}`);
+            return false;
+        }
+        
+        // Use the last hour of the previous date
+        const previousHour = previousDateHours[previousDateHours.length - 1];
+        
+        // Get available pressures for the new date/hour
+        const availablePressures = metadata.availableLayers[previousDate][previousHour] || [];
+        
+        // Use current pressure if available, otherwise use the first available
+        const newPressure = availablePressures.includes(currentLayerInfo.pressure) 
+            ? currentLayerInfo.pressure 
+            : (availablePressures[0] || isobareList[0]); // Default to first pressure in isobareList
+            
+        // Update the layer with the new date/hour
+        const result = updateEDLLayer(previousDate, previousHour, newPressure);
+        
+        if (result) {
+            // Update current layer info
+            currentLayerInfo = {
+                date: previousDate,
+                hour: previousHour,
+                pressure: newPressure
+            };
+            
+            console.log(`[EDL UI] Updated to date ${previousDate}, hour ${previousHour} (${previousHour}:00)`);
+            
+            // Update indicators
+            updateDateIndicator();
+            updateTimeIndicator();
+            
+            updateNavigationButtonsState();
+            return true;
+        }
+        
         return false;
     }
     
+    // Standard previous hour logic (within same day)
     const previousHour = availableHours[currentIndex - 1];
     
     // Get available pressures for the new hour
@@ -111,8 +174,9 @@ export function navigateToPreviousHour() {
         
         console.log(`[EDL UI] Updated to hour ${previousHour} (${previousHour}:00)`);
         
-        // Update date indicator
+        // Update indicators
         updateDateIndicator();
+        updateTimeIndicator();
         
         updateNavigationButtonsState();
         return true;
@@ -150,11 +214,71 @@ export function navigateToNextHour() {
     
     // Find the next hour
     const currentIndex = availableHours.indexOf(currentLayerInfo.hour);
+    
+    // If we're at the last hour of the day, try to go to the next day
     if (currentIndex >= availableHours.length - 1) {
-        console.log('[EDL UI] Already at latest hour for this date');
+        console.log('[EDL UI] At latest hour for current date, checking for next date');
+        
+        // Get all available dates
+        const availableDates = Object.keys(metadata.availableLayers).sort();
+        const currentDateIndex = availableDates.indexOf(currentLayerInfo.date);
+        
+        // If we're at the latest date, can't go forward further
+        if (currentDateIndex >= availableDates.length - 1) {
+            console.log('[EDL UI] Already at latest hour of latest date');
+            return false;
+        }
+        
+        // Get the next date
+        const nextDate = availableDates[currentDateIndex + 1];
+        console.log(`[EDL UI] Moving to next date: ${nextDate}`);
+        
+        // Get available hours for the next date
+        const nextDateHours = Object.keys(metadata.availableLayers[nextDate] || {})
+            .map(h => parseInt(h))
+            .sort((a, b) => a - b);
+        
+        if (nextDateHours.length === 0) {
+            console.warn(`[EDL UI] No hours available for next date ${nextDate}`);
+            return false;
+        }
+        
+        // Use the first hour of the next date
+        const nextHour = nextDateHours[0];
+        
+        // Get available pressures for the new date/hour
+        const availablePressures = metadata.availableLayers[nextDate][nextHour] || [];
+        
+        // Use current pressure if available, otherwise use the first available
+        const newPressure = availablePressures.includes(currentLayerInfo.pressure) 
+            ? currentLayerInfo.pressure 
+            : (availablePressures[0] || isobareList[0]); // Default to first pressure in isobareList
+            
+        // Update the layer with the new date/hour
+        const result = updateEDLLayer(nextDate, nextHour, newPressure);
+        
+        if (result) {
+            // Update current layer info
+            currentLayerInfo = {
+                date: nextDate,
+                hour: nextHour,
+                pressure: newPressure
+            };
+            
+            console.log(`[EDL UI] Updated to date ${nextDate}, hour ${nextHour} (${nextHour}:00)`);
+            
+            // Update indicators
+            updateDateIndicator();
+            updateTimeIndicator();
+            
+            updateNavigationButtonsState();
+            return true;
+        }
+        
         return false;
     }
     
+    // Standard next hour logic (within same day)
     const nextHour = availableHours[currentIndex + 1];
     
     // Get available pressures for the new hour
@@ -178,8 +302,9 @@ export function navigateToNextHour() {
         
         console.log(`[EDL UI] Updated to hour ${nextHour} (${nextHour}:00)`);
         
-        // Update date indicator
+        // Update indicators
         updateDateIndicator();
+        updateTimeIndicator();
         
         updateNavigationButtonsState();
         return true;
@@ -270,8 +395,9 @@ export function navigateToCurrentTime() {
         
         console.log(`[EDL UI] Updated to current UTC time: ${closestDate} ${nearestHour}:00`);
         
-        // Update date indicator
+        // Update indicators
         updateDateIndicator();
+        updateTimeIndicator();
         
         updateNavigationButtonsState();
         return true;
@@ -485,7 +611,7 @@ export function updateNavigationButtonsState() {
     
     // If layer is visible but no EDL data, disable all buttons except visibility
     if (!hasEDLTiles() || !currentLayerInfo.date) {
-        // Disable all buttons if no EDL data
+        console.log('[EDL UI] No EDL data available, disabling navigation buttons');
         prevButton.disabled = true;
         nextButton.disabled = true;
         if (pressureUpButton) pressureUpButton.disabled = true;
@@ -495,46 +621,42 @@ export function updateNavigationButtonsState() {
         return;
     }
     
-    // Enable the now button and pressure button by default
-    // (they display information but aren't necessarily navigation buttons)
-    if (nowButton) nowButton.disabled = false;
-    if (pressureButton) pressureButton.disabled = false;
-    
+    // Get metadata for button state calculation
     const metadata = getEDLMetadata();
+    if (!metadata || !metadata.availableLayers) {
+        console.warn('[EDL UI] No metadata available');
+        return;
+    }
+    
+    // Get all available dates
+    const availableDates = Object.keys(metadata.availableLayers).sort();
+    const currentDateIndex = availableDates.indexOf(currentLayerInfo.date);
     
     // Get available hours for current date
     const availableHours = Object.keys(metadata.availableLayers[currentLayerInfo.date] || {})
         .map(h => parseInt(h))
         .sort((a, b) => a - b);
     
-    if (availableHours.length === 0) {
-        // Disable all buttons if no hours available
-        prevButton.disabled = true;
-        nextButton.disabled = true;
-        if (pressureUpButton) pressureUpButton.disabled = true;
-        if (pressureDownButton) pressureDownButton.disabled = true;
-        return;
-    }
-    
-    // Find current hour index
+    // Get current hour index
     const currentHourIndex = availableHours.indexOf(currentLayerInfo.hour);
     
-    // Update hour navigation button states
-    prevButton.disabled = currentHourIndex <= 0;
-    nextButton.disabled = currentHourIndex >= availableHours.length - 1;
+    // Prev button should be disabled if we're at the earliest hour of the earliest date
+    prevButton.disabled = (currentDateIndex === 0 && currentHourIndex === 0);
     
-    // Use the isobareList from cacheEdl.js (already sorted from lowest to highest)
-    const pressureLevels = [...isobareList].sort((a, b) => a - b);
+    // Next button should be disabled if we're at the latest hour of the latest date
+    nextButton.disabled = (currentDateIndex === availableDates.length - 1 && currentHourIndex === availableHours.length - 1);
     
-    // Get available pressures for current date and hour
+    // Get available pressures for current date/hour
     const availablePressures = metadata.availableLayers[currentLayerInfo.date]?.[currentLayerInfo.hour] || [];
     
-    // Find current pressure index
+    // Use the isobareList (already sorted from lowest to highest)
+    const pressureLevels = [...isobareList].sort((a, b) => a - b);
+    
+    // Find current pressure index in standard levels
     const currentPressureIndex = pressureLevels.indexOf(currentLayerInfo.pressure);
     
-    // Update pressure navigation button states
-    if (pressureUpButton && pressureDownButton) {
-        // Check if there are higher altitude (lower pressure) levels available
+    // Disable pressure up button if already at highest altitude (lowest pressure)
+    if (pressureUpButton) {
         let hasHigherAltitude = false;
         for (let i = 0; i < currentPressureIndex; i++) {
             if (availablePressures.includes(pressureLevels[i])) {
@@ -542,8 +664,11 @@ export function updateNavigationButtonsState() {
                 break;
             }
         }
-        
-        // Check if there are lower altitude (higher pressure) levels available
+        pressureUpButton.disabled = !hasHigherAltitude;
+    }
+    
+    // Disable pressure down button if already at lowest altitude (highest pressure)
+    if (pressureDownButton) {
         let hasLowerAltitude = false;
         for (let i = currentPressureIndex + 1; i < pressureLevels.length; i++) {
             if (availablePressures.includes(pressureLevels[i])) {
@@ -551,40 +676,26 @@ export function updateNavigationButtonsState() {
                 break;
             }
         }
-        
-        pressureUpButton.disabled = !hasHigherAltitude;
         pressureDownButton.disabled = !hasLowerAltitude;
+    }
+    
+    // Now button is always enabled if there's data
+    if (nowButton) {
+        nowButton.disabled = false;
+    }
+    
+    // Pressure button follows same logic as pressure indicators
+    if (pressureButton) {
+        pressureButton.disabled = (availablePressures.length <= 1);
     }
     
     // Update pressure indicator
     if (pressureIndicator && currentLayerInfo.pressure) {
         const pressureHpa = currentLayerInfo.pressure;
         pressureIndicator.textContent = `${pressureHpa}hPa`;
-        
-        // Update altitude indicator
-        updateAltitudeIndicator();
     }
     
-    // Log button states
-    console.log(`[EDL UI] Button states - Prev: ${prevButton.disabled ? 'disabled' : 'enabled'}, Next: ${nextButton.disabled ? 'disabled' : 'enabled'}`);
-    if (pressureUpButton && pressureDownButton) {
-        console.log(`[EDL UI] Pressure button states - Up: ${pressureUpButton.disabled ? 'disabled' : 'enabled'}, Down: ${pressureDownButton.disabled ? 'disabled' : 'enabled'}`);
-    }
-    
-    // Update the time indicator if it exists
-    const timeIndicator = document.getElementById('edlTimeIndicator');
-    if (timeIndicator) {
-        // Format hour with leading zero if needed and add :00
-        const formattedHour = currentLayerInfo.hour !== null ? 
-            `${currentLayerInfo.hour.toString().padStart(2, '0')}:00` : 
-            'Now';
-        
-        timeIndicator.textContent = formattedHour;
-        
-        // Update date indicator using the helper function
-        updateDateIndicator();
-        
-    }
+    console.log(`[EDL UI] Button states - prev: ${!prevButton.disabled}, next: ${!nextButton.disabled}`);
 }
 
 /**
@@ -670,5 +781,18 @@ function updateAltitudeIndicator() {
         altitudeIndicator.textContent = `${altitude}m`;
         console.log(`[EDL UI] Altitude indicator updated: ${altitude}m for ${pressureHpa}hPa`);
         console.log('[MODIFIED] edlUI.js - Using pressure directly in hPa for altitude calculation');
+    }
+}
+
+/**
+ * Helper function to update the time indicator
+ */
+function updateTimeIndicator() {
+    const timeIndicator = document.getElementById('edlTimeIndicator');
+    if (timeIndicator && currentLayerInfo.hour !== null) {
+        // Format hour with leading zero if needed and add :00
+        const formattedHour = `${currentLayerInfo.hour.toString().padStart(2, '0')}:00`;
+        timeIndicator.textContent = formattedHour;
+        console.log(`[EDL UI] Time indicator updated: ${formattedHour}`);
     }
 } 

@@ -6,6 +6,7 @@
 import { BASE_PATH } from './config.js';
 import { getLayerManager } from './state.js';
 import { getEDLMetadata, hasEDLTiles } from './cacheEdl.js';
+import { navigateToCurrentTime } from './edlUI.js';
 
 // Constants for EDL layer
 const DEFAULT_PRESSURE = 500; // Changed from 50000 (500 hPa)
@@ -126,11 +127,21 @@ export function createEDLLayer(map, options = {}) {
             pressure: pressure
         };
         
-        // Return the layer
-        return {
+        // Create layer result object
+        const layerResult = {
             id: 'edl-layer',
             info: currentLayerInfo
         };
+        
+        // Navigate to current time after the layer is created
+        // This will ensure we always show the most current data available
+        setTimeout(() => {
+            console.log('[EDL] Navigating to current time after layer creation');
+            navigateToCurrentTime();
+        }, 500);
+        
+        // Return the layer
+        return layerResult;
     } catch (error) {
         console.error(`[EDL] Error creating EDL layer: ${error.message}`);
         return null;

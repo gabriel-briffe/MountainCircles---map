@@ -68,33 +68,46 @@ function buildMBTilesUrlList() {
   
   const urlList = [];
   
-  // Generate all combinations
+  // Generate combinations for current date + tomorrow
   dayList.forEach(day => {
-    hourList.forEach(hre => {
-      isobareList.forEach(isb => {
-        // Set the hour in UTC
-        const utcDay = new Date(Date.UTC(day.getUTCFullYear(), day.getUTCMonth(), day.getUTCDate(), hre, 0, 0));
-        
-        // Format date for URL: YYYY-MM-DD using UTC date
-        const dateStr = utcDay.toISOString().slice(0, 10);
-        console.log(`[MODIFIED] cacheEdl.js - Using correct UTC date for URL: ${dateStr} (local date may be different)`);
-        
-        // Format new style URL using GitHub release pattern
-        // Format: arome_vv_YYYY-MM-DD_HH_PRESSURE.mbtiles
-        const formattedDateForPath = dateStr;
-        const releaseTag = `arome-${formattedDateForPath}`;
-        const filename = `arome_vv_${formattedDateForPath}_${hre.toString().padStart(2, '0')}_${isb}.mbtiles`;
-        const url = `${mbtilesURLBase}${releaseTag}/${filename}`;
-        
-        console.log(`[MODIFIED] cacheEdl.js - Created new URL format with correct UTC date: ${url}`);
-        
-        urlList.push({
-          date: new Date(utcDay), // Use the UTC date
-          isobare: isb, // Now in hPa
-          hour: hre,
-          label: `${dateStr} ${hre}:00 - ${isb}hPa`, // Updated label
-          url: url,
-          tilePath: `edl_tiles/${dateStr}_${hre}_${isb}` // Keeping same cache path format
+    // Get the forecast date (today in UTC)
+    const utcToday = new Date(Date.UTC(day.getUTCFullYear(), day.getUTCMonth(), day.getUTCDate()));
+    const forecastDateStr = utcToday.toISOString().slice(0, 10);
+    
+    // Create a list of dates to fetch - today and tomorrow
+    const targetDates = [
+      // Today
+      new Date(Date.UTC(day.getUTCFullYear(), day.getUTCMonth(), day.getUTCDate())),
+      // Tomorrow
+      new Date(Date.UTC(day.getUTCFullYear(), day.getUTCMonth(), day.getUTCDate() + 1))
+    ];
+    
+    targetDates.forEach(targetDate => {
+      const targetDateStr = targetDate.toISOString().slice(0, 10);
+      
+      hourList.forEach(hre => {
+        isobareList.forEach(isb => {
+          // Format using new URL pattern:
+          // arome_vv_forecastDate_forDate_forHour_for_pressure.mbtiles
+          const releaseTag = `arome-${forecastDateStr}`;
+          const filename = `arome_vv_${forecastDateStr}_${targetDateStr}_${hre.toString().padStart(2, '0')}_${isb}.mbtiles`;
+          const url = `${mbtilesURLBase}${releaseTag}/${filename}`;
+          
+          console.log(`[MODIFIED] cacheEdl.js - Created new URL format with forecast/target dates: ${url}`);
+          
+          // Cache path with target date and hour. 
+          // This will be used for extracted tiles and should match the path expected by the app
+          const tilePath = `edl_tiles/${targetDateStr}_${hre}_${isb}`;
+          
+          urlList.push({
+            forecastDate: new Date(utcToday), // The date the forecast was issued
+            date: new Date(targetDate), // The date the forecast is for
+            isobare: isb, // Now in hPa
+            hour: hre,
+            label: `${targetDateStr} ${hre}:00 - ${isb}hPa`, // Updated label with target date 
+            url: url,
+            tilePath: tilePath
+          });
         });
       });
     });
@@ -230,23 +243,27 @@ async function testEDLProxy() {
     
     // Create a test URL using today's UTC date
     const currentDate = new Date();
-    const hour = 7; // Use 7 as default test hour
+    const hour = 15; // Use 15 as default test hour
+    const pressure = 700; // Use 700 hPa as default test pressure
     
     // Create a Date object with UTC time
-    const utcDate = new Date(Date.UTC(currentDate.getUTCFullYear(), currentDate.getUTCMonth(), currentDate.getUTCDate(), hour, 0, 0));
+    const utcDate = new Date(Date.UTC(currentDate.getUTCFullYear(), currentDate.getUTCMonth(), currentDate.getUTCDate()));
     
-    // Format date for URL: YYYY-MM-DD using UTC date
-    const dateStr = utcDate.toISOString().slice(0, 10);
-    console.log(`[MODIFIED] cacheEdl.js - Using correct UTC date for test URL: ${dateStr} (local date: ${new Date().toISOString().slice(0, 10)})`);
+    // Forecast date is today
+    const forecastDate = utcDate.toISOString().slice(0, 10);
     
-    const pressure = 500; // Use 500 hPa as default test pressure
+    // Target date is today
+    const targetDate = utcDate.toISOString().slice(0, 10);
     
-    // Format using GitHub release pattern
-    const releaseTag = `arome-${dateStr}`;
-    const filename = `arome_vv_${dateStr}_${hour.toString().padStart(2, '0')}_${pressure}.mbtiles`;
+    console.log(`[MODIFIED] cacheEdl.js - Using forecast date: ${forecastDate}, target date: ${targetDate}`);
+    
+    // Format using new URL pattern:
+    // arome_vv_forecastDate_forDate_forHour_for_pressure.mbtiles
+    const releaseTag = `arome-${forecastDate}`;
+    const filename = `arome_vv_${forecastDate}_${targetDate}_${hour.toString().padStart(2, '0')}_${pressure}.mbtiles`;
     const testUrl = `${mbtilesURLBase}${releaseTag}/${filename}`;
     
-    console.log(`[MODIFIED] cacheEdl.js - Test URL with correct UTC date: ${testUrl}`);
+    console.log(`[MODIFIED] cacheEdl.js - Test URL with new format: ${testUrl}`);
     console.log(`[edlCache] Attempting to fetch (HEAD): ${testUrl}`);
     
     // Attempt a simple HEAD request to check if the endpoint is available
@@ -337,13 +354,22 @@ async function saveEDLMetadata(processedFiles) {
       const pathParts = file.tilePath.split('/');
       const dirName = pathParts[pathParts.length - 1]; // Get the last part
       
-      // Parse the components from the directory name (e.g., "2023-04-25_7_50000")
-      const [date, hour, pressure] = dirName.split('_');
+      // The important part is matching what we store as the path in buildMBTilesUrlList
+      // which is edl_tiles/targetDateStr_hre_isb
+      console.log(`[edlCache] Parsing metadata from tilePath: ${file.tilePath}`);
       
-      if (!date || !hour || !pressure) {
+      // Parse the components from the directory name (e.g., "2025-03-30_15_700")
+      const parts = dirName.split('_');
+      if (parts.length !== 3) {
         console.warn(`[edlCache] Could not parse metadata from tilePath: ${file.tilePath}`);
         return;
       }
+      
+      const date = parts[0];
+      const hour = parts[1];
+      const pressure = parts[2];
+      
+      console.log(`[MODIFIED] cacheEdl.js - Parsed metadata: date=${date}, hour=${hour}, pressure=${pressure}`);
       
       // Add to metadata structure
       if (!metadata.availableLayers[date]) {
