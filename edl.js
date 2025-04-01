@@ -10,7 +10,7 @@ import { navigateToCurrentTime } from './edlUI.js';
 
 // Constants for EDL layer
 const DEFAULT_PRESSURE = 500; // Changed from 50000 (500 hPa)
-const DEFAULT_OPACITY = 1;
+const DEFAULT_OPACITY = 0.7;
 const PRESSURE_LEVELS = [500, 600, 700, 800, 900]; // Changed from Pa to hPa
 console.log('[MODIFIED] edl.js - Updated pressure constants to use hPa instead of Pa');
 
