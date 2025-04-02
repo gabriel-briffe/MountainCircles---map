@@ -79,6 +79,10 @@
    2. GLOBAL STYLES
    ================================= */
 /* Global font settings */
+html {
+    height: 100%;
+}
+
 html, body {
     margin: 0;
     padding: 0;

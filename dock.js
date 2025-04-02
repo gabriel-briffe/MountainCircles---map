@@ -73,7 +73,7 @@ export function updateDockElementSizes() {
     // Count number of buttons in the dock
     const buttons = mapDock.querySelectorAll('button');
     // const buttonCount = buttons.length;
-    const buttonCount = 6.5;
+    const buttonCount = 6;
         
     // Determine effective count (slider counts as 3 buttons)
     const effectiveCount = buttonCount;

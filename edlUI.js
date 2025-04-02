@@ -4,11 +4,12 @@
  */
 
 import { getEDLMetadata, hasEDLTiles, isobareList, hourList } from './cacheEdl.js';
-import { updateEDLLayer } from './edl.js';
+import { updateEDLLayer, getAvailableForecastDates } from './edl.js';
 import { getLayerManager } from './state.js';
 
 // Current layer information
 let currentLayerInfo = {
+    forecastDate: null,
     date: null,
     hour: null,
     pressure: null
@@ -31,18 +32,11 @@ export function initEDLUI(initialLayer) {
     // Set layer visibility to false initially
     edlLayerVisible = false;
     
+    // Create and add the forecast date dropdown if it doesn't exist yet
+    createForecastDateDropdown();
+    
     // Update date indicator if it exists
-    const dateIndicator = document.getElementById('edlDateIndicator');
-    if (dateIndicator && currentLayerInfo.date) {
-        // Parse the date from YYYY-MM-DD to DD/MM format
-        const dateParts = currentLayerInfo.date.split('-');
-        if (dateParts.length === 3) {
-            const day = dateParts[2];
-            const month = dateParts[1];
-            dateIndicator.textContent = `${day}/${month}`;
-            console.log(`[EDL UI] Date indicator initialized: ${day}/${month}`);
-        }
-    }
+    updateDateIndicator();
     
     // Update time indicator if it exists
     updateTimeIndicator();
@@ -69,13 +63,15 @@ export function navigateToPreviousHour() {
     }
     
     const metadata = getEDLMetadata();
-    if (!metadata || !currentLayerInfo.date) {
+    if (!metadata || !currentLayerInfo.forecastDate || !currentLayerInfo.date) {
         console.warn('[EDL UI] No current layer info or metadata available');
         return false;
     }
     
-    // Get available hours for current date
-    const availableHours = Object.keys(metadata.availableLayers[currentLayerInfo.date] || {})
+    const forecastDate = currentLayerInfo.forecastDate;
+    
+    // Get available hours for current date with the current forecast date
+    const availableHours = Object.keys(metadata.availableLayers[forecastDate]?.[currentLayerInfo.date] || {})
         .map(h => parseInt(h))
         .sort((a, b) => a - b);
     
@@ -91,8 +87,8 @@ export function navigateToPreviousHour() {
     if (currentIndex <= 0) {
         console.log('[EDL UI] At earliest hour for current date, checking for previous date');
         
-        // Get all available dates
-        const availableDates = Object.keys(metadata.availableLayers).sort();
+        // FIXED: Get available target dates for the current forecast date
+        const availableDates = Object.keys(metadata.availableLayers[forecastDate] || {}).sort();
         const currentDateIndex = availableDates.indexOf(currentLayerInfo.date);
         
         // If we're at the earliest date, can't go back further
@@ -106,7 +102,7 @@ export function navigateToPreviousHour() {
         console.log(`[EDL UI] Moving to previous date: ${previousDate}`);
         
         // Get available hours for the previous date
-        const previousDateHours = Object.keys(metadata.availableLayers[previousDate] || {})
+        const previousDateHours = Object.keys(metadata.availableLayers[forecastDate][previousDate] || {})
             .map(h => parseInt(h))
             .sort((a, b) => a - b);
         
@@ -119,7 +115,7 @@ export function navigateToPreviousHour() {
         const previousHour = previousDateHours[previousDateHours.length - 1];
         
         // Get available pressures for the new date/hour
-        const availablePressures = metadata.availableLayers[previousDate][previousHour] || [];
+        const availablePressures = metadata.availableLayers[forecastDate][previousDate][previousHour] || [];
         
         // Use current pressure if available, otherwise use the first available
         const newPressure = availablePressures.includes(currentLayerInfo.pressure) 
@@ -127,11 +123,12 @@ export function navigateToPreviousHour() {
             : (availablePressures[0] || isobareList[0]); // Default to first pressure in isobareList
             
         // Update the layer with the new date/hour
-        const result = updateEDLLayer(previousDate, previousHour, newPressure);
+        const result = updateEDLLayer(previousDate, previousHour, newPressure, forecastDate);
         
         if (result) {
             // Update current layer info
             currentLayerInfo = {
+                forecastDate: forecastDate,
                 date: previousDate,
                 hour: previousHour,
                 pressure: newPressure
@@ -153,7 +150,7 @@ export function navigateToPreviousHour() {
     const previousHour = availableHours[currentIndex - 1];
     
     // Get available pressures for the new hour
-    const availablePressures = metadata.availableLayers[currentLayerInfo.date][previousHour] || [];
+    const availablePressures = metadata.availableLayers[forecastDate][currentLayerInfo.date][previousHour] || [];
     
     // Use current pressure if available, otherwise use the first available
     const newPressure = availablePressures.includes(currentLayerInfo.pressure) 
@@ -161,12 +158,13 @@ export function navigateToPreviousHour() {
         : (availablePressures[0] || isobareList[0]); // Default to first pressure in isobareList
     
     // Update the layer
-    const result = updateEDLLayer(currentLayerInfo.date, previousHour, newPressure);
+    const result = updateEDLLayer(currentLayerInfo.date, previousHour, newPressure, forecastDate);
     
     if (result) {
         // Update current layer info
         currentLayerInfo = {
-            ...currentLayerInfo,
+            forecastDate: forecastDate,
+            date: currentLayerInfo.date,
             hour: previousHour,
             pressure: newPressure
         };
@@ -196,13 +194,15 @@ export function navigateToNextHour() {
     }
     
     const metadata = getEDLMetadata();
-    if (!metadata || !currentLayerInfo.date) {
+    if (!metadata || !currentLayerInfo.forecastDate || !currentLayerInfo.date) {
         console.warn('[EDL UI] No current layer info or metadata available');
         return false;
     }
     
-    // Get available hours for current date
-    const availableHours = Object.keys(metadata.availableLayers[currentLayerInfo.date] || {})
+    const forecastDate = currentLayerInfo.forecastDate;
+    
+    // Get available hours for current date with the current forecast date
+    const availableHours = Object.keys(metadata.availableLayers[forecastDate]?.[currentLayerInfo.date] || {})
         .map(h => parseInt(h))
         .sort((a, b) => a - b);
     
@@ -218,8 +218,8 @@ export function navigateToNextHour() {
     if (currentIndex >= availableHours.length - 1) {
         console.log('[EDL UI] At latest hour for current date, checking for next date');
         
-        // Get all available dates
-        const availableDates = Object.keys(metadata.availableLayers).sort();
+        // FIXED: Get available target dates for the current forecast date
+        const availableDates = Object.keys(metadata.availableLayers[forecastDate] || {}).sort();
         const currentDateIndex = availableDates.indexOf(currentLayerInfo.date);
         
         // If we're at the latest date, can't go forward further
@@ -233,7 +233,7 @@ export function navigateToNextHour() {
         console.log(`[EDL UI] Moving to next date: ${nextDate}`);
         
         // Get available hours for the next date
-        const nextDateHours = Object.keys(metadata.availableLayers[nextDate] || {})
+        const nextDateHours = Object.keys(metadata.availableLayers[forecastDate][nextDate] || {})
             .map(h => parseInt(h))
             .sort((a, b) => a - b);
         
@@ -246,7 +246,7 @@ export function navigateToNextHour() {
         const nextHour = nextDateHours[0];
         
         // Get available pressures for the new date/hour
-        const availablePressures = metadata.availableLayers[nextDate][nextHour] || [];
+        const availablePressures = metadata.availableLayers[forecastDate][nextDate][nextHour] || [];
         
         // Use current pressure if available, otherwise use the first available
         const newPressure = availablePressures.includes(currentLayerInfo.pressure) 
@@ -254,11 +254,12 @@ export function navigateToNextHour() {
             : (availablePressures[0] || isobareList[0]); // Default to first pressure in isobareList
             
         // Update the layer with the new date/hour
-        const result = updateEDLLayer(nextDate, nextHour, newPressure);
+        const result = updateEDLLayer(nextDate, nextHour, newPressure, forecastDate);
         
         if (result) {
             // Update current layer info
             currentLayerInfo = {
+                forecastDate: forecastDate,
                 date: nextDate,
                 hour: nextHour,
                 pressure: newPressure
@@ -280,7 +281,7 @@ export function navigateToNextHour() {
     const nextHour = availableHours[currentIndex + 1];
     
     // Get available pressures for the new hour
-    const availablePressures = metadata.availableLayers[currentLayerInfo.date][nextHour] || [];
+    const availablePressures = metadata.availableLayers[forecastDate][currentLayerInfo.date][nextHour] || [];
     
     // Use current pressure if available, otherwise use the first available
     const newPressure = availablePressures.includes(currentLayerInfo.pressure) 
@@ -288,12 +289,13 @@ export function navigateToNextHour() {
         : (availablePressures[0] || isobareList[0]); // Default to first pressure in isobareList
     
     // Update the layer
-    const result = updateEDLLayer(currentLayerInfo.date, nextHour, newPressure);
+    const result = updateEDLLayer(currentLayerInfo.date, nextHour, newPressure, forecastDate);
     
     if (result) {
         // Update current layer info
         currentLayerInfo = {
-            ...currentLayerInfo,
+            forecastDate: forecastDate,
+            date: currentLayerInfo.date,
             hour: nextHour,
             pressure: newPressure
         };
@@ -328,6 +330,16 @@ export function navigateToCurrentTime() {
         return false;
     }
     
+    // Use the current forecast date or the last used one from metadata
+    const forecastDate = currentLayerInfo?.forecastDate || 
+                        metadata.lastUsedForecastDate || 
+                        Object.keys(metadata.availableLayers)[0];
+                        
+    if (!forecastDate || !metadata.availableLayers[forecastDate]) {
+        console.warn('[EDL UI] No valid forecast date available');
+        return false;
+    }
+    
     // Get today's date in UTC
     const today = new Date();
     
@@ -337,10 +349,10 @@ export function navigateToCurrentTime() {
     
     console.log(`[MODIFIED] edlUI.js - Using correct UTC date: ${dateString} (local date: ${new Date().toLocaleDateString()})`);
     
-    // Find closest available date
-    const availableDates = Object.keys(metadata.availableLayers).sort();
+    // Find closest available date in the current forecast
+    const availableDates = Object.keys(metadata.availableLayers[forecastDate] || {}).sort();
     if (availableDates.length === 0) {
-        console.warn('[EDL UI] No dates available');
+        console.warn('[EDL UI] No dates available for forecast date:', forecastDate);
         return false;
     }
     
@@ -350,7 +362,7 @@ export function navigateToCurrentTime() {
         : availableDates[availableDates.length - 1];
     
     // Get available hours for this date
-    const availableHours = Object.keys(metadata.availableLayers[closestDate] || {})
+    const availableHours = Object.keys(metadata.availableLayers[forecastDate][closestDate] || {})
         .map(h => parseInt(h))
         .sort((a, b) => a - b);
     
@@ -373,29 +385,31 @@ export function navigateToCurrentTime() {
     const nearestHour = findNearestValue(targetHour, availableHours);
     
     // Get available pressures for this hour
-    const availablePressures = metadata.availableLayers[closestDate][nearestHour] || [];
+    const availablePressures = metadata.availableLayers[forecastDate][closestDate][nearestHour] || [];
     
     // Use current pressure if available, otherwise use the first available
-    const newPressure = availablePressures.includes(currentLayerInfo.pressure) 
+    const newPressure = (currentLayerInfo && availablePressures.includes(currentLayerInfo.pressure)) 
         ? currentLayerInfo.pressure 
         : (availablePressures[0] || isobareList[0]); // Default to first pressure in isobareList
     
     // Update the layer
-    const result = updateEDLLayer(closestDate, nearestHour, newPressure);
+    const result = updateEDLLayer(closestDate, nearestHour, newPressure, forecastDate);
     
     if (result) {
         // Update current layer info
         currentLayerInfo = {
+            forecastDate: forecastDate,
             date: closestDate,
             hour: nearestHour,
             pressure: newPressure
         };
         
-        console.log(`[EDL UI] Updated to current UTC time: ${closestDate} ${nearestHour}:00`);
+        console.log(`[EDL UI] Updated to current UTC time: ${closestDate} ${nearestHour}:00 with forecast date ${forecastDate}`);
         
         // Update indicators
         updateDateIndicator();
         updateTimeIndicator(); // Ensure time indicator is updated with local time
+        updateForecastDateDropdownOptions(); // Update dropdown to show current forecast date
         
         updateNavigationButtonsState();
         return true;
@@ -410,7 +424,7 @@ export function navigateToCurrentTime() {
  */
 export function navigateToHigherAltitude() {
     console.log('[EDL UI] Navigating to higher altitude (lower pressure)');
-    if (!hasEDLTiles() || !currentLayerInfo.date || !currentLayerInfo.hour) {
+    if (!hasEDLTiles() || !currentLayerInfo.forecastDate || !currentLayerInfo.date || !currentLayerInfo.hour) {
         console.warn('[EDL UI] No EDL layer available');
         return false;
     }
@@ -425,7 +439,7 @@ export function navigateToHigherAltitude() {
     const pressureLevels = [...isobareList].sort((a, b) => a - b);
     
     // Get available pressures for current date and hour
-    const availablePressures = metadata.availableLayers[currentLayerInfo.date]?.[currentLayerInfo.hour] || [];
+    const availablePressures = metadata.availableLayers[currentLayerInfo.forecastDate][currentLayerInfo.date]?.[currentLayerInfo.hour] || [];
     if (availablePressures.length === 0) {
         console.warn('[EDL UI] No pressure levels available');
         return false;
@@ -453,12 +467,14 @@ export function navigateToHigherAltitude() {
     }
     
     // Update the layer
-    const result = updateEDLLayer(currentLayerInfo.date, currentLayerInfo.hour, newPressure);
+    const result = updateEDLLayer(currentLayerInfo.date, currentLayerInfo.hour, newPressure, currentLayerInfo.forecastDate);
     
     if (result) {
         // Update current layer info
         currentLayerInfo = {
-            ...currentLayerInfo,
+            forecastDate: currentLayerInfo.forecastDate,
+            date: currentLayerInfo.date,
+            hour: currentLayerInfo.hour,
             pressure: newPressure
         };
         
@@ -482,7 +498,7 @@ export function navigateToHigherAltitude() {
  */
 export function navigateToLowerAltitude() {
     console.log('[EDL UI] Navigating to lower altitude (higher pressure)');
-    if (!hasEDLTiles() || !currentLayerInfo.date || !currentLayerInfo.hour) {
+    if (!hasEDLTiles() || !currentLayerInfo.forecastDate || !currentLayerInfo.date || !currentLayerInfo.hour) {
         console.warn('[EDL UI] No EDL layer available');
         return false;
     }
@@ -497,7 +513,7 @@ export function navigateToLowerAltitude() {
     const pressureLevels = [...isobareList].sort((a, b) => a - b);
     
     // Get available pressures for current date and hour
-    const availablePressures = metadata.availableLayers[currentLayerInfo.date]?.[currentLayerInfo.hour] || [];
+    const availablePressures = metadata.availableLayers[currentLayerInfo.forecastDate][currentLayerInfo.date]?.[currentLayerInfo.hour] || [];
     if (availablePressures.length === 0) {
         console.warn('[EDL UI] No pressure levels available');
         return false;
@@ -525,12 +541,14 @@ export function navigateToLowerAltitude() {
     }
     
     // Update the layer
-    const result = updateEDLLayer(currentLayerInfo.date, currentLayerInfo.hour, newPressure);
+    const result = updateEDLLayer(currentLayerInfo.date, currentLayerInfo.hour, newPressure, currentLayerInfo.forecastDate);
     
     if (result) {
         // Update current layer info
         currentLayerInfo = {
-            ...currentLayerInfo,
+            forecastDate: currentLayerInfo.forecastDate,
+            date: currentLayerInfo.date,
+            hour: currentLayerInfo.hour,
             pressure: newPressure
         };
         
@@ -613,7 +631,7 @@ export function updateNavigationButtonsState() {
     }
     
     // If layer is visible but no EDL data, disable all buttons except visibility
-    if (!hasEDLTiles() || !currentLayerInfo.date) {
+    if (!hasEDLTiles() || !currentLayerInfo.forecastDate || !currentLayerInfo.date) {
         console.log('[EDL UI] No EDL data available, disabling navigation buttons');
         prevButton.disabled = true;
         nextButton.disabled = true;
@@ -630,12 +648,12 @@ export function updateNavigationButtonsState() {
         return;
     }
     
-    // Get all available dates
-    const availableDates = Object.keys(metadata.availableLayers).sort();
+    // FIXED: Get available target dates for the current forecast date
+    const availableDates = Object.keys(metadata.availableLayers[currentLayerInfo.forecastDate] || {}).sort();
     const currentDateIndex = availableDates.indexOf(currentLayerInfo.date);
     
     // Get available hours for current date
-    const availableHours = Object.keys(metadata.availableLayers[currentLayerInfo.date] || {})
+    const availableHours = Object.keys(metadata.availableLayers[currentLayerInfo.forecastDate][currentLayerInfo.date] || {})
         .map(h => parseInt(h))
         .sort((a, b) => a - b);
     
@@ -660,7 +678,8 @@ export function updateNavigationButtonsState() {
     } else if (currentDateIndex > 0) {
         // Can go to previous date - check if it has any hours
         const prevDate = availableDates[currentDateIndex - 1];
-        const prevDateHours = Object.keys(metadata.availableLayers[prevDate] || {}).length;
+        // FIXED: Check hours properly for the target date within current forecast date
+        const prevDateHours = Object.keys(metadata.availableLayers[currentLayerInfo.forecastDate][prevDate] || {}).length;
         if (prevDateHours > 0) {
             canGoPrevious = true;
             console.log(`[EDL UI] Previous date available: ${prevDate} with ${prevDateHours} hours`);
@@ -676,7 +695,8 @@ export function updateNavigationButtonsState() {
     } else if (currentDateIndex < availableDates.length - 1) {
         // Can go to next date - check if it has any hours
         const nextDate = availableDates[currentDateIndex + 1];
-        const nextDateHours = Object.keys(metadata.availableLayers[nextDate] || {}).length;
+        // FIXED: Check hours properly for the target date within current forecast date
+        const nextDateHours = Object.keys(metadata.availableLayers[currentLayerInfo.forecastDate][nextDate] || {}).length;
         if (nextDateHours > 0) {
             canGoNext = true;
             console.log(`[EDL UI] Next date available: ${nextDate} with ${nextDateHours} hours`);
@@ -688,7 +708,7 @@ export function updateNavigationButtonsState() {
     nextButton.disabled = !canGoNext;
     
     // Get available pressures for current date/hour
-    const availablePressures = metadata.availableLayers[currentLayerInfo.date]?.[currentLayerInfo.hour] || [];
+    const availablePressures = metadata.availableLayers[currentLayerInfo.forecastDate][currentLayerInfo.date]?.[currentLayerInfo.hour] || [];
     
     // Use the isobareList (already sorted from lowest to highest)
     const pressureLevels = [...isobareList].sort((a, b) => a - b);
@@ -782,7 +802,7 @@ export function toggleEDLNavigationRow(visible) {
  */
 function updateDateIndicator() {
     const dateIndicator = document.getElementById('edlDateIndicator');
-    if (dateIndicator && currentLayerInfo.date) {
+    if (dateIndicator && currentLayerInfo.forecastDate && currentLayerInfo.date) {
         // Parse the date from YYYY-MM-DD to DD/MM format
         const dateParts = currentLayerInfo.date.split('-');
         if (dateParts.length === 3) {
@@ -837,12 +857,12 @@ function updateAltitudeIndicator() {
  */
 function updateTimeIndicator() {
     const timeIndicator = document.getElementById('edlTimeIndicator');
-    if (timeIndicator && currentLayerInfo.hour !== null) {
+    if (timeIndicator && currentLayerInfo.forecastDate && currentLayerInfo.date && currentLayerInfo.hour !== null) {
         // Create a date object from the UTC time data
         const utcDate = new Date(Date.UTC(
-            parseInt(currentLayerInfo.date.split('-')[0]), // year
-            parseInt(currentLayerInfo.date.split('-')[1]) - 1, // month (0-based)
-            parseInt(currentLayerInfo.date.split('-')[2]), // day
+            parseInt(currentLayerInfo.forecastDate.split('-')[0]), // year
+            parseInt(currentLayerInfo.forecastDate.split('-')[1]) - 1, // month (0-based)
+            parseInt(currentLayerInfo.forecastDate.split('-')[2]), // day
             currentLayerInfo.hour // hour
         ));
         
@@ -865,5 +885,176 @@ function updateTimeIndicator() {
         }
         
         console.log('[MODIFIED] edlUI.js - Now showing local time in the time indicator');
+    }
+}
+
+/**
+ * Creates the forecast date dropdown in the EDL navigation row
+ */
+function createForecastDateDropdown() {
+    // First check if the dropdown already exists
+    if (document.getElementById('edlForecastDateSelect')) {
+        // Already exists, just update the options
+        updateForecastDateDropdownOptions();
+        return;
+    }
+    
+    // Find the EDL nav row
+    const navRow = document.getElementById('edlNavRow');
+    if (!navRow) {
+        console.warn('[EDL UI] EDL navigation row not found');
+        return;
+    }
+    
+    // Create a button to match the style of other buttons in the nav
+    const dropdownButton = document.createElement('div');
+    dropdownButton.className = 'secondary-btn';
+    dropdownButton.id = 'edlForecastDropdownContainer';
+    dropdownButton.title = 'Select Forecast Date';
+    dropdownButton.style.width = 'auto';
+    
+    // Create dropdown wrapper
+    const dropdownWrapper = document.createElement('div');
+    dropdownWrapper.className = 'forecast-dropdown-wrapper';
+    
+    // Create label
+    const label = document.createElement('div');
+    label.textContent = 'FC';
+    label.className = 'edl-dropdown-label';
+    dropdownWrapper.appendChild(label);
+    
+    // Create select element
+    const select = document.createElement('select');
+    select.id = 'edlForecastDateSelect';
+    dropdownWrapper.appendChild(select);
+    
+    // Add the wrapper to the button
+    dropdownButton.appendChild(dropdownWrapper);
+    
+    // Insert at the beginning of the nav row
+    navRow.insertBefore(dropdownButton, navRow.firstChild);
+    
+    // Update options and add event listener
+    updateForecastDateDropdownOptions();
+    
+    // Add change event listener
+    select.addEventListener('change', handleForecastDateChange);
+    
+    // Add click handler to prevent map clicks
+    dropdownButton.addEventListener('click', (e) => {
+        e.stopPropagation();
+    });
+}
+
+/**
+ * Updates the options in the forecast date dropdown
+ */
+export function updateForecastDateDropdownOptions() {
+    const select = document.getElementById('edlForecastDateSelect');
+    if (!select) return;
+    
+    // Get available forecast dates
+    const forecastDates = getAvailableForecastDates();
+    
+    // Clear existing options
+    select.innerHTML = '';
+    
+    // Add options for each forecast date
+    forecastDates.forEach(date => {
+        const option = document.createElement('option');
+        option.value = date;
+        
+        // Format the date for display as DD/MM
+        const dateParts = date.split('-');
+        if (dateParts.length === 3) {
+            const day = dateParts[2];
+            const month = dateParts[1];
+            option.textContent = `${day}/${month}`;
+        } else {
+            option.textContent = date;
+        }
+        
+        // Select the current forecast date
+        if (currentLayerInfo && currentLayerInfo.forecastDate === date) {
+            option.selected = true;
+        }
+        
+        select.appendChild(option);
+    });
+}
+
+/**
+ * Handles when the forecast date dropdown selection changes
+ * @param {Event} event - The change event
+ */
+function handleForecastDateChange(event) {
+    const newForecastDate = event.target.value;
+    console.log(`[EDL UI] Forecast date changed to: ${newForecastDate}`);
+    
+    if (!newForecastDate || newForecastDate === currentLayerInfo.forecastDate) {
+        return; // No change or invalid value
+    }
+    
+    // Get the metadata to check available dates/hours for this forecast
+    const metadata = getEDLMetadata();
+    if (!metadata || !metadata.availableLayers || !metadata.availableLayers[newForecastDate]) {
+        console.warn(`[EDL UI] No metadata available for forecast date: ${newForecastDate}`);
+        return;
+    }
+    
+    // Get available target dates for this forecast
+    const availableTargetDates = Object.keys(metadata.availableLayers[newForecastDate]).sort();
+    if (availableTargetDates.length === 0) {
+        console.warn(`[EDL UI] No target dates available for forecast date: ${newForecastDate}`);
+        return;
+    }
+    
+    // Use the latest target date available
+    const newTargetDate = availableTargetDates[availableTargetDates.length - 1];
+    
+    // Get available hours for this target date
+    const availableHours = Object.keys(metadata.availableLayers[newForecastDate][newTargetDate]).map(h => parseInt(h)).sort((a, b) => a - b);
+    if (availableHours.length === 0) {
+        console.warn(`[EDL UI] No hours available for target date: ${newTargetDate}`);
+        return;
+    }
+    
+    // For hour, try to keep the same hour if available, otherwise use the closest available hour
+    let newHour = currentLayerInfo.hour;
+    if (!availableHours.includes(newHour)) {
+        newHour = findNearestValue(newHour, availableHours);
+    }
+    
+    // For pressure, try to keep the same pressure if available
+    const availablePressures = metadata.availableLayers[newForecastDate][newTargetDate][newHour];
+    let newPressure = currentLayerInfo.pressure;
+    if (!availablePressures.includes(newPressure)) {
+        newPressure = availablePressures[0]; // Use first available pressure
+    }
+    
+    // Update the EDL layer with new parameters
+    const result = updateEDLLayer(newTargetDate, newHour, newPressure, newForecastDate);
+    
+    if (result) {
+        // Update current layer info
+        currentLayerInfo = {
+            forecastDate: newForecastDate,
+            date: newTargetDate,
+            hour: newHour,
+            pressure: newPressure
+        };
+        
+        console.log(`[EDL UI] Updated to forecast ${newForecastDate}, target date ${newTargetDate}, hour ${newHour}`);
+        
+        // Update UI
+        updateDateIndicator();
+        updateTimeIndicator();
+        updateAltitudeIndicator();
+        updateNavigationButtonsState();
+    } else {
+        console.warn('[EDL UI] Failed to update layer with new forecast date');
+        
+        // Reset dropdown to current forecast date
+        updateForecastDateDropdownOptions();
     }
 }

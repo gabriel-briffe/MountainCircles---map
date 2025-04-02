@@ -73,6 +73,12 @@ export function setupMenuEventListeners() {
         cacheEDLTiles(true); // true = tomorrow
     });
     
+    // Cache Yesterday's Forecast for Today button
+    document.getElementById('cacheEDLYesterdayForTodayBtn').addEventListener('click', () => {
+        console.log('[Menu] Caching yesterday\'s forecast for today');
+        cacheEDLTiles(false, true); // false = today, true = use yesterday's forecast
+    });
+    
     // Clean EDL Cache button
     document.getElementById('cleanEDLCacheBtn').addEventListener('click', () => {
         console.log('[Menu] Cleaning EDL cache');

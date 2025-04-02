@@ -60,18 +60,25 @@ function getProgressUI() {
 /**
  * Builds a list of all MBTiles URLs to cache
  * @param {boolean} isTomorrow - Whether to get tomorrow's forecast
+ * @param {boolean} useYesterdayForecast - Whether to use yesterday's forecast data
  * @returns {Array} Array of URL objects with metadata
  */
-function buildMBTilesUrlList(isTomorrow = false) {
+function buildMBTilesUrlList(isTomorrow = false, useYesterdayForecast = false) {
   // Use current date in UTC
   const cdate = new Date();
   const dayList = [cdate];
   
   const urlList = [];
   
-  // Get the forecast date (today in UTC)
+  // Get the forecast date (today in UTC or yesterday if useYesterdayForecast is true)
   const utcToday = new Date(Date.UTC(cdate.getUTCFullYear(), cdate.getUTCMonth(), cdate.getUTCDate()));
-  const forecastDateStr = utcToday.toISOString().slice(0, 10);
+  
+  // If useYesterdayForecast is true, subtract 24 hours to get yesterday's date
+  const forecastDate = useYesterdayForecast 
+    ? new Date(utcToday.getTime() - 86400000) 
+    : utcToday;
+  
+  const forecastDateStr = forecastDate.toISOString().slice(0, 10);
   
   // Create a list of dates to fetch - today or tomorrow based on parameter
   const targetDates = [];
@@ -81,11 +88,11 @@ function buildMBTilesUrlList(isTomorrow = false) {
     // This properly handles month/year boundaries
     const utcTomorrow = new Date(utcToday.getTime() + 86400000);
     targetDates.push(utcTomorrow);
-    console.log('[MODIFIED] cacheEdl.js - Getting tomorrow\'s forecast for date:', utcTomorrow.toISOString().slice(0, 10));
+    console.log(`[MODIFIED] cacheEdl.js - Getting ${useYesterdayForecast ? 'yesterday\'s' : 'today\'s'} forecast for tomorrow:`, utcTomorrow.toISOString().slice(0, 10));
   } else {
     // Today
     targetDates.push(utcToday);
-    console.log('[MODIFIED] cacheEdl.js - Getting today\'s forecast for date:', utcToday.toISOString().slice(0, 10));
+    console.log(`[MODIFIED] cacheEdl.js - Getting ${useYesterdayForecast ? 'yesterday\'s' : 'today\'s'} forecast for today:`, utcToday.toISOString().slice(0, 10));
   }
   
   targetDates.forEach(targetDate => {
@@ -99,18 +106,18 @@ function buildMBTilesUrlList(isTomorrow = false) {
         const filename = `arome_vv_${forecastDateStr}_${targetDateStr}_${hre.toString().padStart(2, '0')}_${isb}.mbtiles`;
         const url = `${mbtilesURLBase}${releaseTag}/${filename}`;
         
-        console.log(`[MODIFIED] cacheEdl.js - Created URL for ${isTomorrow ? 'tomorrow' : 'today'}: ${url}`);
+        console.log(`[MODIFIED] cacheEdl.js - Created URL for ${isTomorrow ? 'tomorrow' : 'today'} using ${useYesterdayForecast ? 'yesterday\'s' : 'today\'s'} forecast: ${url}`);
         
-        // Cache path with target date and hour. 
-        // This will be used for extracted tiles and should match the path expected by the app
-        const tilePath = `edl_tiles/${targetDateStr}_${hre}_${isb}`;
+        // UPDATED: Include forecast date in the tile path
+        // Format: edl_tiles/forecastDateStr/targetDateStr_hre_isb
+        const tilePath = `edl_tiles/${forecastDateStr}/${targetDateStr}_${hre}_${isb}`;
         
         urlList.push({
-          forecastDate: new Date(utcToday), // The date the forecast was issued
-          date: new Date(targetDate), // The date the forecast is for
+          forecastDate: new Date(forecastDate), // The date the forecast was issued (could be yesterday)
+          date: new Date(targetDate), // The date the forecast is for (today or tomorrow)
           isobare: isb, // Now in hPa
           hour: hre,
-          label: `${targetDateStr} ${hre}:00 - ${isb}hPa`, // Updated label with target date 
+          label: `${targetDateStr} ${hre}:00 - ${isb}hPa (${useYesterdayForecast ? 'Yesterday\'s forecast' : 'Today\'s forecast'})`, 
           url: url,
           tilePath: tilePath
         });
@@ -363,44 +370,58 @@ async function saveEDLMetadata(processedFiles) {
       }
     }
     
-    // Organize by date, then by hour, then list available pressure levels
+    // Organize by forecast date, then target date, then by hour, then list available pressure levels
     processedFiles.forEach(file => {
       if (!file.success) return;
       
-      // Parse date, hour, and pressure from the tilePath
-      // Format is: edl_tiles/YYYY-MM-DD_H_PPPPP
+      // Parse forecast date, target date, hour, and pressure from the tilePath
+      // Updated format: edl_tiles/forecastDate/targetDate_hour_pressure
       const pathParts = file.tilePath.split('/');
-      const dirName = pathParts[pathParts.length - 1]; // Get the last part
       
-      // The important part is matching what we store as the path in buildMBTilesUrlList
-      // which is edl_tiles/targetDateStr_hre_isb
+      // Should have at least 3 parts
+      if (pathParts.length < 3) {
+        console.warn(`[edlCache] Invalid tilePath format: ${file.tilePath}`);
+        return;
+      }
+      
+      // Get the forecast date (second part)
+      const forecastDate = pathParts[1];
+      
+      // Get the last part which contains targetDate_hour_pressure
+      const dirName = pathParts[pathParts.length - 1];
+      
       console.log(`[edlCache] Parsing metadata from tilePath: ${file.tilePath}`);
+      console.log(`[edlCache] Forecast date: ${forecastDate}, target info: ${dirName}`);
       
       // Parse the components from the directory name (e.g., "2025-03-30_15_700")
       const parts = dirName.split('_');
       if (parts.length !== 3) {
-        console.warn(`[edlCache] Could not parse metadata from tilePath: ${file.tilePath}`);
+        console.warn(`[edlCache] Could not parse target info from: ${dirName}`);
         return;
       }
       
-      const date = parts[0];
-      const hour = parts[1];
-      const pressure = parts[2];
+      const targetDate = parts[0];
+      const hour = parseInt(parts[1]);
+      const pressure = parseInt(parts[2]);
       
-      console.log(`[MODIFIED] cacheEdl.js - Parsed metadata: date=${date}, hour=${hour}, pressure=${pressure}`);
+      console.log(`[edlCache] Adding to metadata: forecastDate=${forecastDate}, targetDate=${targetDate}, hour=${hour}, pressure=${pressure}`);
       
       // Add to metadata structure
-      if (!metadata.availableLayers[date]) {
-        metadata.availableLayers[date] = {};
+      if (!metadata.availableLayers[forecastDate]) {
+        metadata.availableLayers[forecastDate] = {};
       }
       
-      if (!metadata.availableLayers[date][hour]) {
-        metadata.availableLayers[date][hour] = [];
+      if (!metadata.availableLayers[forecastDate][targetDate]) {
+        metadata.availableLayers[forecastDate][targetDate] = {};
+      }
+      
+      if (!metadata.availableLayers[forecastDate][targetDate][hour]) {
+        metadata.availableLayers[forecastDate][targetDate][hour] = [];
       }
       
       // Add pressure if not already in the array
-      if (!metadata.availableLayers[date][hour].includes(parseInt(pressure))) {
-        metadata.availableLayers[date][hour].push(parseInt(pressure));
+      if (!metadata.availableLayers[forecastDate][targetDate][hour].includes(pressure)) {
+        metadata.availableLayers[forecastDate][targetDate][hour].push(pressure);
       }
     });
     
@@ -428,7 +449,23 @@ export function getEDLMetadata() {
     const metadataStr = localStorage.getItem('edl_metadata');
     if (!metadataStr) return null;
     
-    return JSON.parse(metadataStr);
+    const metadata = JSON.parse(metadataStr);
+    
+    // If metadata doesn't have the lastUsedForecastDate field, add it
+    if (metadata && metadata.availableLayers && !metadata.lastUsedForecastDate) {
+      // Set the most recent forecast date as the default
+      const forecastDates = Object.keys(metadata.availableLayers);
+      if (forecastDates.length > 0) {
+        // Sort dates in descending order (newest first)
+        forecastDates.sort((a, b) => new Date(b) - new Date(a));
+        metadata.lastUsedForecastDate = forecastDates[0];
+        
+        // Save the updated metadata
+        localStorage.setItem('edl_metadata', JSON.stringify(metadata));
+      }
+    }
+    
+    return metadata;
   } catch (error) {
     console.error('[edlCache] Error reading EDL metadata:', error);
     return null;
@@ -447,10 +484,11 @@ export function hasEDLTiles() {
 /**
  * Processes all EDL MBTiles files sequentially
  * @param {boolean} isTomorrow - Whether to cache tomorrow's forecast
+ * @param {boolean} useYesterdayForecast - Whether to use yesterday's forecast data for today
  * @returns {Promise<Object>} Result of the caching operation
  */
-export async function cacheEDLTiles(isTomorrow = false) {
-  console.debug(`[edlCache] Starting cacheEDLTiles function for ${isTomorrow ? 'tomorrow' : 'today'}`);
+export async function cacheEDLTiles(isTomorrow = false, useYesterdayForecast = false) {
+  console.debug(`[edlCache] Starting cacheEDLTiles function for ${isTomorrow ? 'tomorrow' : 'today'} using ${useYesterdayForecast ? 'yesterday\'s' : 'today\'s'} forecast`);
   
   // Get UI elements
   const ui = getProgressUI();
@@ -458,7 +496,7 @@ export async function cacheEDLTiles(isTomorrow = false) {
   // Show progress UI
   ui.container.style.display = 'flex';
   ui.progressBar.style.width = '0%';
-  ui.statusElement.textContent = `Preparing EDL tiles caching for ${isTomorrow ? 'tomorrow' : 'today'}...`;
+  ui.statusElement.textContent = `Preparing EDL tiles caching for ${isTomorrow ? 'tomorrow' : 'today'} using ${useYesterdayForecast ? 'yesterday\'s' : 'today\'s'} forecast...`;
   ui.countElement.textContent = '0';
   
   try {
@@ -470,12 +508,76 @@ export async function cacheEDLTiles(isTomorrow = false) {
       throw new Error('EDL proxy test failed. The server may be unavailable or not returning proper MBTiles files.');
     }
     
-    // Build URL list with the isTomorrow parameter
-    const urlList = buildMBTilesUrlList(isTomorrow);
-    const totalFiles = urlList.length;
+    // Build URL list with the isTomorrow and useYesterdayForecast parameters
+    const urlList = buildMBTilesUrlList(isTomorrow, useYesterdayForecast);
+    
+    // NEW: Check existing metadata to skip already cached files
+    const existingMetadata = getEDLMetadata() || { availableLayers: {} };
+    console.log('[edlCache] Checking existing metadata:', existingMetadata);
+    
+    // Filter the URL list to only include files that aren't already cached
+    const filteredUrlList = urlList.filter(urlInfo => {
+      // Parse the components from the tilePath using the new structure
+      // Format is now: edl_tiles/forecastDate/targetDate_hour_pressure
+      const pathParts = urlInfo.tilePath.split('/');
+      
+      if (pathParts.length < 3) {
+        console.warn(`[edlCache] Could not parse path structure: ${urlInfo.tilePath}`);
+        return true; // Include this file since we can't determine if it's cached
+      }
+      
+      const forecastDate = pathParts[1];
+      const dirName = pathParts[pathParts.length - 1];
+      const parts = dirName.split('_');
+      
+      if (parts.length !== 3) {
+        console.warn(`[edlCache] Could not parse components from: ${dirName}`);
+        return true; // Include this file since we can't determine if it's cached
+      }
+      
+      const targetDate = parts[0];
+      const hour = parseInt(parts[1]);
+      const pressure = parseInt(parts[2]);
+      
+      // Check if this combination exists in metadata with the new structure
+      const isAlreadyCached = 
+        existingMetadata.availableLayers[forecastDate] && 
+        existingMetadata.availableLayers[forecastDate][targetDate] && 
+        existingMetadata.availableLayers[forecastDate][targetDate][hour] && 
+        existingMetadata.availableLayers[forecastDate][targetDate][hour].includes(pressure);
+      
+      if (isAlreadyCached) {
+        console.log(`[edlCache] Skipping already cached file: ${urlInfo.label} (forecast: ${forecastDate})`);
+      }
+      
+      return !isAlreadyCached; // Only include files that aren't already cached
+    });
+    
+    const skippedCount = urlList.length - filteredUrlList.length;
+    console.log(`[edlCache] Skipping ${skippedCount} already cached files. Processing ${filteredUrlList.length} files.`);
+    
+    // If all files are already cached, show success message and return
+    if (filteredUrlList.length === 0) {
+      ui.statusElement.textContent = `All ${urlList.length} files are already cached. Nothing to download.`;
+      ui.progressBar.style.width = '100%';
+      
+      // Hide progress UI after a delay
+      setTimeout(() => {
+        ui.container.style.display = 'none';
+      }, 3000);
+      
+      return {
+        success: true,
+        message: 'All files already cached',
+        filesProcessed: 0,
+        filesSkipped: skippedCount
+      };
+    }
+    
+    const totalFiles = filteredUrlList.length;
     ui.totalElement.textContent = totalFiles;
     
-    console.debug(`[edlCache] Starting to cache ${totalFiles} EDL MBTiles files for ${isTomorrow ? 'tomorrow' : 'today'}`);
+    console.debug(`[edlCache] Starting to cache ${totalFiles} EDL MBTiles files for ${isTomorrow ? 'tomorrow' : 'today'} using ${useYesterdayForecast ? 'yesterday\'s' : 'today\'s'} forecast`);
     
     // Process files sequentially
     let processed = 0;
@@ -488,7 +590,7 @@ export async function cacheEDLTiles(isTomorrow = false) {
     
     // Setup a function to update UI with progress information
     let lastUpdateTime = 0;
-    const updateThreshold = 300; // ms
+    const updateThreshold = 300;
     
     const updateProgressUI = (progress, message) => {
       const now = Date.now();
@@ -504,49 +606,48 @@ export async function cacheEDLTiles(isTomorrow = false) {
       }
     };
     
-    for (let i = 0; i < urlList.length; i++) {
-      const urlInfo = urlList[i];
-      const fileNumber = i + 1;
+    // Process each file in sequence
+    for (const urlInfo of filteredUrlList) {
+      // Update progress UI
+      processed++;
+      ui.countElement.textContent = processed;
+      ui.progressBar.style.width = `${(processed / totalFiles) * 100}%`;
+      ui.statusElement.textContent = `Processing ${processed}/${totalFiles}: ${urlInfo.label}`;
       
-      // Update UI with current file info
-      updateProgressUI(
-        processed / totalFiles,
-        `Processing file ${fileNumber}/${totalFiles}: ${urlInfo.label}`
-      );
+      console.log(`[edlCache] Processing file ${processed}/${totalFiles}: ${urlInfo.label}`);
       
-      try {
-        // Process current file
-        const result = await downloadAndExtractMBTiles(urlInfo, (fileProgress, message) => {
-          // Calculate overall progress: completed files + progress on current file
-          const overallProgress = (processed + fileProgress) / totalFiles;
-          updateProgressUI(overallProgress, message);
-        });
-        
-        // Update counters
-        processed++;
-        ui.countElement.textContent = processed;
-        
-        if (result.success) {
-          succeeded++;
-          totalTiles += result.tileCount || 0;
-          
-          // Add to processed files for metadata
-          processedFiles.push(result);
-        } else {
-          failed++;
-          console.error(`[edlCache] Failed to process file: ${result.url}`, result.error);
+      // Process the file with progress updates
+      const result = await downloadAndExtractMBTiles(urlInfo, (progress, message) => {
+        // Only update UI if progress has changed significantly or message has changed
+        const currentTime = Date.now();
+        if (currentTime - lastUpdateTime > updateThreshold) {
+          // Calculate overall progress:
+          // - File progress counts for current file (0-1)
+          // - Each completed file counts for 1 unit
+          const overallProgress = ((processed - 1) + progress) / totalFiles;
+          ui.progressBar.style.width = `${overallProgress * 100}%`;
+          ui.statusElement.textContent = `${message} (${processed}/${totalFiles})`;
+          lastUpdateTime = currentTime;
         }
-      } catch (error) {
-        // Handle any uncaught errors during processing
-        processed++;
+      });
+      
+      // Track result
+      if (result.success) {
+        succeeded++;
+        totalTiles += result.tileCount || 0;
+        console.log(`[edlCache] Successfully processed: ${urlInfo.label}`);
+      } else {
         failed++;
-        ui.countElement.textContent = processed;
-        console.error(`[edlCache] Unexpected error processing file: ${urlInfo.url}`, error);
+        console.error(`[edlCache] Failed to process: ${urlInfo.label} - ${result.error}`);
       }
       
-      // Update overall progress
-      const totalProgress = processed / totalFiles;
-      ui.progressBar.style.width = `${totalProgress * 100}%`;
+      // Add to processed files list
+      processedFiles.push(result);
+      
+      // NEW: Update metadata after each successful file to handle interruptions
+      if (result.success) {
+        await saveEDLMetadataIncremental([result]);
+      }
     }
     
     // Completion
@@ -556,15 +657,13 @@ export async function cacheEDLTiles(isTomorrow = false) {
     ui.statusElement.textContent = summaryMessage;
     console.debug(`[edlCache] ${summaryMessage}`);
     
-    // No completion alert, just show status in UI
+    // Status text
+    ui.statusElement.textContent = `Completed caching EDL tiles: ${succeeded} successful, ${failed} failed, ${totalTiles} total tiles`;
     
     // Hide progress UI after a delay
     setTimeout(() => {
       ui.container.style.display = 'none';
     }, 5000);
-    
-    // Save metadata about the cached tiles
-    await saveEDLMetadata(processedFiles);
     
     // After successful caching, show the EDL navigation button if it's not already visible
     if (succeeded > 0) {
@@ -574,37 +673,136 @@ export async function cacheEDLTiles(isTomorrow = false) {
           button.style.display = '';
           console.log('[Dock] EDL navigation toggle button shown after download');
       }
+      
+      // Trigger a rebuild of the forecast date dropdown if UI is already initialized
+      try {
+        // Use dynamic import to avoid circular dependencies
+        import('./edlUI.js').then(module => {
+          if (typeof module.updateForecastDateDropdownOptions === 'function') {
+            console.log('[edlCache] Updating forecast date dropdown after caching');
+            module.updateForecastDateDropdownOptions();
+          }
+        });
+      } catch (error) {
+        console.error('[edlCache] Error updating forecast dropdown:', error);
+      }
     }
     
     return {
       success: true,
-      processed: processed,
-      succeeded: succeeded,
-      failed: failed,
+      filesProcessed: succeeded + failed,
+      filesSucceeded: succeeded,
+      filesFailed: failed,
       totalTiles: totalTiles
     };
   } catch (error) {
-    console.error('[edlCache] Error in caching process:', error);
+    console.error(`[edlCache] Error caching EDL tiles:`, error);
     
-    // Show error in UI
+    // Update UI with error
     ui.statusElement.textContent = `Error: ${error.message}`;
-    ui.progressBar.classList.add('progress-bar-error');
-    
-    // Show error alert
-    setTimeout(() => {
-      alert(`EDL Weather Forecast Caching Error: ${error.message}`);
-    }, 500);
-    
-    // Hide progress UI after a delay
-    setTimeout(() => {
-      ui.container.style.display = 'none';
-      // Reset progress bar color
-      ui.progressBar.classList.remove('progress-bar-error');
-    }, 5000);
+    ui.progressBar.style.width = '100%';
+    ui.progressBar.style.backgroundColor = '#ff3333';
     
     return {
       success: false,
       error: error.message
     };
+  }
+}
+
+/**
+ * Saves metadata for a single or set of processed files incrementally
+ * This is similar to saveEDLMetadata but designed to be called after each file
+ * @param {Array} newlyProcessedFiles - Array of successfully processed files
+ */
+async function saveEDLMetadataIncremental(newlyProcessedFiles) {
+  try {
+    console.log('[edlCache] Incrementally updating EDL metadata');
+    
+    // Get existing metadata first
+    let metadata = { availableLayers: {} };
+    const existingMetadataStr = localStorage.getItem('edl_metadata');
+    
+    if (existingMetadataStr) {
+      try {
+        const existingMetadata = JSON.parse(existingMetadataStr);
+        if (existingMetadata && existingMetadata.availableLayers) {
+          // Use existing metadata as base
+          metadata = existingMetadata;
+          console.log('[edlCache] Using existing metadata as base');
+        }
+      } catch (parseError) {
+        console.error('[edlCache] Error parsing existing metadata, starting fresh:', parseError);
+        // Continue with empty metadata
+      }
+    }
+    
+    // Add only the new successful files to metadata
+    newlyProcessedFiles.forEach(file => {
+      if (!file.success) return;
+      
+      // Parse date, hour, and pressure from the tilePath
+      // Updated to handle new path format: edl_tiles/forecastDate/targetDate_hour_pressure
+      const pathParts = file.tilePath.split('/');
+      
+      // Should have at least 3 parts: edl_tiles/forecastDate/targetDate_hour_pressure
+      if (pathParts.length < 3) {
+        console.warn(`[edlCache] Invalid tilePath format: ${file.tilePath}`);
+        return;
+      }
+      
+      // Get the forecast date (second part)
+      const forecastDate = pathParts[1];
+      
+      // Get the last part which contains targetDate_hour_pressure
+      const dirName = pathParts[pathParts.length - 1];
+      
+      console.log(`[edlCache] Parsing metadata from tilePath: ${file.tilePath}`);
+      console.log(`[edlCache] Forecast date: ${forecastDate}, target info: ${dirName}`);
+      
+      // Parse the components from the directory name (e.g., "2025-03-30_15_700")
+      const parts = dirName.split('_');
+      if (parts.length !== 3) {
+        console.warn(`[edlCache] Could not parse target info from: ${dirName}`);
+        return;
+      }
+      
+      const targetDate = parts[0];
+      const hour = parseInt(parts[1]);
+      const pressure = parseInt(parts[2]);
+      
+      console.log(`[edlCache] Incrementally adding to metadata: forecastDate=${forecastDate}, targetDate=${targetDate}, hour=${hour}, pressure=${pressure}`);
+      
+      // Update metadata structure to include forecast date
+      if (!metadata.availableLayers[forecastDate]) {
+        metadata.availableLayers[forecastDate] = {};
+      }
+      
+      if (!metadata.availableLayers[forecastDate][targetDate]) {
+        metadata.availableLayers[forecastDate][targetDate] = {};
+      }
+      
+      if (!metadata.availableLayers[forecastDate][targetDate][hour]) {
+        metadata.availableLayers[forecastDate][targetDate][hour] = [];
+      }
+      
+      // Add pressure if not already in the array
+      if (!metadata.availableLayers[forecastDate][targetDate][hour].includes(pressure)) {
+        metadata.availableLayers[forecastDate][targetDate][hour].push(pressure);
+      }
+    });
+    
+    // Save to localStorage
+    localStorage.setItem('edl_metadata', JSON.stringify(metadata));
+    console.log('[edlCache] EDL metadata incrementally updated in localStorage');
+    
+    // Dispatch an event to notify other parts of the application
+    const event = new CustomEvent('edl_metadata_updated', { detail: metadata });
+    window.dispatchEvent(event);
+    
+    return metadata;
+  } catch (error) {
+    console.error('[edlCache] Error saving incremental EDL metadata:', error);
+    return null;
   }
 } 

@@ -43,14 +43,23 @@ export function createEDLLayer(map, options = {}) {
         ...options
     };
     
-    // Get the most recent available date from metadata
-    const availableDates = Object.keys(metadata.availableLayers).sort();
-    const dateString = availableDates[availableDates.length - 1] || new Date().toISOString().slice(0, 10);
+    // Get the forecast date from metadata or options
+    const forecastDate = options.forecastDate || metadata.lastUsedForecastDate || getLatestForecastDate(metadata);
     
-    // Get available hours for this date
-    const availableHours = Object.keys(metadata.availableLayers[dateString] || {}).map(h => parseInt(h));
+    // Make sure the forecast date exists in the metadata
+    if (!forecastDate || !metadata.availableLayers[forecastDate]) {
+        console.warn('[EDL] No valid forecast date available');
+        return null;
+    }
+    
+    // Get the most recent available target date for this forecast
+    const availableTargetDates = Object.keys(metadata.availableLayers[forecastDate]).sort();
+    const targetDate = availableTargetDates[availableTargetDates.length - 1] || new Date().toISOString().slice(0, 10);
+    
+    // Get available hours for this target date
+    const availableHours = Object.keys(metadata.availableLayers[forecastDate][targetDate] || {}).map(h => parseInt(h));
     if (availableHours.length === 0) {
-        console.warn(`[EDL] No hours available for date ${dateString}`);
+        console.warn(`[EDL] No hours available for date ${targetDate} in forecast ${forecastDate}`);
         return null;
     }
     
@@ -60,12 +69,12 @@ export function createEDLLayer(map, options = {}) {
     // Make sure we're working with UTC hours
     const hour = today.getUTCHours(); 
     console.log(`[MODIFIED] edl.js - Using UTC hours: ${hour} (local hour: ${today.getHours()})`);
-    console.log(`[MODIFIED] edl.js - Date being used: ${dateString}`);
+    console.log(`[MODIFIED] edl.js - Target date: ${targetDate}, Forecast date: ${forecastDate}`);
     
     const nearestHour = findNearestValue(hour, availableHours);
     
     // Check if the selected pressure is available for this date/hour
-    const availablePressures = metadata.availableLayers[dateString][nearestHour] || [];
+    const availablePressures = metadata.availableLayers[forecastDate][targetDate][nearestHour] || [];
     
     // Use the first available pressure if the default isn't available
     const pressure = availablePressures.includes(layerOptions.pressure) 
@@ -73,23 +82,23 @@ export function createEDLLayer(map, options = {}) {
         : (availablePressures[0] || DEFAULT_PRESSURE);
     
     // For debugging, log available options
-    console.log(`[EDL] Available dates: ${availableDates.join(', ')}`);
+    console.log(`[EDL] Using forecast date: ${forecastDate}`);
+    console.log(`[EDL] Available target dates for this forecast: ${availableTargetDates.join(', ')}`);
     console.log(`[EDL] Available hours: ${availableHours.join(', ')}`);
-    // Updated log to show pressures in hPa directly (no division needed)
     console.log(`[EDL] Available pressure levels: ${availablePressures.join(', ')} hPa`);
-    console.log('[MODIFIED] edl.js - Now showing pressure levels directly in hPa without conversion');
     
     // Initial layer info
     currentLayerInfo = {
-        date: dateString,
+        forecastDate: forecastDate,
+        date: targetDate,
         hour: nearestHour,
         pressure: pressure
     };
     
-    // Create the tile layer path based on cached tiles
+    // Create the tile layer path based on cached tiles with the new structure
     const tilePath = BASE_PATH 
-        ? `${BASE_PATH}/edl_tiles/${dateString}_${nearestHour}_${pressure}/{z}/{x}/{y}.png`
-        : `/edl_tiles/${dateString}_${nearestHour}_${pressure}/{z}/{x}/{y}.png`;
+        ? `${BASE_PATH}/edl_tiles/${forecastDate}/${targetDate}_${nearestHour}_${pressure}/{z}/{x}/{y}.png`
+        : `/edl_tiles/${forecastDate}/${targetDate}_${nearestHour}_${pressure}/{z}/{x}/{y}.png`;
     console.log(`[EDL] Tile path: ${tilePath}`);
     
     try {
@@ -120,19 +129,14 @@ export function createEDLLayer(map, options = {}) {
         getLayerManager().addLayerIfNotExists('edl-layer', edlLayerStyle);
         console.log(`[EDL] EDL layer added to map`);
         
-        // Store current layer info
-        currentLayerInfo = {
-            date: dateString,
-            hour: nearestHour,
-            pressure: pressure
-        };
-        
         // Create layer result object
         const layerResult = {
             id: 'edl-layer',
             info: currentLayerInfo
         };
         
+        // Update lastUsedForecastDate in metadata
+        updateLastUsedForecastDate(forecastDate);
         
         // Return the layer
         return layerResult;
@@ -147,10 +151,14 @@ export function createEDLLayer(map, options = {}) {
  * @param {string} date - Date string in YYYY-MM-DD format 
  * @param {number} hour - Hour (7-21)
  * @param {number} pressure - Pressure level in Pa
+ * @param {string} [forecastDate] - Optional forecast date. If not provided, uses the current forecastDate
  * @returns {boolean} Success status
  */
-export function updateEDLLayer(date, hour, pressure) {
-    console.log(`[EDL] Updating EDL layer - date: ${date}, hour: ${hour}, pressure: ${pressure}`);
+export function updateEDLLayer(date, hour, pressure, forecastDate) {
+    // If forecastDate not provided, use the current one from currentLayerInfo
+    forecastDate = forecastDate || (currentLayerInfo ? currentLayerInfo.forecastDate : null);
+    
+    console.log(`[EDL] Updating EDL layer - forecastDate: ${forecastDate}, targetDate: ${date}, hour: ${hour}, pressure: ${pressure}`);
     
     // Check if EDL tiles are available
     if (!hasEDLTiles()) {
@@ -160,28 +168,37 @@ export function updateEDLLayer(date, hour, pressure) {
     
     // Verify that the requested parameters exist in metadata
     const metadata = getEDLMetadata();
-    const dateExists = metadata.availableLayers[date];
-    const hourExists = dateExists && metadata.availableLayers[date][hour];
-    const pressureExists = hourExists && metadata.availableLayers[date][hour].includes(pressure);
     
-    if (!dateExists || !hourExists || !pressureExists) {
-        console.warn(`[EDL] Requested parameters not available - date: ${date}, hour: ${hour}, pressure: ${pressure}`);
+    if (!forecastDate) {
+        forecastDate = metadata.lastUsedForecastDate || getLatestForecastDate(metadata);
+    }
+    
+    if (!forecastDate || !metadata.availableLayers[forecastDate]) {
+        console.warn(`[EDL] Forecast date ${forecastDate} not available in metadata`);
+        return false;
+    }
+    
+    const forecastExists = metadata.availableLayers[forecastDate];
+    const dateExists = forecastExists && metadata.availableLayers[forecastDate][date];
+    const hourExists = dateExists && metadata.availableLayers[forecastDate][date][hour];
+    const pressureExists = hourExists && metadata.availableLayers[forecastDate][date][hour].includes(pressure);
+    
+    if (!forecastExists || !dateExists || !hourExists || !pressureExists) {
+        console.warn(`[EDL] Requested parameters not available - forecastDate: ${forecastDate}, targetDate: ${date}, hour: ${hour}, pressure: ${pressure}`);
         return false;
     }
     
     try {
-        // Create new tile URL with proper BASE_PATH
+        // Create new tile URL with proper BASE_PATH and the new structure
         const tilePath = BASE_PATH 
-            ? `${BASE_PATH}/edl_tiles/${date}_${hour}_${pressure}/{z}/{x}/{y}.png`
-            : `/edl_tiles/${date}_${hour}_${pressure}/{z}/{x}/{y}.png`;
+            ? `${BASE_PATH}/edl_tiles/${forecastDate}/${date}_${hour}_${pressure}/{z}/{x}/{y}.png`
+            : `/edl_tiles/${forecastDate}/${date}_${hour}_${pressure}/{z}/{x}/{y}.png`;
         
         console.log(`[EDL] Using tile path: ${tilePath}`);
         
         const layerManager = getLayerManager();
         
         // Add/update the source with new tile URL and zoom level constraints
-        // The minzoom/maxzoom parameters will make MapLibre automatically use the
-        // closest available zoom level for zoom levels outside the specified range
         layerManager.addOrUpdateSource('edl-source', {
             type: 'raster',
             tiles: [tilePath],
@@ -208,10 +225,14 @@ export function updateEDLLayer(date, hour, pressure) {
         
         // Update current layer info
         currentLayerInfo = {
+            forecastDate,
             date, 
             hour,
             pressure
         };
+        
+        // Update lastUsedForecastDate in metadata
+        updateLastUsedForecastDate(forecastDate);
         
         // Ensure proper layer order
         layerManager.redrawLayersInOrder();
@@ -241,53 +262,135 @@ export function setEDLLayerOpacity(opacity) {
  * Gets available pressure levels from metadata or fallback to defaults
  * @param {string} date - Date string in YYYY-MM-DD format
  * @param {number} hour - Hour 
+ * @param {string} [forecastDate] - Optional forecast date
  * @returns {Array} Available pressure levels in hPa
  */
-export function getAvailablePressureLevels(date, hour) {
-    // Check metadata first
-    const metadata = getEDLMetadata();
-    if (metadata && metadata.availableLayers && metadata.availableLayers[date] && 
-        metadata.availableLayers[date][hour]) {
-        return metadata.availableLayers[date][hour];
+export function getAvailablePressureLevels(date, hour, forecastDate) {
+    // If forecastDate not provided, use the current one or from metadata
+    if (!forecastDate && currentLayerInfo && currentLayerInfo.forecastDate) {
+        forecastDate = currentLayerInfo.forecastDate;
     }
     
-    // Fall back to default pressure levels (now in hPa)
+    // Check metadata first
+    const metadata = getEDLMetadata();
+    if (!forecastDate && metadata) {
+        forecastDate = metadata.lastUsedForecastDate || getLatestForecastDate(metadata);
+    }
+    
+    if (metadata && metadata.availableLayers && 
+        metadata.availableLayers[forecastDate] && 
+        metadata.availableLayers[forecastDate][date] && 
+        metadata.availableLayers[forecastDate][date][hour]) {
+        return metadata.availableLayers[forecastDate][date][hour];
+    }
+    
+    // Return default pressure levels if none found in metadata
     return PRESSURE_LEVELS;
 }
 
 /**
- * Gets available hours from metadata or fallback to defaults
+ * Gets available hours for a given date
  * @param {string} date - Date string in YYYY-MM-DD format
+ * @param {string} [forecastDate] - Optional forecast date
  * @returns {Array} Available hours
  */
-export function getAvailableHours(date) {
-    // Check metadata first
-    const metadata = getEDLMetadata();
-    if (metadata && metadata.availableLayers && metadata.availableLayers[date]) {
-        return Object.keys(metadata.availableLayers[date]).map(h => parseInt(h));
+export function getAvailableHours(date, forecastDate) {
+    // If forecastDate not provided, use the current one or from metadata
+    if (!forecastDate && currentLayerInfo && currentLayerInfo.forecastDate) {
+        forecastDate = currentLayerInfo.forecastDate;
     }
     
-    // Fall back to default hours
-    return [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21];
+    // Check metadata
+    const metadata = getEDLMetadata();
+    if (!forecastDate && metadata) {
+        forecastDate = metadata.lastUsedForecastDate || getLatestForecastDate(metadata);
+    }
+    
+    if (metadata && metadata.availableLayers && 
+        metadata.availableLayers[forecastDate] && 
+        metadata.availableLayers[forecastDate][date]) {
+        return Object.keys(metadata.availableLayers[forecastDate][date])
+            .map(h => parseInt(h))
+            .sort((a, b) => a - b);
+    }
+    
+    return [];
 }
 
 /**
- * Gets available dates from metadata
+ * Gets available target dates for a given forecast date
+ * @param {string} [forecastDate] - Optional forecast date
  * @returns {Array} Available dates
  */
-export function getAvailableDates() {
-    // Check metadata
-    const metadata = getEDLMetadata();
-    if (metadata && metadata.availableLayers) {
-        return Object.keys(metadata.availableLayers).sort();
+export function getAvailableTargetDates(forecastDate) {
+    // If forecastDate not provided, use the current one or from metadata
+    if (!forecastDate && currentLayerInfo && currentLayerInfo.forecastDate) {
+        forecastDate = currentLayerInfo.forecastDate;
     }
     
-    // Fall back to today's date in UTC
-    const today = new Date();
-    const utcToday = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate()));
-    const utcDateString = utcToday.toISOString().slice(0, 10);
-    console.log(`[MODIFIED] edl.js - Fallback to UTC date: ${utcDateString} (local date: ${new Date().toLocaleDateString()})`);
-    return [utcDateString];
+    // Check metadata
+    const metadata = getEDLMetadata();
+    if (!forecastDate && metadata) {
+        forecastDate = metadata.lastUsedForecastDate || getLatestForecastDate(metadata);
+    }
+    
+    if (metadata && metadata.availableLayers && metadata.availableLayers[forecastDate]) {
+        return Object.keys(metadata.availableLayers[forecastDate]).sort();
+    }
+    
+    return [];
+}
+
+/**
+ * Gets available forecast dates
+ * @returns {Array} Available forecast dates
+ */
+export function getAvailableForecastDates() {
+    const metadata = getEDLMetadata();
+    
+    if (metadata && metadata.availableLayers) {
+        return Object.keys(metadata.availableLayers).sort((a, b) => new Date(b) - new Date(a));
+    }
+    
+    return [];
+}
+
+/**
+ * Gets the latest forecast date from metadata
+ * @param {Object} metadata - The EDL metadata object
+ * @returns {string|null} The latest forecast date or null if none available
+ */
+export function getLatestForecastDate(metadata) {
+    if (!metadata || !metadata.availableLayers) return null;
+    
+    const forecastDates = Object.keys(metadata.availableLayers);
+    if (forecastDates.length === 0) return null;
+    
+    // Sort dates in descending order (newest first)
+    forecastDates.sort((a, b) => new Date(b) - new Date(a));
+    return forecastDates[0];
+}
+
+/**
+ * Updates the last used forecast date in the metadata
+ * @param {string} forecastDate - The forecast date to save
+ */
+function updateLastUsedForecastDate(forecastDate) {
+    if (!forecastDate) return;
+    
+    try {
+        const metadataStr = localStorage.getItem('edl_metadata');
+        if (!metadataStr) return;
+        
+        const metadata = JSON.parse(metadataStr);
+        if (!metadata || !metadata.availableLayers) return;
+        
+        metadata.lastUsedForecastDate = forecastDate;
+        localStorage.setItem('edl_metadata', JSON.stringify(metadata));
+        console.log(`[EDL] Updated lastUsedForecastDate to: ${forecastDate}`);
+    } catch (error) {
+        console.error('[EDL] Error updating lastUsedForecastDate:', error);
+    }
 }
 
 /**
@@ -344,7 +447,7 @@ async function checkEDLCacheContents() {
         const cache = await caches.open('mountaincircles-tiles-v1');
         
         // Build the specific path we're trying to load
-        const expectedDir = `edl_tiles/${currentLayerInfo.date}_${currentLayerInfo.hour}_${currentLayerInfo.pressure}`;
+        const expectedDir = `edl_tiles/${currentLayerInfo.forecastDate}/${currentLayerInfo.date}_${currentLayerInfo.hour}_${currentLayerInfo.pressure}`;
         console.log(`[EDL] Checking cache for: ${expectedDir}`);
         
         // Get matching requests only for the specific directory

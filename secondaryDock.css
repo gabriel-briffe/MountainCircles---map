@@ -7,6 +7,7 @@
     z-index: 1100;
     pointer-events: none;
     /* Let clicks pass through to map unless on elements */
+    background: transparent;
 }
 
 /* Secondary Navigation Row - shared base styles */
@@ -14,11 +15,29 @@
     display: flex;
     pointer-events: auto;
     /* Make elements clickable */
-    background: rgba(255, 255, 255, 0.2);
-    backdrop-filter: blur(4px);
+    background: transparent;
     border-radius: var(--border-radius-large);
-    padding: calc(var(--dock-button-size) * 0.1);
+    padding: 0;
     gap: calc(var(--dock-button-size) * 0.2);
+    /* Add scrolling capabilities */
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none; /* IE/Edge */
+    scroll-behavior: smooth;
+    max-width: 100%; /* Use full available width */
+    backdrop-filter: none;
+}
+
+/* Hide scrollbar for Chrome, Safari and Opera */
+.secondary-dock-row::-webkit-scrollbar {
+    display: none;
+}
+
+/* Make sure buttons don't shrink */
+.secondary-dock-row > .secondary-btn,
+.secondary-dock-row > [id$="SliderWrapper"] {
+    flex-shrink: 0;
 }
 
 /* Secondary Navigation Buttons - shared base styles */
@@ -202,7 +221,7 @@ input[type=range]::-moz-range-thumb {
     }
 
     .secondary-dock-row {
-        background: rgba(0, 0, 0, 0.2);
+        background: transparent;
     }
 
     .dock-toggle-btn.active {
@@ -258,13 +277,22 @@ input[type=range]::-moz-range-thumb {
 /* Landscape mode for all secondary docks */
 @media (orientation: landscape) {
     .secondary-dock-container {
-        top: 50%;
-        transform: translateY(-50%);
+        top: 0;
+        bottom:0;
+        margin: auto 0;
         left: calc(var(--dock-button-size) * 1.4);
+        max-height: 100%; /* Use percentage-based height */
+        height: auto; /* Don't use fit-content to enable scrolling */
+        padding: 0;
     }
 
     .secondary-dock-row {
         flex-direction: column;
+        overflow-x: hidden;
+        overflow-y: auto;
+        max-width: none;
+        height: auto; /* Allow row to determine its own height */
+        max-height: 100%; /* Use percentage instead of viewport units */
     }
 
     /* Secondary dock slider styles */
@@ -339,13 +367,21 @@ input[type=range]::-moz-range-thumb {
 /* Portrait mode for all secondary docks */
 @media (orientation: portrait) {
     .secondary-dock-container {
-        left: 50%;
-        transform: translateX(-50%);
+        left: 0;
+        right: 0;
+        margin: 0 auto;
         top: calc(var(--dock-button-size) * 1.4);
+        width: fit-content; /* Make container fit its content */
+        max-width: 100%; /* Set maximum width to 95% of viewport */
+        padding: 0;
     }
 
     .secondary-dock-row {
         flex-direction: row;
+        overflow-x: auto;
+        overflow-y: hidden;
+        max-height: none;
+        width: 100%; /* Take full width of the container */
     }
 
     /* Horizontal slider in secondary docks */
@@ -359,5 +395,56 @@ input[type=range]::-moz-range-thumb {
     .secondary-dock-row [id$="SliderWrapper"] {
         width: var(--sectors-slider-length);
         height: var(--dock-button-size);
+    }
+}
+
+/* EDL Forecast Dropdown Styling - Minimalist approach */
+#edlForecastDropdownContainer {
+    width: auto;
+    height: var(--dock-button-size);
+    margin: 0;
+    flex-shrink: 0;
+}
+
+.forecast-dropdown-wrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    width: 100%;
+    padding: 0;
+    background: transparent;
+}
+
+/* Make sure the FC label is smaller */
+.edl-dropdown-label {
+    font-size: 0.6em;
+    opacity: 0.8;
+    margin-bottom: 1px;
+}
+
+/* Select element styling */
+#edlForecastDateSelect {
+    background: transparent;
+    color: inherit;
+    border: none;
+    font-size: 0.75em;
+    font-weight: 500;
+    cursor: pointer;
+    padding: 0;
+    width: auto;
+    appearance: none;
+    -webkit-appearance: none;
+    outline: none;
+    text-align: center;
+    overflow: hidden;
+}
+
+/* Dark mode styles for EDL dropdown */
+@media (prefers-color-scheme: dark) {
+    .edl-dropdown-label, 
+    #edlForecastDateSelect {
+        color: var(--text-dark);
     }
 }
