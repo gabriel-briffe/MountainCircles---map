@@ -674,17 +674,17 @@ export async function cacheEDLTiles(isTomorrow = false, useYesterdayForecast = f
           console.log('[Dock] EDL navigation toggle button shown after download');
       }
       
-      // Trigger a rebuild of the forecast date dropdown if UI is already initialized
+      // Update the forecast date dropdown to show newly cached dates
       try {
-        // Use dynamic import to avoid circular dependencies
-        import('./edlUI.js').then(module => {
-          if (typeof module.updateForecastDateDropdownOptions === 'function') {
-            console.log('[edlCache] Updating forecast date dropdown after caching');
-            module.updateForecastDateDropdownOptions();
-          }
-        });
+        // Dynamically import edlUI module to avoid circular dependencies
+        const module = await import('./edlUI.js');
+        // Check if the function exists before calling it
+        if (typeof module.updateForecastDateOptions === 'function') {
+            console.log('[Cache EDL] Updating forecast date options after caching');
+            module.updateForecastDateOptions();
+        }
       } catch (error) {
-        console.error('[edlCache] Error updating forecast dropdown:', error);
+        console.error('[Cache EDL] Error updating forecast date options:', error);
       }
     }
     

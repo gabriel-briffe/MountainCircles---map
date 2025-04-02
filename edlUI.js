@@ -32,8 +32,8 @@ export function initEDLUI(initialLayer) {
     // Set layer visibility to false initially
     edlLayerVisible = false;
     
-    // Create and add the forecast date dropdown if it doesn't exist yet
-    createForecastDateDropdown();
+    // Initialize the forecast date selection
+    initForecastDateSelection();
     
     // Update date indicator if it exists
     updateDateIndicator();
@@ -49,6 +49,83 @@ export function initEDLUI(initialLayer) {
     
     // Initial UI update
     updateNavigationButtonsState();
+}
+
+/**
+ * Initialize the forecast date selection
+ */
+function initForecastDateSelection() {
+    const forecastBtn = document.getElementById('edlForecastBtn');
+    const forecastDisplay = document.getElementById('edlForecastDisplay');
+    
+    if (!forecastBtn || !forecastDisplay) {
+        console.warn('[EDL UI] Forecast button elements not found');
+        return;
+    }
+    
+    // Create a modal for forecast date selection if it doesn't exist
+    let forecastModal = document.getElementById('edlForecastModal');
+    if (!forecastModal) {
+        forecastModal = document.createElement('div');
+        forecastModal.id = 'edlForecastModal';
+        forecastModal.className = 'edl-forecast-modal';
+        forecastModal.style.display = 'none';
+        document.body.appendChild(forecastModal);
+        
+        // Add click event to close modal when clicking outside
+        document.addEventListener('click', (e) => {
+            if (forecastModal.style.display === 'block' && 
+                !forecastModal.contains(e.target) && 
+                e.target !== forecastBtn) {
+                forecastModal.style.display = 'none';
+            }
+        });
+        
+        // Prevent clicks within modal from closing it
+        forecastModal.addEventListener('click', (e) => {
+            e.stopPropagation();
+        });
+    }
+    
+    // Toggle modal on button click
+    forecastBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        
+        if (forecastModal.style.display === 'block') {
+            forecastModal.style.display = 'none';
+            return;
+        }
+        
+        // Update modal options before displaying
+        updateForecastDateButtons();
+        
+        // Show modal
+        forecastModal.style.display = 'block';
+    });
+    
+    // Initialize button display
+    updateForecastDateDisplay();
+    
+    console.log('[EDL UI] Forecast date selection initialized');
+}
+
+/**
+ * Updates the forecast display text
+ */
+export function updateForecastDateDisplay() {
+    const forecastDisplay = document.getElementById('edlForecastDisplay');
+    
+    if (!forecastDisplay || !currentLayerInfo.forecastDate) return;
+    
+    // Format the date for display as DD/MM
+    const dateParts = currentLayerInfo.forecastDate.split('-');
+    if (dateParts.length === 3) {
+        const day = dateParts[2];
+        const month = dateParts[1];
+        forecastDisplay.textContent = `${day}/${month}`;
+    } else {
+        forecastDisplay.textContent = currentLayerInfo.forecastDate;
+    }
 }
 
 /**
@@ -409,7 +486,7 @@ export function navigateToCurrentTime() {
         // Update indicators
         updateDateIndicator();
         updateTimeIndicator(); // Ensure time indicator is updated with local time
-        updateForecastDateDropdownOptions(); // Update dropdown to show current forecast date
+        updateForecastDateDisplay(); // Update the forecast button display
         
         updateNavigationButtonsState();
         return true;
@@ -889,117 +966,68 @@ function updateTimeIndicator() {
 }
 
 /**
- * Creates the forecast date dropdown in the EDL navigation row
+ * Updates the forecast date buttons in the modal
  */
-function createForecastDateDropdown() {
-    // First check if the dropdown already exists
-    if (document.getElementById('edlForecastDateSelect')) {
-        // Already exists, just update the options
-        updateForecastDateDropdownOptions();
-        return;
-    }
+function updateForecastDateButtons() {
+    const forecastModal = document.getElementById('edlForecastModal');
+    if (!forecastModal) return;
     
-    // Find the EDL nav row
-    const navRow = document.getElementById('edlNavRow');
-    if (!navRow) {
-        console.warn('[EDL UI] EDL navigation row not found');
-        return;
-    }
+    // Clear existing options
+    forecastModal.innerHTML = '';
     
-    // Find the visibility button - we'll insert before this
-    const visibilityButton = document.getElementById('edlVisibilityBtn');
-    
-    // Create a button to match the style of other buttons in the nav
-    const dropdownButton = document.createElement('div');
-    dropdownButton.className = 'secondary-btn';
-    dropdownButton.id = 'edlForecastDropdownContainer';
-    dropdownButton.title = 'Select Forecast Date';
-    
-    // Create dropdown wrapper
-    const dropdownWrapper = document.createElement('div');
-    dropdownWrapper.className = 'forecast-dropdown-wrapper';
-    
-    // Create label
-    const label = document.createElement('div');
-    label.textContent = 'FC';
-    label.className = 'edl-dropdown-label';
-    dropdownWrapper.appendChild(label);
-    
-    // Create select element
-    const select = document.createElement('select');
-    select.id = 'edlForecastDateSelect';
-    dropdownWrapper.appendChild(select);
-    
-    // Add the wrapper to the button
-    dropdownButton.appendChild(dropdownWrapper);
-    
-    // Insert before the visibility button if it exists, otherwise append to the nav row
-    if (visibilityButton) {
-        navRow.insertBefore(dropdownButton, visibilityButton);
-    } else {
-        navRow.appendChild(dropdownButton);
-    }
-    
-    // Update options and add event listener
-    updateForecastDateDropdownOptions();
-    
-    // Add change event listener
-    select.addEventListener('change', handleForecastDateChange);
-    
-    // Add click handler to prevent map clicks
-    dropdownButton.addEventListener('click', (e) => {
-        e.stopPropagation();
-    });
-}
-
-/**
- * Updates the options in the forecast date dropdown
- */
-export function updateForecastDateDropdownOptions() {
-    const select = document.getElementById('edlForecastDateSelect');
-    if (!select) return;
+    // Add a title to the modal
+    const title = document.createElement('div');
+    title.className = 'forecast-modal-title';
+    title.textContent = 'Select Forecast Date';
+    forecastModal.appendChild(title);
     
     // Get available forecast dates
     const forecastDates = getAvailableForecastDates();
     
-    // Clear existing options
-    select.innerHTML = '';
-    
-    // Add options for each forecast date
+    // Add a button for each forecast date
     forecastDates.forEach(date => {
-        const option = document.createElement('option');
-        option.value = date;
+        const button = document.createElement('button');
+        button.className = 'forecast-date-btn';
+        button.dataset.value = date;
         
         // Format the date for display as DD/MM
         const dateParts = date.split('-');
         if (dateParts.length === 3) {
             const day = dateParts[2];
             const month = dateParts[1];
-            option.textContent = `${day}/${month}`;
+            button.textContent = `${day}/${month}`;
         } else {
-            option.textContent = date;
+            button.textContent = date;
         }
         
-        // Select the current forecast date
+        // Highlight the current selection
         if (currentLayerInfo && currentLayerInfo.forecastDate === date) {
-            option.selected = true;
+            button.classList.add('selected');
         }
         
-        select.appendChild(option);
+        // Add click handler
+        button.addEventListener('click', () => {
+            handleForecastDateChange(date);
+            forecastModal.style.display = 'none';
+        });
+        
+        forecastModal.appendChild(button);
     });
 }
 
 /**
- * Handles when the forecast date dropdown selection changes
- * @param {Event} event - The change event
+ * Handles when a forecast date is selected
+ * @param {string} newForecastDate - The selected forecast date
  */
-function handleForecastDateChange(event) {
-    const newForecastDate = event.target.value;
+function handleForecastDateChange(newForecastDate) {
     console.log(`[EDL UI] Forecast date changed to: ${newForecastDate}`);
     
     if (!newForecastDate || newForecastDate === currentLayerInfo.forecastDate) {
         return; // No change or invalid value
     }
+    
+    // Store the current visibility state to preserve it
+    const currentVisibility = edlLayerVisible;
     
     // Get the metadata to check available dates/hours for this forecast
     const metadata = getEDLMetadata();
@@ -1052,6 +1080,18 @@ function handleForecastDateChange(event) {
         
         console.log(`[EDL UI] Updated to forecast ${newForecastDate}, target date ${newTargetDate}, hour ${newHour}`);
         
+        // Update the display text in the forecast button
+        updateForecastDateDisplay();
+        
+        // Restore the visibility state to what it was before changing forecast date
+        const layerManager = getLayerManager();
+        if (layerManager.hasLayer('edl-layer')) {
+            // The updateEDLLayer function might have changed the visibility, so we need to restore it
+            layerManager.setVisibility('edl-layer', currentVisibility);
+            edlLayerVisible = currentVisibility;
+            console.log(`[EDL UI] Maintained EDL layer visibility as: ${edlLayerVisible ? 'visible' : 'hidden'}`);
+        }
+        
         // Update UI
         updateDateIndicator();
         updateTimeIndicator();
@@ -1059,8 +1099,18 @@ function handleForecastDateChange(event) {
         updateNavigationButtonsState();
     } else {
         console.warn('[EDL UI] Failed to update layer with new forecast date');
-        
-        // Reset dropdown to current forecast date
-        updateForecastDateDropdownOptions();
+    }
+}
+
+/**
+ * Updates the forecast date modal options (for backward compatibility)
+ */
+export function updateForecastDateOptions() {
+    updateForecastDateDisplay();
+    
+    // If the modal is visible, update its buttons
+    const forecastModal = document.getElementById('edlForecastModal');
+    if (forecastModal && forecastModal.style.display === 'block') {
+        updateForecastDateButtons();
     }
 }
