@@ -154,4 +154,10 @@ export function toggleCirclesNavigationRow(visible) {
     if (navRow) {
         navRow.style.display = visible ? 'flex' : 'none';
     }
+    
+    // Also manage container visibility
+    const navContainer = document.getElementById('circlesNavContainer');
+    if (navContainer) {
+        navContainer.style.display = visible ? 'flex' : 'none';
+    }
 }

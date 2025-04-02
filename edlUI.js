@@ -793,7 +793,7 @@ export function toggleEDLNavigationRow(visible) {
     // Also manage container visibility
     const navContainer = document.getElementById('edlNavContainer');
     if (navContainer) {
-        navContainer.style.display = visible ? 'block' : 'none';
+        navContainer.style.display = visible ? 'flex' : 'none';
     }
 }
 
@@ -906,12 +906,14 @@ function createForecastDateDropdown() {
         return;
     }
     
+    // Find the visibility button - we'll insert before this
+    const visibilityButton = document.getElementById('edlVisibilityBtn');
+    
     // Create a button to match the style of other buttons in the nav
     const dropdownButton = document.createElement('div');
     dropdownButton.className = 'secondary-btn';
     dropdownButton.id = 'edlForecastDropdownContainer';
     dropdownButton.title = 'Select Forecast Date';
-    dropdownButton.style.width = 'auto';
     
     // Create dropdown wrapper
     const dropdownWrapper = document.createElement('div');
@@ -931,8 +933,12 @@ function createForecastDateDropdown() {
     // Add the wrapper to the button
     dropdownButton.appendChild(dropdownWrapper);
     
-    // Insert at the beginning of the nav row
-    navRow.insertBefore(dropdownButton, navRow.firstChild);
+    // Insert before the visibility button if it exists, otherwise append to the nav row
+    if (visibilityButton) {
+        navRow.insertBefore(dropdownButton, visibilityButton);
+    } else {
+        navRow.appendChild(dropdownButton);
+    }
     
     // Update options and add event listener
     updateForecastDateDropdownOptions();

@@ -129,7 +129,7 @@ export function toggleEDLNavigation() {
     // Update UI
     const edlNavContainer = document.getElementById('edlNavContainer');
     if (edlNavContainer) {
-        edlNavContainer.style.display = edlNavigationVisible ? 'block' : 'none';
+        edlNavContainer.style.display = edlNavigationVisible ? 'flex' : 'none';
     }
     toggleEDLNavigationRow(edlNavigationVisible);
     
@@ -190,7 +190,7 @@ export function toggleCirclesNavigation() {
     // Update UI
     const circlesNavContainer = document.getElementById('circlesNavContainer');
     if (circlesNavContainer) {
-        circlesNavContainer.style.display = circlesNavigationVisible ? 'block' : 'none';
+        circlesNavContainer.style.display = circlesNavigationVisible ? 'flex' : 'none';
     }
     toggleCirclesNavigationRow(circlesNavigationVisible);
     

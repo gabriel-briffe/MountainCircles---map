@@ -4,22 +4,18 @@
 /* --------------- MAP DOCK (apple-dock style) --------------- */
 #mapDock {
     position: fixed;
-    left: calc(var(--dock-button-size) * 0.2); /* Proportional to button size instead of fixed 10px */
-    top: 50%;
-    transform: translateY(-50%);
+    z-index: 1100;
     display: flex;
-    align-items: center;
-    flex-direction: column;
-    max-height: 100%;
     flex-wrap: nowrap; /* Prevent wrapping */
     gap: calc(var(--dock-button-size) * 0.2); /* Scale gap with button size */
-    z-index: 1100;
+    padding: 0;
+    justify-content: center;
     /* Allow items to shrink to any size */
     min-width: 0;
     min-height: 0;
 }
 
-/* Ensure icons can shrink properly */
+/* Material icons in the dock */
 #mapDock .material-icons {
     font-size: calc(var(--dock-button-size) * 0.5); /* 50% of button size */
     height: calc(var(--dock-button-size) * 0.5);
@@ -28,34 +24,25 @@
     overflow: hidden;
 }
 
-/* Material icons in the dock should scale with button size */
-#mapDock .material-icons {
-    font-size: calc(var(--dock-button-size) * 0.5); /* 50% of button size */
-    height: calc(var(--dock-button-size) * 0.5);
-}
-
-/* Map Dock Buttons: Remove transition and hover effects */
+/* Map Dock Buttons: styling */
 #mapDock button {
     background: var(--bg-light);
     border: none;
     outline: none;
     border-radius: var(--border-radius-large);
-    /* Scale padding with button size */
     padding: calc(var(--dock-button-size) * 0.1);
     cursor: pointer;
     transition: none;
-    width: var(--dock-button-size); /* Use variable instead of fixed size */
-    height: var(--dock-button-size); /* Use variable instead of fixed size */
+    width: var(--dock-button-size);
+    height: var(--dock-button-size);
     display: flex;
     align-items: center;
     justify-content: center;
-    flex: 1; /* Equal flex distribution */
-    max-width: calc(var(--dock-button-size) + var(--dock-button-size) * 0.2); /* Add max-width constraint (button size + proportional padding) */
-    max-height: calc(var(--dock-button-size) + var(--dock-button-size) * 0.2); /* Add max-height constraint (button size + proportional padding) */
-    /* Remove minimum width and height constraints to allow unlimited shrinking */
+    max-width: calc(var(--dock-button-size) + var(--dock-button-size) * 0.2);
+    max-height: calc(var(--dock-button-size) + var(--dock-button-size) * 0.2);
     min-width: 0;
     min-height: 0;
-    aspect-ratio: 1 / 1; /* Ensure all buttons have a square aspect ratio regardless of orientation */
+    aspect-ratio: 1 / 1; /* Ensure all buttons have a square aspect ratio */
     box-sizing: border-box; /* Make sure padding is included in the size calculation */
 }
 
@@ -67,45 +54,24 @@
 /* Landscape mode: dock is vertical */
 @media (orientation: landscape) {
     #mapDock {
-        position: fixed;
-        left: calc(var(--dock-button-size) * 0.2); /* Proportional to button size */
+        left: calc(var(--dock-button-size) * 0.2);
         top: 0;
         bottom: 0;
         height: 100%;
         width: auto;
-        padding: 0;
-        display: flex;
         flex-direction: column;
-        flex-wrap: nowrap; /* Prevent wrapping to multiple columns */
-        justify-content: center;
-        gap: calc(var(--dock-button-size) * 0.2); /* Scale gap with button size */
         transform: translateX(0);
-    }
-    
-    /* Ensure buttons maintain the same aspect ratio as in portrait mode */
-    #mapDock button {
-        aspect-ratio: 1 / 1; /* Enforce square buttons */
-        width: var(--dock-button-size);
-        height: var(--dock-button-size);
-        box-sizing: border-box; /* Ensure padding is included in size calculation */
-        flex: 1 0 var(--dock-button-size); /* Grow but don't shrink, with dock-button-size as basis */
     }
 }
 
-/* Portrait mode: dock is horizontal, so the slider must be horizontal */
+/* Portrait mode: dock is horizontal */
 @media (orientation: portrait) {
     #mapDock {
-        position: fixed;
-        top: calc(var(--dock-button-size) * 0.2); /* Proportional to button size */
+        top: calc(var(--dock-button-size) * 0.2);
         left: 0;
         right: 0;
         width: 100%;
-        padding: 0;
-        display: flex;
         flex-direction: row;
-        flex-wrap: nowrap; /* Prevent wrapping to multiple lines */
-        justify-content: center;
-        gap: calc(var(--dock-button-size) * 0.2); /* Scale gap with button size */
         transform: translateY(0);
         overflow-x: auto; /* Allow horizontal scrolling if needed */
         scrollbar-width: none; /* Firefox */
@@ -115,15 +81,6 @@
     /* Hide scrollbar for Chrome, Safari and Opera */
     #mapDock::-webkit-scrollbar {
         display: none;
-    }
-    
-    /* Ensure buttons maintain their square aspect ratio in portrait mode too */
-    #mapDock button {
-        aspect-ratio: 1 / 1; /* Keep buttons square */
-        width: var(--dock-button-size);
-        height: var(--dock-button-size);
-        box-sizing: border-box; /* Include padding in size calculation */
-        flex: 1 0 var(--dock-button-size); /* Grow but don't shrink, with dock-button-size as basis */
     }
 }
 
@@ -140,7 +97,6 @@
         background: var(--bg-dark);
     }
     #mapDock button:hover {
-        transform: none;   /* Disable zooming in dark mode as well */
         background: var(--bg-dark);
     }
     #mapDock .material-icons {
