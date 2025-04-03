@@ -606,4 +606,60 @@ export function getDebugAltitude() {
 export function setDebugAltitude(altitude) {
     _state.debugAltitude = altitude;
     console.log(`Debug altitude set to ${altitude !== null ? altitude + 'm' : 'null'}`);
+}
+
+/**
+ * Calculates the 7-second moving average vertical speed for a given track point
+ * @param {number} index - The index of the point in the tracklog
+ * @returns {number} The 7-second moving average vertical speed in m/s
+ */
+export function calculateMovingAverageVerticalSpeed(index) {
+  const tracklog = getTracklog();
+  const point = tracklog[index];
+  
+  if (!point || index < 0 || !tracklog.length) {
+    return 0;
+  }
+  
+  const currentTime = point.timestamp;
+  const timeWindow = 7000; // 7 seconds in milliseconds
+  
+  // Find points within the 7-second window
+  const pointsInWindow = [];
+  
+  // Look backward from the current point
+  for (let i = index; i >= 0; i--) {
+    const thisPoint = tracklog[i];
+    const timeDiff = currentTime - thisPoint.timestamp;
+    
+    // Only include points within the time window
+    if (timeDiff <= timeWindow) {
+      pointsInWindow.push(thisPoint);
+    } else {
+      // We've gone beyond the time window
+      break;
+    }
+  }
+  
+  // Need at least 2 points to calculate vertical speed
+  if (pointsInWindow.length < 2) {
+    return point.verticalSpeed || 0;
+  }
+  
+  // Sort points by timestamp (oldest first)
+  pointsInWindow.sort((a, b) => a.timestamp - b.timestamp);
+  
+  // Calculate vertical speed between oldest and newest point in window
+  const oldestPoint = pointsInWindow[0];
+  const newestPoint = pointsInWindow[pointsInWindow.length - 1];
+  
+  const timeDiff = (newestPoint.timestamp - oldestPoint.timestamp) / 1000; // seconds
+  if (timeDiff < 0.1) {
+    return point.verticalSpeed || 0; // fallback to instant vertical speed
+  }
+  
+  const altDiff = (newestPoint.altitude || 0) - (oldestPoint.altitude || 0); // meters
+  const avgVerticalSpeed = altDiff / timeDiff; // m/s
+  
+  return avgVerticalSpeed;
 } 

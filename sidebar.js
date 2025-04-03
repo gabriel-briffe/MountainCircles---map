@@ -1193,6 +1193,12 @@ export function addTracklogControls(sidebar) {
                             });
                         }
                     }
+                    
+                    // Import and start tracking - this is the key addition
+                    import('./tracking.js').then(trackingModule => {
+                        // Make sure tracking is started to record new points
+                        trackingModule.startTracking();
+                    });
                 } catch (err) {
                     console.error('Error handling tracklog layer:', err);
                 }

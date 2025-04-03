@@ -263,6 +263,25 @@ export function setTracklogStateAndSlider(enabled) {
     if (map && map.getLayer('tracklog-full-line')) {
         map.setLayoutProperty('tracklog-full-line', 'visibility', enabled ? 'visible' : 'none');
     }
+    
+    // If enabling, make sure tracking is started
+    if (enabled) {
+        // Import tracking module and start tracking
+        import('./tracking.js').then(trackingModule => {
+            // Clear the existing tracklog data
+            setTracklog([]);
+            
+            // Create/recreate the tracklog layer if needed
+            if (map) {
+                if (!map.getLayer('tracklog-full-line')) {
+                    trackingModule.createTracklogLayer();
+                }
+            }
+            
+            // Start tracking to record new points
+            trackingModule.startTracking();
+        });
+    }
 }
 
 /**

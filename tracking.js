@@ -12,7 +12,8 @@ import {
   setLastTracklogDate,
   getLastRecordedTime,
   setLastRecordedTime,
-  getTracklogEnabled
+  getTracklogEnabled,
+  calculateMovingAverageVerticalSpeed
 } from './state.js';
 
 // Track start time
@@ -123,6 +124,14 @@ function createSingleLineFeature() {
     
     // Only process segments if we have at least 2 points
     if (tracklog.length >= 2) {
+      // First, calculate moving average vertical speed for each point
+      for (let i = 0; i < tracklog.length; i++) {
+        if (!tracklog[i].movingAvgVerticalSpeed) {
+          tracklog[i].movingAvgVerticalSpeed = calculateMovingAverageVerticalSpeed(i);
+        }
+      }
+      
+      // Then create the line segments with moving average vertical speeds
       for (let i = 1; i < tracklog.length; i++) {
         const startPoint = tracklog[i-1];
         const endPoint = tracklog[i];
@@ -132,14 +141,7 @@ function createSingleLineFeature() {
           continue;
         }
         
-        // Calculate vertical speed in m/s
-        const timeDiff = (endPoint.timestamp - startPoint.timestamp) / 1000; // seconds
-        if (timeDiff < 0.1) continue; // Skip invalid time differences
-        
-        const altDiff = (endPoint.altitude || 0) - (startPoint.altitude || 0); // meters
-        const verticalSpeed = altDiff / timeDiff; // m/s
-        
-        // Create a feature for this segment with vertical speed property
+        // Create a feature for this segment with moving average vertical speed property
         features.push({
           type: 'Feature',
           geometry: {
@@ -147,7 +149,7 @@ function createSingleLineFeature() {
             coordinates: [startPoint.coordinates, endPoint.coordinates]
           },
           properties: {
-            verticalSpeed: verticalSpeed
+            verticalSpeed: endPoint.movingAvgVerticalSpeed || endPoint.verticalSpeed || 0
           }
         });
       }
@@ -336,6 +338,14 @@ function recordTrackPoint(position) {
     setTracklog(newTracklog);
     setLastRecordedTime(now);
     
+    // Calculate moving average vertical speed for the newly added point
+    // Only do this when we have enough points in the tracklog
+    if (newTracklog.length > 1) {
+      const movingAvgSpeed = calculateMovingAverageVerticalSpeed(newTracklog.length - 1);
+      // Store it in the point
+      point.movingAvgVerticalSpeed = movingAvgSpeed;
+    }
+    
     // Update the display incrementally with just the new segment
     updateTracklogDisplayIncremental(previousPoint, point);
     
@@ -356,6 +366,16 @@ function updateTracklogDisplayIncremental(previousPoint, newPoint) {
   if (!map) {
     console.error('Map not available');
     return;
+  }
+  
+  // Make sure the new point has a moving average vertical speed
+  if (typeof newPoint.movingAvgVerticalSpeed === 'undefined') {
+    // Get the tracklog and find the index of the new point (it should be the last one)
+    const tracklog = getTracklog();
+    const index = tracklog.length - 1;
+    if (index >= 0) {
+      newPoint.movingAvgVerticalSpeed = calculateMovingAverageVerticalSpeed(index);
+    }
   }
   
   // Create a single new segment feature
@@ -418,11 +438,19 @@ function createSegmentFeature(startPoint, endPoint) {
     return null;
   }
   
-  // Use pre-calculated vertical speed if available, otherwise calculate it
+  // Prefer moving average vertical speed if available
   let verticalSpeed;
-  if (typeof endPoint.verticalSpeed !== 'undefined') {
+  
+  // Use the moving average vertical speed from the end point if available
+  if (typeof endPoint.movingAvgVerticalSpeed !== 'undefined') {
+    verticalSpeed = endPoint.movingAvgVerticalSpeed;
+  } 
+  // Fallback to pre-calculated instantaneous vertical speed
+  else if (typeof endPoint.verticalSpeed !== 'undefined') {
     verticalSpeed = endPoint.verticalSpeed;
-  } else {
+  } 
+  // Otherwise, calculate instantaneous vertical speed
+  else {
     // Calculate vertical speed in m/s
     const timeDiff = (endPoint.timestamp - startPoint.timestamp) / 1000; // seconds
     if (timeDiff < 0.1) {
@@ -455,6 +483,13 @@ function updateTracklogDisplay() {
   }
   
   console.log(`Full update: Updating tracklog display with ${tracklog.length} points`);
+  
+  // Calculate moving average vertical speed for each point that doesn't have it
+  for (let i = 0; i < tracklog.length; i++) {
+    if (!tracklog[i].movingAvgVerticalSpeed) {
+      tracklog[i].movingAvgVerticalSpeed = calculateMovingAverageVerticalSpeed(i);
+    }
+  }
   
   // Create individual line segments
   const features = [];
