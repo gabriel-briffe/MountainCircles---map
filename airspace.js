@@ -43,6 +43,10 @@ import {
 
 import { getCurrentAltitude } from "./location.js";
 
+// Constants for airspace data
+const AIRSPACE_URL = 'https://github.com/gabriel-briffe/openaip_airspace/releases/latest/download/airspace.geojson';
+const PROXY_URL = 'https://edl-proxy.gabriel-briffe.workers.dev/?url=';
+
 /**
  * Utility function to filter map features based on checkbox state
  * This function is intentionally kept as a pure function that takes features as a parameter
@@ -69,7 +73,10 @@ export async function fetchAirspaceData() {
     }
     
     try {
-        const response = await fetch('airspace.geojson');
+        const proxyAirspaceUrl = `${PROXY_URL}${encodeURIComponent(AIRSPACE_URL)}`;
+        console.log('[Airspace] Fetching airspace data via proxy:', proxyAirspaceUrl);
+        
+        const response = await fetch(proxyAirspaceUrl);
         if (!response.ok) {
             throw new Error(`Failed to fetch airspace data: ${response.status} ${response.statusText}`);
         }

@@ -18,8 +18,10 @@ const style = {
         },
         "airspace": {
             "type": "geojson",
-            "data": `${BASE_PATH}/airspace.geojson`,
-            // "generateId": true
+            "data": {
+                "type": "FeatureCollection",
+                "features": []
+            }
         }
     },
     "layers": [

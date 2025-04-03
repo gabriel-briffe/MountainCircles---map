@@ -11,6 +11,14 @@
 // Single cache name for all app resources
 const CACHE_NAME = 'mountaincircles-cache';
 
+// Tile cache name - kept separate to support more specific caching
+const TILE_CACHE_NAME = 'mountaincircles-tiles-v1';
+
+// Airspace data URL that should be cached
+const AIRSPACE_URL = 'https://github.com/gabriel-briffe/openaip_airspace/releases/latest/download/airspace.geojson';
+const PROXY_URL = 'https://edl-proxy.gabriel-briffe.workers.dev/?url=';
+const PROXIED_AIRSPACE_URL = `${PROXY_URL}${encodeURIComponent(AIRSPACE_URL)}`;
+
 // Import BASE_PATH from config
 // Note: Since service workers run in a different context, 
 // we'll need to determine this directly in the service worker
@@ -44,7 +52,9 @@ const EXTERNAL_RESOURCES = [
     'https://cdn.jsdelivr.net/npm/maplibre-gl@latest/dist/maplibre-gl.css',
     'https://fonts.googleapis.com/icon?family=Material+Icons',
     'https://demotiles.maplibre.org/font/Open%20Sans%20Regular,Arial%20Unicode%20MS%20Regular/0-255.pbf',
-    'https://demotiles.maplibre.org/font/Open%20Sans%20Regular,Arial%20Unicode%20MS%20Regular/256-511.pbf'
+    'https://demotiles.maplibre.org/font/Open%20Sans%20Regular,Arial%20Unicode%20MS%20Regular/256-511.pbf',
+    // Airspace data via proxy
+    PROXIED_AIRSPACE_URL
 ];
 
 // Initial resources to cache on install - includes all files needed for offline functionality
@@ -100,7 +110,6 @@ const INITIAL_CACHE_RESOURCES = [
     // GeoJSON data files
     `${BASE_PATH}/peaks.geojson`,
     `${BASE_PATH}/passes.geojson`,
-    `${BASE_PATH}/airspace.geojson`,
     
     // Icons
     `${BASE_PATH}/icons/icon-192.png`,
@@ -140,6 +149,41 @@ self.addEventListener('fetch', event => {
 
     // Full URL object for analysis
     const url = new URL(event.request.url);
+
+    // Special handling for our proxied airspace URL
+    if (event.request.url.includes(PROXY_URL) && 
+        event.request.url.includes(encodeURIComponent(AIRSPACE_URL))) {
+        event.respondWith(
+            caches.match(PROXIED_AIRSPACE_URL)
+                .then(response => {
+                    if (response) {
+                        // Return the cached response if we have it
+                        console.log('SW - Serving cached airspace data');
+                        return response;
+                    }
+                    
+                    // If not in cache, fetch from network and cache it
+                    console.log('SW - Fetching airspace data from network');
+                    return fetch(event.request)
+                        .then(networkResponse => {
+                            if (!networkResponse || networkResponse.status !== 200) {
+                                return networkResponse;
+                            }
+                            
+                            // Cache the response
+                            const responseToCache = networkResponse.clone();
+                            caches.open(CACHE_NAME)
+                                .then(cache => {
+                                    cache.put(PROXIED_AIRSPACE_URL, responseToCache);
+                                    console.log('SW - Airspace data cached');
+                                });
+                            
+                            return networkResponse;
+                        });
+                })
+        );
+        return;
+    }
 
     // Check if this request should be intercepted by the service worker
     const shouldIntercept = (

@@ -119,16 +119,19 @@ export function setupAirspacePopupHandler(mapInstance) {
  */
 export async function initializeAirspaceData() {
     try {
-        const response = await fetch('airspace.geojson');
-        if (!response.ok) {
-            throw new Error(`Failed to fetch airspace data: ${response.status} ${response.statusText}`);
-        }
+        // We'll use the fetchAirspaceData function which now uses the proxy
+        const data = await fetchAirspaceData();
         
-        const data = await response.json();
         if (data && data.features) {
+            // Update the map source with the fetched data
+            const map = getMap();
+            if (map && map.getSource('airspace')) {
+                map.getSource('airspace').setData(data);
+            }
+            
             // Import here to avoid circular dependencies
             const { createTypeCheckboxes } = await import('./sidebar.js');
-            createTypeCheckboxes(data.features, getMap());
+            createTypeCheckboxes(data.features, map);
             
             // No need to force airspace to be visible here
             // This will be handled by init.js using the saved state
@@ -139,7 +142,4 @@ export async function initializeAirspaceData() {
         console.error("Error loading airspace GeoJSON:", error);
         alert(`Failed to load airspace data: ${error.message}`);
     }
-
-    // Fetch the complete airspace data
-    await fetchAirspaceData();
 } 

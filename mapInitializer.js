@@ -77,6 +77,10 @@ export function initializeMap(containerId, onMapReady) {
         // Initialize basic map layers
         await initializeBaseLayers();
         
+        // Note: We don't fetch airspace data here anymore.
+        // This is already handled by initializeAirspaceData() called from init.js.
+        // The airspace source is updated by map.js after it fetches the data.
+        
         // Set up UI elements
         setupUIElements();
         
