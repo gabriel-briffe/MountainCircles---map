@@ -46,7 +46,6 @@ import { getCurrentAltitude } from "./location.js";
 // Constants for airspace data
 const AIRSPACE_URL = 'https://github.com/gabriel-briffe/openaip_airspace/releases/latest/download/airspace.geojson';
 const PROXY_URL = 'https://edl-proxy.gabriel-briffe.workers.dev/?url=';
-const AIRSPACE_ETAG_KEY = 'airspace_etag';
 
 /**
  * Utility function to filter map features based on checkbox state
@@ -85,17 +84,17 @@ export async function fetchAirspaceData() {
             throw new Error(`Failed to fetch airspace data: ${response.status} ${response.statusText}`);
         }
         
-        // Store the ETag if available
+        // Store the ETag if available (still needed for the Web Worker to compare later)
         const etag = response.headers.get('ETag');
         if (etag) {
             console.log('[Airspace] Received ETag:', etag);
-            localStorage.setItem(AIRSPACE_ETAG_KEY, etag);
+            localStorage.setItem('airspace_etag', etag);
         } else {
             // If no ETag, try to use Last-Modified as a fallback
             const lastModified = response.headers.get('Last-Modified');
             if (lastModified) {
                 console.log('[Airspace] No ETag, using Last-Modified:', lastModified);
-                localStorage.setItem(AIRSPACE_ETAG_KEY, `last-modified:${lastModified}`);
+                localStorage.setItem('airspace_etag', `last-modified:${lastModified}`);
             }
         }
         
@@ -114,217 +113,6 @@ export async function fetchAirspaceData() {
         console.error('Error fetching airspace data:', error);
         throw error; // Re-throw to allow caller to handle
     }
-}
-
-/**
- * Checks if there's a new version of airspace data available
- * @returns {Promise<boolean>} True if new data is available
- */
-export async function checkAirspaceUpdate() {
-    // Get the stored ETag
-    const storedEtag = localStorage.getItem(AIRSPACE_ETAG_KEY);
-    
-    // If we don't have a stored ETag, no need to check
-    if (!storedEtag) {
-        console.log('[Airspace] No stored ETag, skipping update check');
-        return false;
-    }
-    
-    try {
-        // Make a HEAD request to check headers without downloading the full file
-        const proxyAirspaceUrl = `${PROXY_URL}${encodeURIComponent(AIRSPACE_URL)}`;
-        console.log('[Airspace] Checking for updates:', proxyAirspaceUrl);
-        
-        const response = await fetch(proxyAirspaceUrl, { method: 'HEAD' });
-        if (!response.ok) {
-            console.error('[Airspace] Failed to check for updates:', response.status, response.statusText);
-            return false;
-        }
-        
-        // Get the current ETag
-        let currentEtag = response.headers.get('ETag');
-        
-        // If no ETag, try Last-Modified as fallback
-        if (!currentEtag) {
-            const lastModified = response.headers.get('Last-Modified');
-            if (lastModified) {
-                currentEtag = `last-modified:${lastModified}`;
-            }
-        }
-        
-        // If we couldn't get any version identifier, return false
-        if (!currentEtag) {
-            console.log('[Airspace] No version identifier in response, cannot check for updates');
-            return false;
-        }
-        
-        // Compare the ETags
-        const hasUpdate = storedEtag !== currentEtag;
-        console.log(`[Airspace] Update check: stored=${storedEtag}, current=${currentEtag}, hasUpdate=${hasUpdate}`);
-        
-        return hasUpdate;
-    } catch (error) {
-        console.error('[Airspace] Error checking for airspace updates:', error);
-        return false;
-    }
-}
-
-/**
- * Shows a notification to the user about new airspace data
- */
-export function showAirspaceUpdateNotification() {
-    // Create notification element
-    const notification = document.createElement('div');
-    notification.className = 'airspace-update-notification';
-    notification.innerHTML = `
-        <div class="notification-content">
-            <span class="material-icons">new_releases</span>
-            <span>New airspace data available</span>
-            <button id="refreshAirspaceNowBtn" class="refresh-button">
-                <span class="material-icons">refresh</span>
-                Refresh Now
-            </button>
-            <button class="close-button">
-                <span class="material-icons">close</span>
-            </button>
-        </div>
-    `;
-    
-    // Style the notification
-    notification.style.position = 'fixed';
-    notification.style.bottom = '20px';
-    notification.style.left = '50%';
-    notification.style.transform = 'translateX(-50%)';
-    notification.style.backgroundColor = 'rgba(0, 0, 0, 0.8)';
-    notification.style.color = 'white';
-    notification.style.padding = '10px 15px';
-    notification.style.borderRadius = '5px';
-    notification.style.zIndex = '1000';
-    notification.style.display = 'flex';
-    notification.style.alignItems = 'center';
-    notification.style.boxShadow = '0 2px 10px rgba(0, 0, 0, 0.2)';
-    notification.style.transition = 'opacity 0.3s ease-in-out';
-    
-    // Style the inner content
-    const content = notification.querySelector('.notification-content');
-    content.style.display = 'flex';
-    content.style.alignItems = 'center';
-    content.style.gap = '10px';
-    
-    // Style the refresh button
-    const refreshBtn = notification.querySelector('#refreshAirspaceNowBtn');
-    refreshBtn.style.backgroundColor = '#4caf50';
-    refreshBtn.style.color = 'white';
-    refreshBtn.style.border = 'none';
-    refreshBtn.style.borderRadius = '3px';
-    refreshBtn.style.padding = '5px 10px';
-    refreshBtn.style.display = 'flex';
-    refreshBtn.style.alignItems = 'center';
-    refreshBtn.style.gap = '5px';
-    refreshBtn.style.cursor = 'pointer';
-    refreshBtn.style.marginLeft = '10px';
-    
-    // Style the close button
-    const closeBtn = notification.querySelector('.close-button');
-    closeBtn.style.backgroundColor = 'transparent';
-    closeBtn.style.border = 'none';
-    closeBtn.style.color = 'white';
-    closeBtn.style.cursor = 'pointer';
-    closeBtn.style.marginLeft = '10px';
-    
-    // Add to the DOM
-    document.body.appendChild(notification);
-    
-    // Add event listeners
-    refreshBtn.addEventListener('click', () => {
-        const BASE_PATH = window.BASE_PATH || '';
-        window.location.href = `${BASE_PATH}/bootstrap.html?cleanAirspace=true`;
-    });
-    
-    closeBtn.addEventListener('click', () => {
-        notification.style.opacity = '0';
-        setTimeout(() => {
-            document.body.removeChild(notification);
-        }, 300);
-    });
-    
-    // Automatically hide after 5 seconds
-    setTimeout(() => {
-        notification.style.opacity = '0';
-        setTimeout(() => {
-            if (document.body.contains(notification)) {
-                document.body.removeChild(notification);
-            }
-        }, 300);
-    }, 5000);
-}
-
-/**
- * Shows a notification to inform the user that airspace data is up to date
- */
-export function showAirspaceUpToDateNotification() {
-    // Create notification element
-    const notification = document.createElement('div');
-    notification.className = 'airspace-uptodate-notification';
-    notification.innerHTML = `
-        <div class="notification-content">
-            <span class="material-icons">check_circle</span>
-            <span>Airspace data is up to date</span>
-            <button class="close-button">
-                <span class="material-icons">close</span>
-            </button>
-        </div>
-    `;
-    
-    // Style the notification
-    notification.style.position = 'fixed';
-    notification.style.bottom = '20px';
-    notification.style.left = '50%';
-    notification.style.transform = 'translateX(-50%)';
-    notification.style.backgroundColor = 'rgba(0, 0, 0, 0.8)';
-    notification.style.color = 'white';
-    notification.style.padding = '10px 15px';
-    notification.style.borderRadius = '5px';
-    notification.style.zIndex = '1000';
-    notification.style.display = 'flex';
-    notification.style.alignItems = 'center';
-    notification.style.boxShadow = '0 2px 10px rgba(0, 0, 0, 0.2)';
-    notification.style.transition = 'opacity 0.3s ease-in-out';
-    
-    // Style the inner content
-    const content = notification.querySelector('.notification-content');
-    content.style.display = 'flex';
-    content.style.alignItems = 'center';
-    content.style.gap = '10px';
-    
-    // Style the close button
-    const closeBtn = notification.querySelector('.close-button');
-    closeBtn.style.backgroundColor = 'transparent';
-    closeBtn.style.border = 'none';
-    closeBtn.style.color = 'white';
-    closeBtn.style.cursor = 'pointer';
-    closeBtn.style.marginLeft = '10px';
-    
-    // Add to the DOM
-    document.body.appendChild(notification);
-    
-    // Add event listener for close button
-    closeBtn.addEventListener('click', () => {
-        notification.style.opacity = '0';
-        setTimeout(() => {
-            document.body.removeChild(notification);
-        }, 300);
-    });
-    
-    // Automatically hide after 5 seconds
-    setTimeout(() => {
-        notification.style.opacity = '0';
-        setTimeout(() => {
-            if (document.body.contains(notification)) {
-                document.body.removeChild(notification);
-            }
-        }, 300);
-    }, 5000);
 }
 
 /**

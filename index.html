@@ -314,6 +314,8 @@
         <button id="cancelInstall">Not Now</button>
     </div>
 
+    <div id="notifications-container"></div>
+
     <script>
         // Register service worker immediately (moved to top for early activation)
         if ('serviceWorker' in navigator) {
@@ -383,6 +385,20 @@
                     }
                 } else if (event.data.type === 'loadWarning' || event.data.type === 'loadError') {
                     alert(event.data.message);
+                } else if (event.data.type === 'coreFilesETags') {
+                    // Store ETags directly in localStorage and trigger update check
+                    console.log('Received core files ETags from service worker');
+                    const { combinedETag } = event.data.data;
+                    
+                    if (combinedETag) {
+                        const previousETag = localStorage.getItem('app_core_etag');
+                        localStorage.setItem('app_core_etag', combinedETag);
+                        console.log(`[DEBUG] Core ETags: Storing in localStorage. Previous=${previousETag}, New=${combinedETag}`);
+                        
+                        // Trigger update check now that we have ETags
+                        // Dispatch a custom event that updateNotifier.js can listen for
+                        window.dispatchEvent(new CustomEvent('etagsReceived'));
+                    }
                 } else if (event.data.type === 'cacheStart') {
                     // Show the progress bar at the start of caching
                     document.getElementById('cacheProgress').style.display = 'flex';

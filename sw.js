@@ -100,12 +100,15 @@ const INITIAL_CACHE_RESOURCES = [
     `${BASE_PATH}/mbtiles.js`,
     `${BASE_PATH}/menu.js`,
     `${BASE_PATH}/navboxManager.js`,
+    `${BASE_PATH}/notification.js`,
     `${BASE_PATH}/sidebar.js`,
     `${BASE_PATH}/state.js`,
     `${BASE_PATH}/sw.js`,
     `${BASE_PATH}/toggleManager.js`,
     `${BASE_PATH}/tracking.js`,
     `${BASE_PATH}/utils.js`,
+    `${BASE_PATH}/updateChecker.js`,
+    `${BASE_PATH}/updateNotifier.js`,
     
     // GeoJSON data files
     `${BASE_PATH}/peaks.geojson`,
@@ -130,8 +133,110 @@ self.addEventListener('install', event => {
 
 // Activate event - claim clients immediately
 self.addEventListener('activate', event => {
+    console.log('SW - Activate event fired');
+    
+    // Claim clients immediately
     self.clients.claim();
+    
+    // Collect ETags for core files and send to clients
+    event.waitUntil(collectAndSendCoreETags());
 });
+
+/**
+ * Collect and combine ETags for all core files
+ */
+async function collectAndSendCoreETags() {
+    try {
+        // Get client references
+        const clients = await self.clients.matchAll();
+        if (clients.length === 0) {
+            console.log('SW - No clients available to receive ETags');
+            return;
+        }
+        
+        console.log('SW - Collecting ETags for core files');
+        
+        // Get all the cached resource requests
+        const cache = await caches.open(CACHE_NAME);
+        const cachedRequests = await cache.keys();
+        
+        // Filter only core files (JS, HTML, CSS, JSON)
+        const coreFiles = cachedRequests.filter(request => {
+            const url = new URL(request.url);
+            const pathname = url.pathname;
+            return (pathname.endsWith('.js') || 
+                   pathname.endsWith('.html') || 
+                   pathname.endsWith('.css') || 
+                   pathname.endsWith('.json'));
+        });
+        
+        // Process files in batches to prevent overwhelming the browser
+        const etags = [];
+        const batchSize = 10;
+        
+        for (let i = 0; i < coreFiles.length; i += batchSize) {
+            const batch = coreFiles.slice(i, i + batchSize);
+            // Open cache once per batch
+            const batchCache = await caches.open(CACHE_NAME);
+            
+            await Promise.all(batch.map(async (request) => {
+                try {
+                    const response = await batchCache.match(request);
+                    
+                    if (!response) {
+                        return;
+                    }
+                    
+                    // Extract filename from URL
+                    const url = new URL(request.url);
+                    const filename = url.pathname.split('/').pop();
+                    
+                    // Prioritize Last-Modified header
+                    const lastModified = response.headers.get('Last-Modified');
+                    if (lastModified) {
+                        etags.push(`${filename}:last-modified:${lastModified}`);
+                        return;
+                    }
+                    
+                    // Fallbacks in order of preference
+                    const etag = response.headers.get('ETag');
+                    if (etag) {
+                        etags.push(`${filename}:${etag}`);
+                        return;
+                    }
+                    
+                    const contentLength = response.headers.get('Content-Length');
+                    if (contentLength) {
+                        etags.push(`${filename}:size:${contentLength}`);
+                    }
+                } catch (error) {
+                    console.error(`SW - Error processing file ${request.url}:`, error);
+                }
+            }));
+        }
+        
+        if (etags.length === 0) {
+            console.warn('SW - No ETags collected for core files');
+            return;
+        }
+        
+        // Send the combined ETags to all clients
+        const combinedETag = etags.sort().join('|');
+        console.log(`SW - Collected ${etags.length} ETags, created combined value`);
+        
+        // Broadcast ETags to all clients in one operation
+        const allClients = await self.clients.matchAll();
+        const message = {
+            type: 'coreFilesETags',
+            data: { combinedETag }
+        };
+        
+        allClients.forEach(client => client.postMessage(message));
+        console.log(`SW - Sending core ETags to ${allClients.length} clients`);
+    } catch (error) {
+        console.error('SW - Error collecting and sending core ETags:', error);
+    }
+}
 
 // Helper to send messages to clients
 function sendMessageToClients(message) {
