@@ -99,6 +99,35 @@ export function initializeMap(containerId, onMapReady) {
                 module.setLayersToggleState(module.getLayersToggleState());
             });
         });
+        
+        // Set up a one-time check for airspace updates when the map becomes idle
+        // This happens after the initial map load and rendering is complete
+        mapInstance.once('idle', () => {
+            // Wait a bit to ensure the map is fully rendered
+            setTimeout(() => {
+                // Import the airspace module to check for updates
+                import('./airspace.js').then(airspaceModule => {
+                    // Check if there's a new version of airspace data available
+                    airspaceModule.checkAirspaceUpdate().then(hasUpdate => {
+                        if (hasUpdate) {
+                            console.log('[Map] New airspace data available, showing notification');
+                            airspaceModule.showAirspaceUpdateNotification();
+                        } else {
+                            // If there's a stored ETag but no update, show the up-to-date notification
+                            const storedEtag = localStorage.getItem('airspace_etag');
+                            if (storedEtag) {
+                                console.log('[Map] Airspace data is up to date, showing notification');
+                                airspaceModule.showAirspaceUpToDateNotification();
+                            }
+                        }
+                    }).catch(error => {
+                        console.error('[Map] Error checking for airspace updates:', error);
+                    });
+                }).catch(error => {
+                    console.error('[Map] Error importing airspace module:', error);
+                });
+            }, 2000); // Wait 2 seconds after idle before checking
+        });
     });
 
     return mapInstance;
