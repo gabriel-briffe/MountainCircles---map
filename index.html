@@ -122,6 +122,13 @@
                 <span class="material-icons">close</span>
             </button>
 
+            <!-- Refresh Airspace Data Button -->
+            <div>
+                <button id="refreshAirspaceBtn" class="menu-btn button-with-icon">
+                    <span class="material-icons">update</span>
+                    <span>Refresh Airspace Data</span>
+                </button>
+            </div>
 
 
 
@@ -212,6 +219,8 @@
                     </div>
                 </div>
             </div>
+
+            
 
 
             <h3>Warning</h3>
@@ -326,21 +335,51 @@
             let activeFetches = 0;
             let spinnerTimeout = null;
 
+            // Function to show spinner
+            function showSpinner() {
+                if (!spinnerTimeout) {
+                    spinnerTimeout = setTimeout(() => {
+                        document.getElementById('spinner').style.display = 'block';
+                    }, 200);
+                }
+            }
+
+            // Function to hide spinner
+            function hideSpinner() {
+                clearTimeout(spinnerTimeout);
+                spinnerTimeout = null;
+                document.getElementById('spinner').style.display = 'none';
+            }
+
+            // Listen for custom fetch events from app code
+            window.addEventListener('fetchStart', (event) => {
+                activeFetches++;
+                showSpinner();
+                console.log('Fetch started:', event.detail?.url || 'unknown resource');
+            });
+
+            window.addEventListener('fetchComplete', (event) => {
+                activeFetches = Math.max(0, activeFetches - 1);
+                if (activeFetches === 0) {
+                    hideSpinner();
+                }
+                
+                if (event.detail?.error) {
+                    console.error('Fetch completed with error:', event.detail.error);
+                } else {
+                    console.log('Fetch completed:', event.detail?.url || 'unknown resource');
+                }
+            });
+
+            // Listen for service worker messages
             navigator.serviceWorker.addEventListener('message', (event) => {
                 if (event.data.type === 'fetchStart') {
                     activeFetches++;
-                    // Debounce showing the spinner for 200ms
-                    if (!spinnerTimeout) {
-                        spinnerTimeout = setTimeout(() => {
-                            document.getElementById('spinner').style.display = 'block';
-                        }, 200);
-                    }
+                    showSpinner();
                 } else if (event.data.type === 'fetchComplete') {
                     activeFetches = Math.max(0, activeFetches - 1);
                     if (activeFetches === 0) {
-                        clearTimeout(spinnerTimeout);
-                        spinnerTimeout = null;
-                        document.getElementById('spinner').style.display = 'none';
+                        hideSpinner();
                     }
                 } else if (event.data.type === 'loadWarning' || event.data.type === 'loadError') {
                     alert(event.data.message);

@@ -395,7 +395,7 @@
             }
         }
         
-        // Function to clear EDL cache and metadata
+        // Function to clean the EDL cache
         async function cleanEDLCache() {
             logInfo("Starting EDL cache cleaning operation");
             updateProgress(10);
@@ -452,6 +452,79 @@
             }
         }
         
+        // Function to clean the airspace cache
+        async function cleanAirspaceCache() {
+            logInfo("Starting airspace cache cleaning operation");
+            updateProgress(10);
+            
+            if (!('caches' in window)) {
+                logWarning("Cache API not available, skipping airspace cache cleaning");
+                updateProgress(100);
+                return false;
+            }
+            
+            try {
+                // Get all caches
+                const cacheNames = await caches.keys();
+                logInfo(`Found ${cacheNames.length} caches to check for airspace data`);
+                updateProgress(30);
+                
+                let totalDeleted = 0;
+                
+                // Check each cache for airspace data
+                for (const cacheName of cacheNames) {
+                    const cache = await caches.open(cacheName);
+                    const requests = await cache.keys();
+                    
+                    // Filter for airspace data
+                    const airspaceRequests = requests.filter(req => 
+                        req.url.includes('airspace.geojson') || 
+                        req.url.includes('openaip_airspace') ||
+                        req.url.includes(encodeURIComponent('airspace'))
+                    );
+                    
+                    logInfo(`Found ${airspaceRequests.length} airspace entries in cache: ${cacheName}`);
+                    
+                    // Delete each airspace entry
+                    for (const request of airspaceRequests) {
+                        await cache.delete(request);
+                        totalDeleted++;
+                        logInfo(`Deleted: ${request.url}`);
+                    }
+                }
+                
+                logSuccess(`Deleted ${totalDeleted} airspace entries from cache`);
+                updateProgress(90);
+                
+                // Clear any airspace data from localStorage
+                try {
+                    const keysToRemove = [];
+                    for (let i = 0; i < localStorage.length; i++) {
+                        const key = localStorage.key(i);
+                        if (key && (key.includes('airspace') || key.includes('Airspace'))) {
+                            keysToRemove.push(key);
+                        }
+                    }
+                    
+                    keysToRemove.forEach(key => {
+                        localStorage.removeItem(key);
+                        logInfo(`Removed from localStorage: ${key}`);
+                    });
+                    
+                    logSuccess(`Removed ${keysToRemove.length} airspace entries from localStorage`);
+                } catch (error) {
+                    logError(`Error cleaning localStorage: ${error.message}`);
+                }
+                
+                updateProgress(100);
+                return true;
+            } catch (error) {
+                logError(`Error cleaning airspace cache: ${error.message}`);
+                updateProgress(100);
+                return false;
+            }
+        }
+        
         // Function to perform complete data wipe
         async function performCompleteDataWipe() {
             logInfo("Starting COMPLETE DATA WIPE operation");
@@ -502,6 +575,17 @@
                 const urlParams = new URLSearchParams(window.location.search);
                 const updateType = urlParams.get('update');
                 const cleanEdl = urlParams.get('cleanEdl');
+                const cleanAirspace = urlParams.get('cleanAirspace');
+                
+                // Handle airspace cache cleaning if requested
+                if (cleanAirspace === 'true') {
+                    logInfo("AIRSPACE CACHE CLEANING requested (cleanAirspace=true)");
+                    await cleanAirspaceCache();
+                    logSuccess("Airspace cache cleaning completed successfully!");
+                    completionMessage.textContent = "Airspace data refreshed successfully!";
+                    showCompletionUI();
+                    return;
+                }
                 
                 // Handle EDL cache cleaning if requested
                 if (cleanEdl === 'true') {

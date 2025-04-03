@@ -76,16 +76,26 @@ export async function fetchAirspaceData() {
         const proxyAirspaceUrl = `${PROXY_URL}${encodeURIComponent(AIRSPACE_URL)}`;
         console.log('[Airspace] Fetching airspace data via proxy:', proxyAirspaceUrl);
         
+        // Dispatch fetchStart event to trigger spinner
+        window.dispatchEvent(new CustomEvent('fetchStart', { detail: { url: proxyAirspaceUrl } }));
+        
         const response = await fetch(proxyAirspaceUrl);
         if (!response.ok) {
             throw new Error(`Failed to fetch airspace data: ${response.status} ${response.statusText}`);
         }
         
         const data = await response.json();
+        
+        // Dispatch fetchComplete event to hide spinner
+        window.dispatchEvent(new CustomEvent('fetchComplete', { detail: { url: proxyAirspaceUrl } }));
+        
         // Store the data in state
         setAirspaceData(data);
         return data;
     } catch (error) {
+        // Make sure to dispatch fetchComplete even on error to hide the spinner
+        window.dispatchEvent(new CustomEvent('fetchComplete', { detail: { error: true } }));
+        
         console.error('Error fetching airspace data:', error);
         throw error; // Re-throw to allow caller to handle
     }
