@@ -691,6 +691,20 @@
                 logSuccess(`Removed ${deletedCount} files from main cache`);
                 updateProgress(50);
                 
+                // Clear stored ETags from localStorage
+                try {
+                    const etagKeysToRemove = ['app_core_etag'];
+                    etagKeysToRemove.forEach(key => {
+                        if (localStorage.getItem(key)) {
+                            localStorage.removeItem(key);
+                            log(`Removed ETag from localStorage: ${key}`);
+                        }
+                    });
+                    logSuccess('Cleared stored ETags from localStorage');
+                } catch (err) {
+                    logWarning(`Failed to clear ETag values: ${err.message}`);
+                }
+                
                 // 10. Fetch fresh copies of critical files
                 log("Fetching fresh copies of critical files");
                 const criticalFiles = [
