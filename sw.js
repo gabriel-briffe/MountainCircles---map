@@ -158,17 +158,37 @@ async function collectAndSendCoreETags() {
         
         // Get all the cached resource requests
         const cache = await caches.open(CACHE_NAME);
+        
+        // Filter to only include core files that match INITIAL_CACHE_RESOURCES
+        // but exclude external resources (those with full URLs)
+        const coreFilesPatterns = INITIAL_CACHE_RESOURCES
+            .filter(url => !url.startsWith('http'))  // Exclude external resources
+            .map(url => {
+                // Extract filename from the path
+                const parts = url.split('/');
+                return parts[parts.length - 1];
+            })
+            .filter(filename => 
+                filename.endsWith('.js') || 
+                filename.endsWith('.html') || 
+                filename.endsWith('.css') || 
+                filename.endsWith('.json')
+            );
+        
+        // Get all cached requests
         const cachedRequests = await cache.keys();
         
-        // Filter only core files (JS, HTML, CSS, JSON)
+        // Filter to only include core files that match our patterns
         const coreFiles = cachedRequests.filter(request => {
             const url = new URL(request.url);
             const pathname = url.pathname;
-            return (pathname.endsWith('.js') || 
-                   pathname.endsWith('.html') || 
-                   pathname.endsWith('.css') || 
-                   pathname.endsWith('.json'));
+            const filename = pathname.split('/').pop();
+            
+            // Only include files that are in our core files list
+            return coreFilesPatterns.includes(filename);
         });
+        
+        console.log(`SW - Found ${coreFiles.length} core files to collect ETags for`);
         
         // Process files in batches to prevent overwhelming the browser
         const etags = [];

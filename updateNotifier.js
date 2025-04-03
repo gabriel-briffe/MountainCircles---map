@@ -193,10 +193,14 @@ function performUpdateCheck(files, basePath) {
  * @returns {Array} List of core files
  */
 function extractCoreFilesList() {
-    // This is a simplified version of the file list - in practice, this should
-    // be generated dynamically from INITIAL_CACHE_RESOURCES in sw.js
+    // This should match INITIAL_CACHE_RESOURCES in sw.js
+    // Excluding external resources
     return [
+        // HTML files
         'index.html',
+        'manifest.json',
+        
+        // CSS files
         'styles.css',
         'airspacePopup.css',
         'installPrompt.css',
@@ -207,6 +211,8 @@ function extractCoreFilesList() {
         'progressBar.css',
         'secondaryDock.css',
         'sidebar.css',
+        
+        // JS files
         'airspace.js',
         'airspaceStyle.js',
         'cacheConfig.js',
@@ -238,9 +244,8 @@ function extractCoreFilesList() {
         'toggleManager.js',
         'tracking.js',
         'utils.js',
-        'updateNotifier.js',
         'updateChecker.js',
-        'manifest.json'
+        'updateNotifier.js'
     ];
 }
 

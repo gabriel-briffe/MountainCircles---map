@@ -183,8 +183,8 @@ async function checkCoreFilesUpdate(files, basePath) {
         
         // If we have a stored combined ETag, compare
         if (storedCoreFilesETag) {
-            // Direct comparison - assumes consistent formats
-            hasUpdate = storedCoreFilesETag !== combinedETag;
+            // Compare with time tolerance for Last-Modified timestamps
+            hasUpdate = compareETagsWithTimeTolerance(storedCoreFilesETag, combinedETag, 60);
             console.log(`[DEBUG] Core ETags: Comparison complete. Stored=${storedCoreFilesETag}, New combined=${combinedETag}, hasUpdate=${hasUpdate}`);
         } else {
             // If no stored ETag, consider it an update available
@@ -213,6 +213,128 @@ async function checkCoreFilesUpdate(files, basePath) {
             result: { hasUpdate: false, error: error.message } 
         });
     }
+}
+
+/**
+ * Compare ETags with time tolerance for Last-Modified timestamps
+ * @param {string} storedETag - The stored ETag string
+ * @param {string} newETag - The new ETag string
+ * @param {number} toleranceSeconds - Tolerance in seconds for timestamp differences
+ * @returns {boolean} - Whether there's an update (true) or not (false)
+ */
+function compareETagsWithTimeTolerance(storedETag, newETag, toleranceSeconds) {
+    // If ETags are identical, there's no update
+    if (storedETag === newETag) {
+        return false;
+    }
+    
+    // ETags are different, check if they're different only because of timestamps
+    try {
+        // Parse into file entries
+        const storedEntries = parseETagString(storedETag);
+        const newEntries = parseETagString(newETag);
+        
+        // Check if files lists are different
+        const storedFiles = Object.keys(storedEntries);
+        const newFiles = Object.keys(newEntries);
+        
+        // If file lists are different, it's an update
+        if (storedFiles.length !== newFiles.length) {
+            console.log('[UpdateChecker] Different number of files');
+            return true;
+        }
+        
+        // Check for added or removed files
+        for (const file of storedFiles) {
+            if (!newEntries[file]) {
+                console.log(`[UpdateChecker] File removed: ${file}`);
+                return true;
+            }
+        }
+        
+        for (const file of newFiles) {
+            if (!storedEntries[file]) {
+                console.log(`[UpdateChecker] File added: ${file}`);
+                return true;
+            }
+        }
+        
+        // Now check each file's ETag with time tolerance
+        for (const file of storedFiles) {
+            const storedEntry = storedEntries[file];
+            const newEntry = newEntries[file];
+            
+            // If entries have different formats (e.g. size vs last-modified), it's an update
+            if (storedEntry.type !== newEntry.type) {
+                console.log(`[UpdateChecker] Different ETag types for ${file}: ${storedEntry.type} vs ${newEntry.type}`);
+                return true;
+            }
+            
+            // For Last-Modified type, apply time tolerance
+            if (storedEntry.type === 'last-modified') {
+                const storedTime = new Date(storedEntry.value).getTime();
+                const newTime = new Date(newEntry.value).getTime();
+                
+                // If time difference is within tolerance, consider identical
+                const diffSeconds = Math.abs(storedTime - newTime) / 1000;
+                if (diffSeconds <= toleranceSeconds) {
+                    console.log(`[UpdateChecker] Timestamps for ${file} within tolerance: ${diffSeconds}s`);
+                    continue; // Skip this file, move to next
+                }
+                
+                console.log(`[UpdateChecker] Timestamp difference for ${file} exceeds tolerance: ${diffSeconds}s`);
+                return true;
+            }
+            
+            // For other types (size, ETag), exact match is required
+            if (storedEntry.value !== newEntry.value) {
+                console.log(`[UpdateChecker] Different ${storedEntry.type} for ${file}: ${storedEntry.value} vs ${newEntry.value}`);
+                return true;
+            }
+        }
+        
+        // If we got here, all files are equivalent within tolerance
+        console.log('[UpdateChecker] Files equivalent within time tolerance');
+        return false;
+    } catch (error) {
+        console.error('[UpdateChecker] Error comparing ETags with tolerance:', error);
+        // On error, fall back to direct comparison
+        return storedETag !== newETag;
+    }
+}
+
+/**
+ * Parse an ETag string into a structured object
+ * @param {string} etagString - The ETag string
+ * @returns {Object} - Structured object mapping filenames to their info
+ */
+function parseETagString(etagString) {
+    const result = {};
+    
+    // Split the string into individual entries
+    const entries = etagString.split('|');
+    
+    for (const entry of entries) {
+        // Parse each entry (e.g. "file.js:last-modified:Wed, 01 Jan 2025 12:00:00 GMT")
+        const parts = entry.split(':');
+        
+        if (parts.length >= 3) {
+            const filename = parts[0];
+            const type = parts[1];
+            // Rejoin the remaining parts in case the value itself contains colons
+            const value = parts.slice(2).join(':');
+            
+            result[filename] = { type, value };
+        } else if (parts.length === 2) {
+            // Handle simpler format like "file.js:value"
+            const filename = parts[0];
+            const value = parts[1];
+            
+            result[filename] = { type: 'unknown', value };
+        }
+    }
+    
+    return result;
 }
 
 /**
