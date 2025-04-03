@@ -8,6 +8,10 @@ import mbtilesHandler from './mbtiles.js';
 // Cache name to use for tiles (must match the one used in sw.js)
 const TILE_CACHE_NAME = 'mountaincircles-tiles-v1';
 
+// URL for the MBTiles file
+const MBTILES_URL = 'https://github.com/gabriel-briffe/MountainCircles---map/releases/download/hillshaded_alps_mbtiles/hillshaded_osm_alps.mbtiles';
+const PROXY_URL = 'https://edl-proxy.gabriel-briffe.workers.dev/?url=';
+
 /**
  * Gets the existing progress UI elements
  * @returns {Object} Progress UI elements
@@ -75,6 +79,77 @@ function selectMBTilesFile() {
 }
 
 /**
+ * Downloads an MBTiles file from the specified URL with progress tracking
+ * @param {Function} progressCallback - Callback for download progress updates
+ * @returns {Promise<File|null>} Downloaded file or null if failed
+ */
+async function downloadMBTilesFile(progressCallback) {
+  try {
+    const proxyMbtilesUrl = `${PROXY_URL}${encodeURIComponent(MBTILES_URL)}`;
+    
+    // Fetch the file through the proxy
+    const response = await fetch(proxyMbtilesUrl);
+    
+    if (!response.ok) {
+      throw new Error(`Download failed: ${response.status} ${response.statusText}`);
+    }
+    
+    // Get content length from headers if available
+    const contentLength = response.headers.get('content-length');
+    const totalBytes = contentLength ? parseInt(contentLength, 10) : undefined;
+    
+    // Create a stream reader
+    const reader = response.body.getReader();
+    const chunks = [];
+    let receivedBytes = 0;
+    
+    // Process the stream
+    while (true) {
+      const { done, value } = await reader.read();
+      
+      if (done) {
+        break;
+      }
+      
+      // Store this chunk
+      chunks.push(value);
+      receivedBytes += value.length;
+      
+      // Calculate and report progress
+      if (totalBytes) {
+        const progress = receivedBytes / totalBytes;
+        const receivedMB = (receivedBytes / (1024 * 1024)).toFixed(2);
+        const totalMB = (totalBytes / (1024 * 1024)).toFixed(2);
+        progressCallback(progress, receivedMB, totalMB, `Downloading map file: ${receivedMB} MB / ${totalMB} MB`);
+      } else {
+        // If we don't know the total size, just show received bytes
+        const receivedMB = (receivedBytes / (1024 * 1024)).toFixed(2);
+        progressCallback(0.5, receivedMB, '?', `Downloading map file: ${receivedMB} MB downloaded`);
+      }
+    }
+    
+    // Combine all chunks into a single Uint8Array
+    const allChunks = new Uint8Array(receivedBytes);
+    let position = 0;
+    
+    for (const chunk of chunks) {
+      allChunks.set(chunk, position);
+      position += chunk.length;
+    }
+    
+    // Convert to a file object
+    const fileName = MBTILES_URL.split('/').pop();
+    const fileBlob = new Blob([allChunks], { type: 'application/octet-stream' });
+    const file = new File([fileBlob], fileName, { type: 'application/octet-stream' });
+    
+    return file;
+  } catch (error) {
+    console.error('[DEBUG] Error downloading MBTiles file:', error);
+    return null;
+  }
+}
+
+/**
  * Caches map tiles from an MBTiles file
  * @returns {Promise<Object>} Result of the caching operation
  */
@@ -85,24 +160,32 @@ export async function cacheTilesFromMBTiles() {
   const ui = getProgressUI();
   ui.container.style.display = 'flex';
   ui.progressBar.style.width = '0%';
-  ui.statusElement.textContent = 'Select an MBTiles file...';
+  ui.statusElement.textContent = 'Preparing to download map file...';
   ui.countElement.textContent = '0';
   ui.totalElement.textContent = '0';
   
+  // Track downloaded file reference for cleanup
+  let downloadedFile = null;
+  
   try {
-    // Prompt for MBTiles file
-    const file = await selectMBTilesFile();
+    // Download the MBTiles file
+    ui.statusElement.textContent = 'Starting download...';
+    downloadedFile = await downloadMBTilesFile((progress, loaded, total, message) => {
+      ui.progressBar.style.width = `${progress * 100}%`;
+      ui.statusElement.textContent = message;
+    });
     
-    if (!file) {
-      console.log('[DEBUG] No file selected');
-      ui.container.style.display = 'none';
-      return { success: false, canceled: true };
+    if (!downloadedFile) {
+      throw new Error('Failed to download map file');
     }
     
+    // Reset progress for processing phase
+    ui.progressBar.style.width = '0%';
+    ui.statusElement.textContent = 'Download complete. Processing map file...';
+    
     // Display file info
-    const fileSizeMB = (file.size / (1024 * 1024)).toFixed(2);
-    ui.statusElement.textContent = `Loading ${file.name} (${fileSizeMB} MB)`;
-    console.log(`[DEBUG] Selected file: ${file.name} (${fileSizeMB} MB)`);
+    const fileSizeMB = (downloadedFile.size / (1024 * 1024)).toFixed(2);
+    console.log(`[DEBUG] Downloaded file: ${downloadedFile.name} (${fileSizeMB} MB)`);
     
     // Setup debounced UI update to prevent flickering
     let lastUpdateTime = 0;
@@ -126,8 +209,8 @@ export async function cacheTilesFromMBTiles() {
     };
     
     // Load MBTiles file
-    const loadSuccess = await mbtilesHandler.loadFile(file, (progress, loaded, total, message) => {
-      updateProgressUI(progress, 0, 0, message || `Loading file (${(loaded / (1024 * 1024)).toFixed(2)}/${(total / (1024 * 1024)).toFixed(2)} MB)`);
+    const loadSuccess = await mbtilesHandler.loadFile(downloadedFile, (progress, loaded, total, message) => {
+      updateProgressUI(progress, 0, 0, message || `Processing file (${(loaded / (1024 * 1024)).toFixed(2)}/${(total / (1024 * 1024)).toFixed(2)} MB)`);
     });
     
     if (!loadSuccess) {
@@ -185,11 +268,15 @@ export async function cacheTilesFromMBTiles() {
       success: false, 
       error: error.message 
     };
+  } finally {
+    // Clean up downloaded file by releasing all references
+    // The browser garbage collector will handle the actual memory cleanup
+    downloadedFile = null;
   }
 }
 
 /**
- * Main cacheTiles function - directly uses MBTiles extraction
+ * Main cacheTiles function - now automatically downloads the MBTiles file
  * @returns {Promise<Object>} Result of the caching operation
  */
 export async function cacheTiles() {

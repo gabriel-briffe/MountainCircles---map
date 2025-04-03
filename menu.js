@@ -58,8 +58,11 @@ export function setupMenuEventListeners() {
     // Cache configuration button
     document.getElementById('cacheCurrentConfigBtn').addEventListener('click', cacheConfigurationFiles);
     
-    // Cache background map button
-    document.getElementById('cacheBackgroundMapBtn').addEventListener('click', cacheTiles);
+    // Cache background map button - now will auto-download the map
+    document.getElementById('cacheBackgroundMapBtn').addEventListener('click', () => {
+        console.log('[Menu] Starting download and caching of background map');
+        cacheTiles();
+    });
 
     // Cache EDL Today tiles button
     document.getElementById('cacheEDLTodayBtn').addEventListener('click', () => {
