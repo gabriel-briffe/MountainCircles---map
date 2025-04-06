@@ -41,6 +41,7 @@ export const AIRSPACE_TYPE_ORDER = [
     "GLIDING_SECTOR",
     "ACTIVITY",
     "TRA",
+    "RMZ",
     "TMZ",
     "FIS_SECTOR",
     "FIR",
