@@ -673,14 +673,43 @@
                 // 9. Delete each core file from the main cache
                 let deletedCount = 0;
                 log("Removing core files from main cache");
+                
+                // First, get all existing cached requests
+                const allCachedRequests = await appCache.keys();
+                log(`Found ${allCachedRequests.length} cached items to check`);
+                
+                // Create a map of base filenames to their cache entries
+                const fileToRequestsMap = new Map();
+                
+                // Populate the map with all cached files
+                allCachedRequests.forEach(request => {
+                    const url = new URL(request.url);
+                    const pathname = url.pathname;
+                    const filename = pathname.split('/').pop();
+                    
+                    if (!fileToRequestsMap.has(filename)) {
+                        fileToRequestsMap.set(filename, []);
+                    }
+                    fileToRequestsMap.get(filename).push(request);
+                });
+                
+                // Now delete all versions of each core file
                 for (const file of coreFiles) {
                     try {
-                        const deleted = await appCache.delete(file);
-                        if (deleted) {
-                            deletedCount++;
-                            log(`Deleted: ${file}`);
+                        // Extract the filename from the path
+                        const filename = file.split('/').pop();
+                        
+                        if (fileToRequestsMap.has(filename)) {
+                            const requests = fileToRequestsMap.get(filename);
+                            for (const request of requests) {
+                                const deleted = await appCache.delete(request);
+                                if (deleted) {
+                                    deletedCount++;
+                                    log(`Deleted: ${request.url}`);
+                                }
+                            }
                         } else {
-                            logInfo(`File not in cache: ${file}`);
+                            logInfo(`No cached versions found for: ${filename}`);
                         }
                     } catch (err) {
                         logWarning(`Failed to delete ${file}: ${err.message}`);
@@ -728,12 +757,15 @@
                         });
                         
                         if (response.ok) {
-                            // Store in temp cache first
-                            await tempCache.put(file, response.clone());
-                            // Then copy to main app cache
-                            await appCache.put(file, response);
+                            // Create a clean URL without query parameters for storage
+                            const cleanUrl = file;
+                            
+                            // Store in temp cache first (with clean URL)
+                            await tempCache.put(cleanUrl, response.clone());
+                            // Then copy to main app cache (also with clean URL)
+                            await appCache.put(cleanUrl, response);
                             fetchedCount++;
-                            log(`Cached fresh copy of: ${file}`);
+                            log(`Cached fresh copy of: ${cleanUrl} (from ${url})`);
                         } else {
                             logError(`Failed to fetch ${file}: ${response.status} ${response.statusText}`);
                         }
