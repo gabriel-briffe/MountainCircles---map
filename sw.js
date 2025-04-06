@@ -178,17 +178,31 @@ async function collectAndSendCoreETags() {
         // Get all cached requests
         const cachedRequests = await cache.keys();
         
-        // Filter to only include core files that match our patterns
-        const coreFiles = cachedRequests.filter(request => {
+        // Create a Map to store one request per file, without query parameters
+        const uniqueCoreFiles = new Map();
+        
+        // Process cached requests to get unique files
+        cachedRequests.forEach(request => {
             const url = new URL(request.url);
             const pathname = url.pathname;
             const filename = pathname.split('/').pop();
             
-            // Only include files that are in our core files list
-            return coreFilesPatterns.includes(filename);
+            // Only process files that are in our core files list
+            if (coreFilesPatterns.includes(filename)) {
+                // Use the clean pathname as the key to ensure uniqueness
+                const cleanKey = `${url.origin}${pathname}`;
+                
+                // Only add if not already present or if this is a clean URL (no query params)
+                if (!uniqueCoreFiles.has(cleanKey) || !url.search) {
+                    uniqueCoreFiles.set(cleanKey, request);
+                }
+            }
         });
         
-        console.log(`SW - Found ${coreFiles.length} core files to collect ETags for`);
+        // Convert unique files map back to array
+        const coreFiles = Array.from(uniqueCoreFiles.values());
+        
+        console.log(`SW - Found ${coreFiles.length} unique core files to collect ETags for`);
         
         // Process files in batches to prevent overwhelming the browser
         const etags = [];
@@ -240,7 +254,7 @@ async function collectAndSendCoreETags() {
             return;
         }
         
-        // Send the combined ETags to all clients
+        // Create a combined ETag string with all collected ETags
         const combinedETag = etags.sort().join('|');
         console.log(`SW - Collected ${etags.length} ETags, created combined value`);
         
@@ -248,7 +262,10 @@ async function collectAndSendCoreETags() {
         const allClients = await self.clients.matchAll();
         const message = {
             type: 'coreFilesETags',
-            data: { combinedETag }
+            data: { 
+                combinedETag,
+                replaceExisting: true // Flag to indicate this should replace existing ETags, not append
+            }
         };
         
         allClients.forEach(client => client.postMessage(message));
@@ -325,7 +342,37 @@ self.addEventListener('fetch', event => {
 
     // Handle the fetch event
     event.respondWith(
-        caches.match(event.request).then(response => {
+        // Create a normalized request without query parameters for cache matching
+        (() => {
+            // Clone the request to avoid modifying the original
+            const normalizedUrl = new URL(event.request.url);
+            
+            // Check if it's a core file type
+            const isCorePath = normalizedUrl.pathname.endsWith('.html') ||
+                               normalizedUrl.pathname.endsWith('.js') ||
+                               normalizedUrl.pathname.endsWith('.css') ||
+                               normalizedUrl.pathname.endsWith('.json');
+            
+            // Strip query parameters only for core files
+            if (isCorePath && normalizedUrl.search) {
+                console.log(`SW - Normalizing URL: ${normalizedUrl.href} -> ${normalizedUrl.origin}${normalizedUrl.pathname}`);
+                
+                // Create a new request object without query parameters
+                return caches.match(normalizedUrl.origin + normalizedUrl.pathname)
+                    .then(cachedResponse => {
+                        if (cachedResponse) {
+                            return cachedResponse;
+                        }
+                        
+                        // No cached version, so we need to fetch from network
+                        return fetch(event.request);
+                    });
+            }
+            
+            // For non-core files or those without query parameters, use default matching
+            return caches.match(event.request);
+        })()
+        .then(response => {
             // Return cached response if found
             if (response) {
                 return response;
@@ -340,8 +387,30 @@ self.addEventListener('fetch', event => {
 
                 // Clone the response to cache it and return it
                 const responseToCache = networkResponse.clone();
+                
+                // Strip query parameters when caching
                 caches.open(CACHE_NAME).then(cache => {
-                    cache.put(event.request, responseToCache);
+                    const url = new URL(event.request.url);
+                    const isCorePath = url.pathname.endsWith('.html') ||
+                                      url.pathname.endsWith('.js') ||
+                                      url.pathname.endsWith('.css') ||
+                                      url.pathname.endsWith('.json');
+                                      
+                    if (isCorePath && url.search) {
+                        // Create a clean URL without query parameters
+                        const cleanRequest = new Request(url.origin + url.pathname, {
+                            method: event.request.method,
+                            headers: event.request.headers,
+                            mode: event.request.mode,
+                            credentials: event.request.credentials,
+                            redirect: event.request.redirect
+                        });
+                        
+                        console.log(`SW - Caching with clean URL: ${url.href} -> ${cleanRequest.url}`);
+                        cache.put(cleanRequest, responseToCache.clone());
+                    } else {
+                        cache.put(event.request, responseToCache);
+                    }
                 });
 
                 return networkResponse;

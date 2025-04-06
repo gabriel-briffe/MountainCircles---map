@@ -391,9 +391,12 @@
                     const { combinedETag } = event.data.data;
                     
                     if (combinedETag) {
-                        const previousETag = localStorage.getItem('app_core_etag');
+                        // Remove old ETags first to prevent duplication
+                        localStorage.removeItem('app_core_etag');
+                        
+                        // Then set the new value
                         localStorage.setItem('app_core_etag', combinedETag);
-                        console.log(`[DEBUG] Core ETags: Storing in localStorage. Previous=${previousETag}, New=${combinedETag}`);
+                        console.log(`[DEBUG] Core ETags: Storing new ETags in localStorage. New=${combinedETag}`);
                         
                         // Trigger update check now that we have ETags
                         // Dispatch a custom event that updateNotifier.js can listen for

@@ -481,9 +481,7 @@
                     
                     // Filter for airspace data
                     const airspaceRequests = requests.filter(req => 
-                        req.url.includes('airspace.geojson') || 
-                        req.url.includes('openaip_airspace') ||
-                        req.url.includes(encodeURIComponent('airspace'))
+                        req.url.includes('airspace.geojson')
                     );
                     
                     logInfo(`Found ${airspaceRequests.length} airspace entries in cache: ${cacheName}`);
