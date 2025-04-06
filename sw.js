@@ -322,6 +322,12 @@ self.addEventListener('fetch', event => {
 
     // Full URL object for analysis
     const url = new URL(event.request.url);
+    
+    // Never cache bootstrap.html - always fetch from network
+    if (url.pathname.endsWith('/bootstrap.html')) {
+        console.log('SW - Bypassing service worker for bootstrap.html');
+        return; // Do not intercept, let the browser handle it directly
+    }
 
     // Special handling for tile requests - explicitly check tile cache first, then network
     const isRegularTile = url.pathname.includes('/tiles/') && url.pathname.match(/\/\d+\/\d+\/\d+\.png$/);
