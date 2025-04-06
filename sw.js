@@ -14,6 +14,10 @@ const CACHE_NAME = 'mountaincircles-cache';
 // Tile cache name - kept separate to support more specific caching
 const TILE_CACHE_NAME = 'mountaincircles-tiles-v1';
 
+// Directory structure for better organization
+const CORE_FILES_DIR = '/coreFiles/';
+const EXTERNAL_RESOURCES_DIR = '/externalResources/';
+
 // Airspace data URL that should be cached
 const AIRSPACE_URL = 'https://github.com/gabriel-briffe/openaip_airspace/releases/latest/download/airspace.geojson';
 const PROXY_URL = 'https://edl-proxy.gabriel-briffe.workers.dev/?url=';
@@ -45,6 +49,41 @@ function getBasePath() {
     }
 }
 
+/**
+ * Convert an original URL to a cache URL using the directory structure
+ * @param {string|URL} url - The original URL
+ * @returns {string} - The cache URL path
+ */
+function getCacheUrl(url) {
+    const urlObj = typeof url === 'string' ? new URL(url, self.location.origin) : url;
+    const urlString = urlObj.toString();
+    
+    // Check if this URL is in our explicit external resources list
+    const isExplicitExternalResource = EXTERNAL_RESOURCES.some(resource => 
+        resource === urlString || resource === urlString.split('?')[0]);
+    
+    // Extract filename
+    const pathname = urlObj.pathname;
+    const filename = pathname.split('/').pop();
+    
+    // Core files based on extension (only our local files)
+    if (urlObj.origin === self.location.origin && 
+        filename.match(/\.(js|html|css|json)$/)) {
+        return `${CORE_FILES_DIR}${filename}`;
+    }
+    
+    // Explicit external resources
+    if (isExplicitExternalResource) {
+        // Create a path based on hostname and pathname for organization
+        const hostPath = urlObj.hostname.replace(/[^\w-]/g, '_');
+        const pathPart = pathname.replace(/^\//, '').replace(/\//g, '_');
+        return `${EXTERNAL_RESOURCES_DIR}${hostPath}_${pathPart}`;
+    }
+    
+    // All other resources (including proxy) - use original path to avoid translation issues
+    return pathname;
+}
+
 // External resources that should be cached on install
 const EXTERNAL_RESOURCES = [
     // External libraries, fonts and resources
@@ -52,9 +91,9 @@ const EXTERNAL_RESOURCES = [
     'https://cdn.jsdelivr.net/npm/maplibre-gl@latest/dist/maplibre-gl.css',
     'https://fonts.googleapis.com/icon?family=Material+Icons',
     'https://demotiles.maplibre.org/font/Open%20Sans%20Regular,Arial%20Unicode%20MS%20Regular/0-255.pbf',
-    'https://demotiles.maplibre.org/font/Open%20Sans%20Regular,Arial%20Unicode%20MS%20Regular/256-511.pbf',
-    // Airspace data via proxy
-    PROXIED_AIRSPACE_URL
+    'https://demotiles.maplibre.org/font/Open%20Sans%20Regular,Arial%20Unicode%20MS%20Regular/256-511.pbf'
+    // Airspace data via proxy - now handled separately
+    // PROXIED_AIRSPACE_URL
 ];
 
 // Initial resources to cache on install - includes all files needed for offline functionality
@@ -125,8 +164,36 @@ const INITIAL_CACHE_RESOURCES = [
 self.addEventListener('install', event => {
     event.waitUntil(
         caches.open(CACHE_NAME)
-            .then(cache => cache.addAll(INITIAL_CACHE_RESOURCES))
-            .catch(error => console.error('Install cache failed:', error))
+            .then(async cache => {
+                console.log('SW - Caching initial resources with directory structure');
+                
+                try {
+                    // Process each resource with proper directory structure
+                    for (const resource of INITIAL_CACHE_RESOURCES) {
+                        try {
+                            // Fetch the resource using original URL
+                            const response = await fetch(resource, { cache: 'no-store' });
+                            
+                            if (!response.ok) {
+                                console.warn(`SW - Failed to cache ${resource}: ${response.status} ${response.statusText}`);
+                                continue;
+                            }
+                            
+                            // Convert to cache URL using our function that respects the rules
+                            const cacheUrl = getCacheUrl(resource);
+                            
+                            // Store with directory structure
+                            await cache.put(new Request(cacheUrl), response);
+                            console.log(`SW - Cached: ${resource} as ${cacheUrl}`);
+                        } catch (error) {
+                            console.error(`SW - Error caching ${resource}:`, error);
+                        }
+                    }
+                    console.log('SW - Initial resources cached successfully with directory structure');
+                } catch (error) {
+                    console.error('SW - Failed to cache initial resources:', error);
+                }
+            })
     );
     self.skipWaiting();
 });
@@ -159,63 +226,27 @@ async function collectAndSendCoreETags() {
         // Get all the cached resource requests
         const cache = await caches.open(CACHE_NAME);
         
-        // Filter to only include core files that match INITIAL_CACHE_RESOURCES
-        // but exclude external resources (those with full URLs)
-        const coreFilesPatterns = INITIAL_CACHE_RESOURCES
-            .filter(url => !url.startsWith('http'))  // Exclude external resources
-            .map(url => {
-                // Extract filename from the path
-                const parts = url.split('/');
-                return parts[parts.length - 1];
-            })
-            .filter(filename => 
-                filename.endsWith('.js') || 
-                filename.endsWith('.html') || 
-                filename.endsWith('.css') || 
-                filename.endsWith('.json')
-            );
-        
         // Get all cached requests
         const cachedRequests = await cache.keys();
         
-        // Create a Map to store one request per file, without query parameters
-        const uniqueCoreFiles = new Map();
-        
-        // Process cached requests to get unique files
-        cachedRequests.forEach(request => {
+        // Filter to only include files in the core files directory
+        const coreRequests = cachedRequests.filter(request => {
             const url = new URL(request.url);
-            const pathname = url.pathname;
-            const filename = pathname.split('/').pop();
-            
-            // Only process files that are in our core files list
-            if (coreFilesPatterns.includes(filename)) {
-                // Use the clean pathname as the key to ensure uniqueness
-                const cleanKey = `${url.origin}${pathname}`;
-                
-                // Only add if not already present or if this is a clean URL (no query params)
-                if (!uniqueCoreFiles.has(cleanKey) || !url.search) {
-                    uniqueCoreFiles.set(cleanKey, request);
-                }
-            }
+            return url.pathname.startsWith(CORE_FILES_DIR);
         });
         
-        // Convert unique files map back to array
-        const coreFiles = Array.from(uniqueCoreFiles.values());
-        
-        console.log(`SW - Found ${coreFiles.length} unique core files to collect ETags for`);
+        console.log(`SW - Found ${coreRequests.length} core files in directory to collect ETags for`);
         
         // Process files in batches to prevent overwhelming the browser
         const etags = [];
         const batchSize = 10;
         
-        for (let i = 0; i < coreFiles.length; i += batchSize) {
-            const batch = coreFiles.slice(i, i + batchSize);
-            // Open cache once per batch
-            const batchCache = await caches.open(CACHE_NAME);
+        for (let i = 0; i < coreRequests.length; i += batchSize) {
+            const batch = coreRequests.slice(i, i + batchSize);
             
             await Promise.all(batch.map(async (request) => {
                 try {
-                    const response = await batchCache.match(request);
+                    const response = await cache.match(request);
                     
                     if (!response) {
                         return;
@@ -223,7 +254,7 @@ async function collectAndSendCoreETags() {
                     
                     // Extract filename from URL
                     const url = new URL(request.url);
-                    const filename = url.pathname.split('/').pop();
+                    const filename = url.pathname.replace(CORE_FILES_DIR, '');
                     
                     // Prioritize Last-Modified header
                     const lastModified = response.headers.get('Last-Modified');
@@ -292,32 +323,81 @@ self.addEventListener('fetch', event => {
     // Full URL object for analysis
     const url = new URL(event.request.url);
 
-    // Special handling for our proxied airspace URL
-    if (event.request.url.includes(PROXY_URL) && 
-        event.request.url.includes(encodeURIComponent(AIRSPACE_URL))) {
+    // Special handling for tile requests - explicitly check tile cache first, then network
+    const isRegularTile = url.pathname.includes('/tiles/') && url.pathname.match(/\/\d+\/\d+\/\d+\.png$/);
+    const isEdlTile = url.pathname.includes('/edl_tiles/') && url.pathname.match(/\/\d+\/\d+\/\d+\.png$/);
+    
+    if (isRegularTile || isEdlTile) {
+        const tileType = isRegularTile ? 'regular' : 'EDL';
+        
         event.respondWith(
-            caches.match(PROXIED_AIRSPACE_URL)
+            // Explicitly check the tile cache first
+            caches.open(TILE_CACHE_NAME)
+                .then(tileCache => tileCache.match(event.request))
                 .then(response => {
                     if (response) {
-                        // Return the cached response if we have it
-                        console.log('SW - Serving cached airspace data');
+                        // Return the cached tile if we have it
+                        console.log(`SW - Serving ${tileType} tile from tile cache: ${url.pathname}`);
                         return response;
                     }
                     
-                    // If not in cache, fetch from network and cache it
-                    console.log('SW - Fetching airspace data from network');
+                    // If not in tile cache, try to fetch from network
+                    console.log(`SW - ${tileType} tile not in cache, fetching from network: ${event.request.url}`);
                     return fetch(event.request)
                         .then(networkResponse => {
                             if (!networkResponse || networkResponse.status !== 200) {
                                 return networkResponse;
                             }
                             
-                            // Cache the response
+                            // Cache the response in the tile cache
+                            const responseToCache = networkResponse.clone();
+                            caches.open(TILE_CACHE_NAME)
+                                .then(cache => {
+                                    cache.put(event.request, responseToCache);
+                                    console.log(`SW - ${tileType} tile cached in tile cache: ${url.pathname}`);
+                                });
+                            
+                            return networkResponse;
+                        });
+                })
+                .catch(error => {
+                    console.error(`SW - Error fetching ${tileType} tile: ${error.message}`);
+                    return fetch(event.request);
+                })
+        );
+        return;
+    }
+
+    // Special handling for our proxied airspace URL
+    if (event.request.url.includes(PROXY_URL) && 
+        event.request.url.includes(encodeURIComponent(AIRSPACE_URL))) {
+        
+        // Simple airspace cache path in the root
+        const airspaceCacheUrl = `${BASE_PATH}/airspace.geojson`;
+        
+        event.respondWith(
+            caches.match(airspaceCacheUrl)
+                .then(response => {
+                    if (response) {
+                        // Return the cached response if we have it
+                        console.log(`SW - Serving cached airspace data from: ${airspaceCacheUrl}`);
+                        return response;
+                    }
+                    
+                    // If not in cache, fetch from network using original URL
+                    console.log('SW - Fetching airspace data from network using original URL');
+                    return fetch(event.request)
+                        .then(networkResponse => {
+                            if (!networkResponse || networkResponse.status !== 200) {
+                                return networkResponse;
+                            }
+                            
+                            // Cache the response with simple URL
                             const responseToCache = networkResponse.clone();
                             caches.open(CACHE_NAME)
                                 .then(cache => {
-                                    cache.put(PROXIED_AIRSPACE_URL, responseToCache);
-                                    console.log('SW - Airspace data cached');
+                                    cache.put(airspaceCacheUrl, responseToCache);
+                                    console.log(`SW - Airspace data cached as: ${airspaceCacheUrl}`);
                                 });
                             
                             return networkResponse;
@@ -325,6 +405,13 @@ self.addEventListener('fetch', event => {
                 })
         );
         return;
+    }
+
+    // Skip proxy URLs that aren't the specific airspace one
+    if (url.hostname === 'edl-proxy.gabriel-briffe.workers.dev' && 
+        !event.request.url.includes(encodeURIComponent(AIRSPACE_URL))) {
+        console.log(`SW - Bypassing service worker for proxy URL: ${url.href}`);
+        return; // Do not intercept
     }
 
     // Check if this request should be intercepted by the service worker
@@ -340,82 +427,45 @@ self.addEventListener('fetch', event => {
         return;
     }
 
-    // Handle the fetch event
+    // Handle the fetch event for core files and other resources
     event.respondWith(
-        // Create a normalized request without query parameters for cache matching
-        (() => {
-            // Clone the request to avoid modifying the original
-            const normalizedUrl = new URL(event.request.url);
-            
-            // Check if it's a core file type
-            const isCorePath = normalizedUrl.pathname.endsWith('.html') ||
-                               normalizedUrl.pathname.endsWith('.js') ||
-                               normalizedUrl.pathname.endsWith('.css') ||
-                               normalizedUrl.pathname.endsWith('.json');
-            
-            // Strip query parameters only for core files
-            if (isCorePath && normalizedUrl.search) {
-                console.log(`SW - Normalizing URL: ${normalizedUrl.href} -> ${normalizedUrl.origin}${normalizedUrl.pathname}`);
+        (async () => {
+            try {
+                const cache = await caches.open(CACHE_NAME);
                 
-                // Create a new request object without query parameters
-                return caches.match(normalizedUrl.origin + normalizedUrl.pathname)
-                    .then(cachedResponse => {
-                        if (cachedResponse) {
-                            return cachedResponse;
-                        }
-                        
-                        // No cached version, so we need to fetch from network
-                        return fetch(event.request);
-                    });
-            }
-            
-            // For non-core files or those without query parameters, use default matching
-            return caches.match(event.request);
-        })()
-        .then(response => {
-            // Return cached response if found
-            if (response) {
-                return response;
-            }
-
-            // Otherwise fetch from network
-            return fetch(event.request).then(networkResponse => {
+                // Convert the requested URL to a cache URL for core files
+                const cacheUrl = getCacheUrl(url);
+                
+                // Check if we have the resource in cache
+                const cachedResponse = await cache.match(new Request(cacheUrl));
+                if (cachedResponse) {
+                    console.log(`SW - Serving from cache: ${cacheUrl}`);
+                    return cachedResponse;
+                }
+                
+                // If not in cache, try to fetch from network using original URL
+                console.log(`SW - Fetching from network using original URL: ${event.request.url}`);
+                const networkResponse = await fetch(event.request);
+                
                 // Don't cache opaque responses or errors
                 if (!networkResponse || networkResponse.status !== 200 || networkResponse.type === 'opaque') {
                     return networkResponse;
                 }
-
-                // Clone the response to cache it and return it
-                const responseToCache = networkResponse.clone();
                 
-                // Strip query parameters when caching
-                caches.open(CACHE_NAME).then(cache => {
-                    const url = new URL(event.request.url);
-                    const isCorePath = url.pathname.endsWith('.html') ||
-                                      url.pathname.endsWith('.js') ||
-                                      url.pathname.endsWith('.css') ||
-                                      url.pathname.endsWith('.json');
-                                      
-                    if (isCorePath && url.search) {
-                        // Create a clean URL without query parameters
-                        const cleanRequest = new Request(url.origin + url.pathname, {
-                            method: event.request.method,
-                            headers: event.request.headers,
-                            mode: event.request.mode,
-                            credentials: event.request.credentials,
-                            redirect: event.request.redirect
-                        });
-                        
-                        console.log(`SW - Caching with clean URL: ${url.href} -> ${cleanRequest.url}`);
-                        cache.put(cleanRequest, responseToCache.clone());
-                    } else {
-                        cache.put(event.request, responseToCache);
-                    }
-                });
-
+                // Cache the response with the directory structure
+                const responseToCache = networkResponse.clone();
+                console.log(`SW - Caching response as: ${cacheUrl}`);
+                
+                // Store in cache with directory structure
+                await cache.put(new Request(cacheUrl), responseToCache);
+                
                 return networkResponse;
-            });
-        })
+            } catch (error) {
+                console.error(`SW - Fetch error for ${event.request.url}:`, error);
+                // If everything fails, just try to fetch from network and return whatever we get
+                return fetch(event.request);
+            }
+        })()
     );
 });
 
@@ -447,10 +497,35 @@ self.addEventListener('message', async (event) => {
                         currentFile: file
                     });
                     
+                    // Fetch the file using original URL
                     const response = await fetch(file);
                     if (response.ok) {
-                        await cache.put(file, response);
+                        // Get appropriate cache URL (only transforms core files and explicit external resources)
+                        const cacheUrl = getCacheUrl(file);
+                        
+                        // For proxy URLs for MBTiles, use the original URL to prevent issues
+                        const isProxyUrl = file.includes(PROXY_URL);
+                        const isAirspaceUrl = isProxyUrl && file.includes(encodeURIComponent(AIRSPACE_URL));
+
+                        let cacheRequest;
+                        if (isAirspaceUrl) {
+                            // Special case for airspace - use the fixed cache path
+                            cacheRequest = new Request(`${BASE_PATH}/airspace.geojson`);
+                            console.log(`SW - Using fixed cache path for airspace: ${cacheRequest.url}`);
+                        } else if (isProxyUrl) {
+                            // Other proxy URLs - use original to prevent issues
+                            cacheRequest = new Request(file);
+                            console.log(`SW - Using original URL for proxy request: ${file}`);
+                        } else {
+                            // Normal resources - use directory structure
+                            cacheRequest = new Request(cacheUrl);
+                        }
+
+                        // Store in cache with appropriate URL
+                        await cache.put(cacheRequest, response);
                         successCount++;
+                        
+                        console.log(`SW - Cached file: ${file} as ${cacheRequest.url}`);
                         
                         // Send updated progress
                         sendMessageToClients({
@@ -500,7 +575,6 @@ self.addEventListener('message', async (event) => {
             });
         }
     }
-    
 });
 
 // Helper function to determine content type from URL
