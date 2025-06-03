@@ -196,8 +196,11 @@ export function toggleFeatureHighlight(feature, index) {
     const barRefs = getBarRefs();
     const highlightedFeatureKey = getHighlightedFeatureKey();
     
+    // Use AI field (UUID) instead of AN field (name) for unique identification
+    const featureKey = feature.properties.AI || feature.properties.AN;
+    
     // Check if the clicked feature is already highlighted
-    if (highlightedFeatureKey === feature.properties.AN) {
+    if (highlightedFeatureKey === featureKey) {
         // If already highlighted, just clear the highlight
         clearHighlight();
         return;
@@ -206,8 +209,8 @@ export function toggleFeatureHighlight(feature, index) {
     // Clear any existing highlights
     clearHighlight();
     
-    // Set the highlighted feature key in state
-    setHighlightedFeatureKey(feature.properties.AN);
+    // Set the highlighted feature key in state using AI field
+    setHighlightedFeatureKey(featureKey);
     
     // Highlight the section and bar
     const section = sectionRefs.get(index);
@@ -222,11 +225,12 @@ export function toggleFeatureHighlight(feature, index) {
         bar.classList.add('highlighted-bar');
     }
     
-    // Get the complete feature from our stored data
+    // Get the complete feature from our stored data using AI field for unique identification
     const airspaceData = getAirspaceData();
     if (airspaceData && airspaceData.features) {
         const completeFeature = airspaceData.features.find(f => 
-            f.properties.AN === feature.properties.AN
+            f.properties.AI === feature.properties.AI || 
+            (!feature.properties.AI && f.properties.AN === feature.properties.AN)
         );
         
         if (completeFeature) {
@@ -282,7 +286,8 @@ export function buildPopupSection(index) {
     
     const feature = features[index];
     const props = feature.properties;
-    const featureKey = props.AN || props.type;
+    // Use AI field (UUID) instead of AN field (name) for unique identification
+    const featureKey = props.AI || props.AN || props.type;
 
     // Create the section
     const section = document.createElement('div');
