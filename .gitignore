@@ -4,3 +4,6 @@
 edl_clone**
 zclone.py
 .cursor**
+# Ignore the entire tiles folder and all its contents
+tiles/
+tiles/**

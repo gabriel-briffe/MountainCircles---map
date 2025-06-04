@@ -347,7 +347,14 @@ self.addEventListener('fetch', event => {
                         return response;
                     }
                     
-                    // If not in tile cache, try to fetch from network
+                    // For regular tiles (custom server tiles), don't fetch from network if not in cache
+                    // This allows the map to fall back to OSM tiles instead
+                    if (isRegularTile) {
+                        console.log(`SW - ${tileType} tile not in cache, returning 404 to trigger OSM fallback: ${url.pathname}`);
+                        return new Response('', { status: 404, statusText: 'Tile not in cache' });
+                    }
+                    
+                    // For EDL tiles, still try to fetch from network as they're dynamic
                     console.log(`SW - ${tileType} tile not in cache, fetching from network: ${event.request.url}`);
                     return fetch(event.request)
                         .then(networkResponse => {
@@ -368,6 +375,10 @@ self.addEventListener('fetch', event => {
                 })
                 .catch(error => {
                     console.error(`SW - Error fetching ${tileType} tile: ${error.message}`);
+                    // For regular tiles, return 404 instead of trying to fetch
+                    if (isRegularTile) {
+                        return new Response('', { status: 404, statusText: 'Tile fetch error' });
+                    }
                     return fetch(event.request);
                 })
         );

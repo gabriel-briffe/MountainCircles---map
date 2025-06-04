@@ -45,9 +45,9 @@ export const CACHE_NAME = 'mountaincircles-cache';
 // Default text size for labels
 export const DEFAULT_TEXT_SIZE = 14;
 
-// Map bounds
-export const MAP_BOUNDS = [[4.9698169, 43.6088902], [13.696105, 47.5644488]];
-export const MAP_MAX_BOUNDS = [[4.57526, 43.45699], [13.96581, 47.98810]];
+// Map bounds - REMOVED to allow global map access
+// export const MAP_BOUNDS = [[4.9698169, 43.6088902], [13.696105, 47.5644488]];
+// export const MAP_MAX_BOUNDS = [[4.57526, 43.45699], [13.96581, 47.98810]];
 
 // Default visibility settings
 export const DEFAULT_PEAKS_VISIBLE = true;
@@ -82,7 +82,7 @@ export const MAP_SETTINGS = {
         duration: 1000
     },
     attributionControl: false,
-    renderWorldCopies: false
+    renderWorldCopies: true
 };
 
 // Tile caching settings

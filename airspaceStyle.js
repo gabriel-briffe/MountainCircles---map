@@ -16,6 +16,15 @@ const style = {
             "maxzoom": 12,  // This ensures that even if you zoom past level 12, the map uses these tiles.
             "attribution": "Map data © OpenStreetMap contributors + Alos topographic data"
         },
+        "osm-fallback": {
+            "type": "raster",
+            "tiles": [
+                "https://tile.openstreetmap.org/{z}/{x}/{y}.png"
+            ],
+            "tileSize": 256,
+            "maxzoom": 19,
+            "attribution": "© OpenStreetMap contributors"
+        },
         "airspace": {
             "type": "geojson",
             "data": {
@@ -26,10 +35,17 @@ const style = {
     },
     "layers": [
         {
+            "id": "osm-fallback",
+            "type": "raster",
+            "source": "osm-fallback",
+            "minzoom": 0
+        },
+        {
             "id": "custom-tiles",
             "type": "raster",
             "source": "custom-tiles",
-            "minzoom": 0   // Remove maxzoom here so the layer remains visible at higher zooms
+            "minzoom": 0,
+            "maxzoom": 12   // Hide this layer beyond zoom 12 to reveal OSM tiles
         },
         {
             "id": "airspace-fill",

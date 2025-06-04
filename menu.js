@@ -14,7 +14,7 @@ import {
 // Import from config
 import {
     BASE_PATH,
-    MAP_BOUNDS,
+    // MAP_BOUNDS,
     TILE_CACHE_SETTINGS
 } from "./config.js";
 
@@ -22,7 +22,7 @@ import {
 import { cacheConfigurationFiles } from "./cacheConfig.js";
 
 // Import tile caching functionality
-import { cacheTiles } from "./cacheTiles.js";
+import { cacheTiles, cacheAlpsTiles, cachePyreneesTiles, cacheJuraNordVosgesTiles, cacheNorwayTiles } from "./cacheTiles.js";
 
 // Import EDL caching functionality
 import { cacheEDLTiles } from "./cacheEdl.js";
@@ -58,10 +58,28 @@ export function setupMenuEventListeners() {
     // Cache configuration button
     document.getElementById('cacheCurrentConfigBtn').addEventListener('click', cacheConfigurationFiles);
     
-    // Cache background map button - now will auto-download the map
+    // Cache background map button - now will auto-download the Alps map
     document.getElementById('cacheBackgroundMapBtn').addEventListener('click', () => {
-        console.log('[Menu] Starting download and caching of background map');
-        cacheTiles();
+        console.log('[Menu] Starting download and caching of Alps background map');
+        cacheAlpsTiles();
+    });
+
+    // Cache Pyrenees map button
+    document.getElementById('cachePyreneesMapBtn').addEventListener('click', () => {
+        console.log('[Menu] Starting download and caching of Pyrenees background map');
+        cachePyreneesTiles();
+    });
+
+    // Cache Jura Nord Vosges map button
+    document.getElementById('cacheJuraNordVosgesMapBtn').addEventListener('click', () => {
+        console.log('[Menu] Starting download and caching of Jura Nord Vosges background map');
+        cacheJuraNordVosgesTiles();
+    });
+
+    // Cache Norway map button
+    document.getElementById('cacheNorwayMapBtn').addEventListener('click', () => {
+        console.log('[Menu] Starting download and caching of Norway background map');
+        cacheNorwayTiles();
     });
 
     // Cache EDL Today tiles button

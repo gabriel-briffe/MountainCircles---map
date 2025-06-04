@@ -8,19 +8,34 @@ import mbtilesHandler from './mbtiles.js';
 // Cache name to use for tiles (must match the one used in sw.js)
 const TILE_CACHE_NAME = 'mountaincircles-tiles-v1';
 
-// URL for the MBTiles file
-const MBTILES_URL = 'https://github.com/gabriel-briffe/MountainCircles---map/releases/download/hillshaded_alps_mbtiles/hillshaded_osm_alps.mbtiles';
+// URLs for the MBTiles files
+const ALPS_MBTILES_URL = 'https://github.com/gabriel-briffe/MountainCircles---map/releases/download/alpes/alpes.mbtiles';
+const PYRENEES_MBTILES_URL = 'https://github.com/gabriel-briffe/MountainCircles---map/releases/download/pyrenees/pyrenees.mbtiles';
+const JURA_NORD_VOSGES_MBTILES_URL = 'https://github.com/gabriel-briffe/MountainCircles---map/releases/download/jura_nord_vosges/jura_nord_vosges.mbtiles';
+const NORWAY_MBTILES_URL = 'https://github.com/gabriel-briffe/MountainCircles---map/releases/download/norway/norway.mbtiles';
 const PROXY_URL = 'https://edl-proxy.gabriel-briffe.workers.dev/?url=';
 
 /**
  * Gets the existing progress UI elements
+ * @param {string} region - 'alps', 'pyrenees', 'jura_nord_vosges', or 'norway' to determine which UI elements to use
  * @returns {Object} Progress UI elements
  */
-function getProgressUI() {
-  const progressElement = document.getElementById('mapCacheProgress');
-  const progressBar = document.getElementById('mapProgressBar');
-  const countElement = document.getElementById('mapCacheCount');
-  const totalElement = document.getElementById('mapTotalTiles');
+function getProgressUI(region = 'alps') {
+  let prefix;
+  if (region === 'pyrenees') {
+    prefix = 'pyreneesMap';
+  } else if (region === 'jura_nord_vosges') {
+    prefix = 'juraNordVosgesMap';
+  } else if (region === 'norway') {
+    prefix = 'norwayMap';
+  } else {
+    prefix = 'map';
+  }
+  
+  const progressElement = document.getElementById(`${prefix}CacheProgress`);
+  const progressBar = document.getElementById(`${prefix}ProgressBar`);
+  const countElement = document.getElementById(`${prefix}CacheCount`);
+  const totalElement = document.getElementById(`${prefix}TotalTiles`);
   
   // Create status text element if it doesn't exist
   let statusElement = progressElement.querySelector('.status-text');
@@ -80,12 +95,13 @@ function selectMBTilesFile() {
 
 /**
  * Downloads an MBTiles file from the specified URL with progress tracking
+ * @param {string} mbtilesUrl - The URL of the MBTiles file to download
  * @param {Function} progressCallback - Callback for download progress updates
  * @returns {Promise<File|null>} Downloaded file or null if failed
  */
-async function downloadMBTilesFile(progressCallback) {
+async function downloadMBTilesFile(mbtilesUrl, progressCallback) {
   try {
-    const proxyMbtilesUrl = `${PROXY_URL}${encodeURIComponent(MBTILES_URL)}`;
+    const proxyMbtilesUrl = `${PROXY_URL}${encodeURIComponent(mbtilesUrl)}`;
     
     // Fetch the file through the proxy
     const response = await fetch(proxyMbtilesUrl);
@@ -138,7 +154,7 @@ async function downloadMBTilesFile(progressCallback) {
     }
     
     // Convert to a file object
-    const fileName = MBTILES_URL.split('/').pop();
+    const fileName = mbtilesUrl.split('/').pop();
     const fileBlob = new Blob([allChunks], { type: 'application/octet-stream' });
     const file = new File([fileBlob], fileName, { type: 'application/octet-stream' });
     
@@ -151,13 +167,15 @@ async function downloadMBTilesFile(progressCallback) {
 
 /**
  * Caches map tiles from an MBTiles file
+ * @param {string} region - 'alps', 'pyrenees', 'jura_nord_vosges', or 'norway' to determine which map to cache
  * @returns {Promise<Object>} Result of the caching operation
  */
-export async function cacheTilesFromMBTiles() {
-  console.log('[DEBUG] Starting MBTiles import process');
+export async function cacheTilesFromMBTiles(region = 'alps') {
+  const mbtilesUrl = region === 'pyrenees' ? PYRENEES_MBTILES_URL : region === 'jura_nord_vosges' ? JURA_NORD_VOSGES_MBTILES_URL : region === 'norway' ? NORWAY_MBTILES_URL : ALPS_MBTILES_URL;
+  console.log(`[DEBUG] Starting MBTiles import process for ${region}`);
   
   // Get existing progress UI
-  const ui = getProgressUI();
+  const ui = getProgressUI(region);
   ui.container.style.display = 'flex';
   ui.progressBar.style.width = '0%';
   ui.statusElement.textContent = 'Preparing to download map file...';
@@ -170,7 +188,7 @@ export async function cacheTilesFromMBTiles() {
   try {
     // Download the MBTiles file
     ui.statusElement.textContent = 'Starting download...';
-    downloadedFile = await downloadMBTilesFile((progress, loaded, total, message) => {
+    downloadedFile = await downloadMBTilesFile(mbtilesUrl, (progress, loaded, total, message) => {
       ui.progressBar.style.width = `${progress * 100}%`;
       ui.statusElement.textContent = message;
     });
@@ -276,9 +294,41 @@ export async function cacheTilesFromMBTiles() {
 }
 
 /**
- * Main cacheTiles function - now automatically downloads the MBTiles file
+ * Main cacheTiles function - now automatically downloads the Alps MBTiles file
  * @returns {Promise<Object>} Result of the caching operation
  */
 export async function cacheTiles() {
-  return cacheTilesFromMBTiles();
+  return cacheTilesFromMBTiles('alps');
+}
+
+/**
+ * Cache Alps map tiles
+ * @returns {Promise<Object>} Result of the caching operation
+ */
+export async function cacheAlpsTiles() {
+  return cacheTilesFromMBTiles('alps');
+}
+
+/**
+ * Cache Pyrenees map tiles
+ * @returns {Promise<Object>} Result of the caching operation
+ */
+export async function cachePyreneesTiles() {
+  return cacheTilesFromMBTiles('pyrenees');
+}
+
+/**
+ * Cache Jura Nord Vosges map tiles
+ * @returns {Promise<Object>} Result of the caching operation
+ */
+export async function cacheJuraNordVosgesTiles() {
+  return cacheTilesFromMBTiles('jura_nord_vosges');
+}
+
+/**
+ * Cache Norway map tiles
+ * @returns {Promise<Object>} Result of the caching operation
+ */
+export async function cacheNorwayTiles() {
+  return cacheTilesFromMBTiles('norway');
 } 

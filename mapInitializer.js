@@ -18,8 +18,6 @@ import { setupGeolocation } from "./location.js";
 import { createEDLLayer } from "./edl.js";
 
 import {
-    MAP_BOUNDS,
-    MAP_MAX_BOUNDS,
     MAP_SETTINGS,
     DEFAULT_TEXT_SIZE,
     DEFAULT_PEAKS_VISIBLE,
@@ -52,8 +50,6 @@ export function initializeMap(containerId, onMapReady) {
     const mapInstance = new maplibregl.Map({
         container: containerId,
         style: style,
-        bounds: MAP_BOUNDS,
-        maxBounds: MAP_MAX_BOUNDS,
         doubleClickZoom: false,
         ...MAP_SETTINGS
     });
@@ -299,6 +295,9 @@ function setupUIElements() {
     // Setup cache buttons visibility
     const cacheButton = document.getElementById('cacheCurrentConfigBtn');
     const mapCacheButton = document.getElementById('cacheBackgroundMapBtn');
+    const pyreneesMapCacheButton = document.getElementById('cachePyreneesMapBtn');
+    const juraNordVosgesMapCacheButton = document.getElementById('cacheJuraNordVosgesMapBtn');
+    const norwayMapCacheButton = document.getElementById('cacheNorwayMapBtn');
     const cacheContainer = cacheButton.parentElement;
     const mapCacheContainer = mapCacheButton.parentElement;
 
