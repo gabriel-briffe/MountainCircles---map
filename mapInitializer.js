@@ -50,6 +50,8 @@ export function initializeMap(containerId, onMapReady) {
     const mapInstance = new maplibregl.Map({
         container: containerId,
         style: style,
+        center: [10.0, 54.0], // Centered on Europe (longitude, latitude)
+        zoom: 4, // Zoom level to show most of Europe
         doubleClickZoom: false,
         ...MAP_SETTINGS
     });
