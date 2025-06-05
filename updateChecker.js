@@ -60,9 +60,21 @@ async function checkAirspaceUpdate() {
     }
     
     try {
+        // Create an AbortController for the timeout
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => {
+            controller.abort();
+        }, 10000); // 10 seconds timeout
+        
         // Make a HEAD request to check headers without downloading the full file
         const proxyAirspaceUrl = `${PROXY_URL}${encodeURIComponent(AIRSPACE_URL)}`;
-        const response = await fetch(proxyAirspaceUrl, { method: 'HEAD' });
+        const response = await fetch(proxyAirspaceUrl, { 
+            method: 'HEAD',
+            signal: controller.signal
+        });
+        
+        // Clear the timeout since the request completed
+        clearTimeout(timeoutId);
         
         if (!response.ok) {
             throw new Error(`Failed to check for updates: ${response.status} ${response.statusText}`);
@@ -98,11 +110,19 @@ async function checkAirspaceUpdate() {
             result: { hasUpdate, currentEtag, storedEtag: storedAirspaceETag }
         });
     } catch (error) {
-        console.error('[UpdateChecker] Error checking for airspace updates:', error);
-        self.postMessage({ 
-            type: 'airspaceUpdateResult', 
-            result: { hasUpdate: false, error: error.message } 
-        });
+        if (error.name === 'AbortError') {
+            console.error('[UpdateChecker] Airspace update check timed out after 10 seconds');
+            self.postMessage({ 
+                type: 'airspaceUpdateResult', 
+                result: { hasUpdate: false, error: 'Timeout after 10 seconds' } 
+            });
+        } else {
+            console.error('[UpdateChecker] Error checking for airspace updates:', error);
+            self.postMessage({ 
+                type: 'airspaceUpdateResult', 
+                result: { hasUpdate: false, error: error.message } 
+            });
+        }
     }
 }
 
