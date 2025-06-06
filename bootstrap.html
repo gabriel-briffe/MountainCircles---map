@@ -200,6 +200,12 @@
                     logInfo("Detected GitHub Pages hosting");
                     return '/MountainCircles---map';
                 }
+
+                // Check for Cloudflare Pages custom domain
+                if (window.location.hostname === 'map.mountain-circles.org') {
+                    logInfo("Detected Cloudflare Pages hosting");
+                    return '';  // Root path for custom domain
+                }
                 
                 // Check for repository name in path as fallback
                 const pathname = window.location.pathname;

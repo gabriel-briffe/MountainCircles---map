@@ -5,7 +5,7 @@
 
 // Import from state management
 import { getCurrentConfig } from "./state.js";
-import { BASE_PATH } from "./config.js";
+import { BASE_PATH, DATA_BASE_PATH } from "./config.js";
 
 // Import from sidebar
 import { updateSidebarConfigButtonStyles } from "./sidebar.js";
@@ -54,7 +54,7 @@ export async function prepareFilesToCache(configDetails) {
         console.debug('[CacheConfig] Preparing files to cache, config details:', configDetails);
         
         const { policy, configPrefix, fullConfig } = configDetails;
-        const mainGeojsonUrl = `${BASE_PATH}/${fullConfig}/aa_${policy}_${configPrefix}.geojson`;
+        const mainGeojsonUrl = `${DATA_BASE_PATH}/${fullConfig}/aa_${policy}_${configPrefix}.geojson`;
         
         console.debug(`[CacheConfig] Main GeoJSON URL: ${mainGeojsonUrl}`);
         
@@ -87,12 +87,15 @@ export async function prepareFilesToCache(configDetails) {
         
         // Create list of files to cache with absolute paths
         const filesToCache = [
-            `${BASE_PATH}/${fullConfig}/aa_${policy}_${configPrefix}.geojson`,
-            `${BASE_PATH}/${fullConfig}/aa_${policy}_${configPrefix}_sectors1.geojson`,
-            ...pointFeatures.map(f => `${BASE_PATH}/${fullConfig}/${f.properties.filename}`)
+            // Policy-level file for quick airfield display
+            `${DATA_BASE_PATH}/${policy}/${policy}.geojson`,
+            // Configuration-specific files
+            `${DATA_BASE_PATH}/${fullConfig}/aa_${policy}_${configPrefix}.geojson`,
+            `${DATA_BASE_PATH}/${fullConfig}/aa_${policy}_${configPrefix}_sectors1.geojson`,
+            ...pointFeatures.map(f => `${DATA_BASE_PATH}/${fullConfig}/${f.properties.filename}`)
         ];
         
-        console.debug(`[CacheConfig] Total files to cache: ${filesToCache.length}`);
+        console.debug(`[CacheConfig] Total files to cache: ${filesToCache.length} (including policy file: ${policy}.geojson)`);
         console.debug(`[CacheConfig] First few files to cache:`, filesToCache.slice(0, Math.min(5, filesToCache.length)));
         
         return filesToCache;

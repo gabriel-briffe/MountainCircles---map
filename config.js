@@ -16,6 +16,11 @@ function getBasePath() {
             if (hostname === 'gabriel-briffe.github.io') {
                 return '/MountainCircles---map';
             }
+
+            // Check for Cloudflare Pages custom domain
+            if (hostname === 'map.mountain-circles.org') {
+                return '';  // Root path for custom domain
+            }
             
             // For local development server
             if (hostname === 'localhost' || hostname === '127.0.0.1') {
@@ -31,8 +36,17 @@ function getBasePath() {
     }
 }
 
+// R2 data storage base URL via custom domain
+function getDataBasePath() {
+    // Use custom domain for clean, fast access without proxy
+    return 'https://data.mountain-circles.org';
+}
+
 // Compute the BASE_PATH
 export const BASE_PATH = getBasePath();
+
+// Compute the DATA_BASE_PATH
+export const DATA_BASE_PATH = getDataBasePath();
 
 // Also set it as a global for use by service worker during cache updates
 if (typeof window !== 'undefined') {
@@ -55,23 +69,29 @@ export const DEFAULT_PASSES_VISIBLE = true;
 
 // Policy configurations
 export const POLICIES = {
-    'alps': [
-        '10-100-250-4200',
-        '20-100-250-4200',
-        '25-100-250-4200',
-        '30-100-250-4200',
+    'alpes': [
+        '10-100-250-4220',
+        '20-100-250-4220',
+        '25-100-250-4220',
+        '30-100-250-4220',
     ],
     'West_alps_with_fields': [
-        '10-100-250-4200',
-        '20-100-250-4200',
-        '25-100-250-4200',
-        '30-100-250-4200',
+        '10-100-250-4220',
+        '20-100-250-4220',
+        '25-100-250-4220',
+        '30-100-250-4220',
+    ],
+    'norway': [
+        '10-100-250-4220',
+        '20-100-250-4220',
+        '25-100-250-4220',
+        '30-100-250-4220',
     ]
 };
 
 // Default policy and configuration
-export const DEFAULT_POLICY = 'alps';
-export const DEFAULT_CONFIG = DEFAULT_POLICY + '/' + '20-100-250-4200';
+export const DEFAULT_POLICY = 'alpes';
+export const DEFAULT_CONFIG = DEFAULT_POLICY + '/' + '20-100-250-4220';
 
 // Map settings
 export const MAP_SETTINGS = {

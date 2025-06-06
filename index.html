@@ -21,6 +21,11 @@
                 return '/MountainCircles---map';
             }
 
+            // Check for Cloudflare Pages custom domain
+            if (window.location.hostname === 'map.mountain-circles.org') {
+                return '';  // Root path for custom domain
+            }
+
             // Check for repository name in path as fallback
             const pathname = window.location.pathname;
             const pathSegments = pathname.split('/').filter(segment => segment);

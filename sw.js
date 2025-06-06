@@ -32,9 +32,14 @@ const BASE_PATH = getBasePath();
 function getBasePath() {
     try {        
         // Check if on GitHub Pages site
-        if (self.location.hostname === 'gabriel-briffe.github.io') {
-            return '/MountainCircles---map';
-        }
+            if (self.location.hostname === 'gabriel-briffe.github.io') {
+        return '/MountainCircles---map';
+    }
+
+    // Check for Cloudflare Pages custom domain
+    if (self.location.hostname === 'map.mountain-circles.org') {
+        return '';  // Root path for custom domain
+    }
         
         // For localhost development server
         if (self.location.hostname === 'localhost' || self.location.hostname === '127.0.0.1') {
@@ -424,11 +429,51 @@ self.addEventListener('fetch', event => {
         return;
     }
 
-    // Skip proxy URLs that aren't the specific airspace one
-    if (url.hostname === 'edl-proxy.gabriel-briffe.workers.dev' && 
-        !event.request.url.includes(encodeURIComponent(AIRSPACE_URL))) {
-        console.log(`SW - Bypassing service worker for proxy URL: ${url.href}`);
-        return; // Do not intercept
+    // Handle R2 data custom domain URLs with cache-first behavior
+    if (url.hostname === 'data.mountain-circles.org') {
+        event.respondWith(
+            (async () => {
+                try {
+                    const cache = await caches.open(CACHE_NAME);
+                    
+                    // Check cache first
+                    const cachedResponse = await cache.match(event.request);
+                    if (cachedResponse) {
+                        console.log(`SW - Serving R2 data from cache: ${event.request.url}`);
+                        return cachedResponse;
+                    }
+                    
+                    // If not in cache, fetch from network
+                    console.log(`SW - Fetching R2 data from network: ${event.request.url}`);
+                    const networkResponse = await fetch(event.request);
+                    
+                    if (networkResponse && networkResponse.status === 200) {
+                        // Cache the response
+                        const responseToCache = networkResponse.clone();
+                        await cache.put(event.request, responseToCache);
+                        console.log(`SW - Cached R2 data: ${event.request.url}`);
+                    }
+                    
+                    return networkResponse;
+                } catch (error) {
+                    console.error(`SW - Error handling R2 data request: ${event.request.url}`, error);
+                    return fetch(event.request);
+                }
+            })()
+        );
+        return;
+    }
+
+    // Handle EDL proxy URLs (only for airspace now)
+    if (url.hostname === 'edl-proxy.gabriel-briffe.workers.dev') {
+        const isAirspaceUrl = event.request.url.includes(encodeURIComponent(AIRSPACE_URL));
+        
+        if (!isAirspaceUrl) {
+            console.log(`SW - Bypassing service worker for non-airspace proxy URL: ${url.href}`);
+            return; // Do not intercept non-airspace proxy URLs
+        }
+        
+        // Continue with existing airspace handling
     }
 
     // Check if this request should be intercepted by the service worker

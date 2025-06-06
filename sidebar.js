@@ -8,7 +8,8 @@ import {
     AIRSPACE_TYPE_ORDER,
     POLICIES,
     CACHE_NAME,
-    BASE_PATH
+    BASE_PATH,
+    DATA_BASE_PATH
 } from "./config.js";
 
 // Import from state management
@@ -483,8 +484,8 @@ export async function isConfigCached(config) {
         
         const policy = configParts[0];
         const configPrefix = configParts[1].split('-').slice(0, 3).join('-');
-        const mainGeojsonUrl = `${BASE_PATH}/${config}/aa_${policy}_${configPrefix}.geojson`;
-        const sectors1GeojsonUrl = `${BASE_PATH}/${config}/aa_${policy}_${configPrefix}_sectors1.geojson`;
+        const mainGeojsonUrl = `${DATA_BASE_PATH}/${config}/aa_${policy}_${configPrefix}.geojson`;
+        const sectors1GeojsonUrl = `${DATA_BASE_PATH}/${config}/aa_${policy}_${configPrefix}_sectors1.geojson`;
         
         
         const cache = await caches.open(CACHE_NAME);
@@ -527,7 +528,7 @@ export async function isConfigCached(config) {
             
             // Check each point file to make sure it's cached
             for (const feature of pointFeatures) {
-                const pointFileUrl = `${BASE_PATH}/${config}/${feature.properties.filename}`;
+                const pointFileUrl = `${DATA_BASE_PATH}/${config}/${feature.properties.filename}`;
                 const response = await cache.match(pointFileUrl);
                 if (!response) {
                     console.debug(`[Sidebar] Point file not cached: ${feature.properties.filename}`);
@@ -559,10 +560,60 @@ export function updateAllLabelSizes() {
 }
 
 /**
- * Switches to a different configuration
- * @param {string} cfg - The configuration to switch to
+ * Preloads a policy-level GeoJSON file (e.g., norway.geojson) for quick airfield display
+ * @param {string} policyName - The policy name (e.g., 'norway')
+ * @returns {Promise<void>}
+ */
+export async function preloadPolicyGeoJSON(policyName) {
+    const policyGeojsonPath = `${DATA_BASE_PATH}/${policyName}/${policyName}.geojson`;
+    
+    console.debug(`[Sidebar] Preloading policy GeoJSON: ${policyGeojsonPath}`);
+    
+    try {
+        const response = await fetch(policyGeojsonPath);
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        
+        // Parse the GeoJSON to validate it and trigger any processing
+        const geojsonData = await response.json();
+        
+        console.debug(`[Sidebar] Successfully preloaded policy GeoJSON with ${geojsonData.features?.length || 0} features`);
+        
+        // Optional: Add a temporary source to cache the data in MapLibre GL
+        // This ensures the data is immediately available when needed
+        const tempSourceId = `policy-preload-${policyName}`;
+        try {
+            getLayerManager().addOrUpdateSource(tempSourceId, {
+                type: 'geojson',
+                data: geojsonData
+            });
+            console.debug(`[Sidebar] Policy GeoJSON cached in temporary source: ${tempSourceId}`);
+        } catch (sourceError) {
+            console.warn(`[Sidebar] Could not cache policy GeoJSON in temporary source: ${sourceError.message}`);
+        }
+        
+    } catch (error) {
+        console.error(`[Sidebar] Failed to preload policy GeoJSON (${policyGeojsonPath}):`, error);
+    }
+}
+
+/**
+ * Switches to a new configuration
+ * @param {string} cfg - The configuration string (e.g., "norway/20-100-250-4220")
  */
 export function switchConfig(cfg) {
+    const newPolicy = cfg.split('/')[0];
+    const currentPolicy = getCurrentPolicy();
+    
+    // Check if policy changed - if so, preload the policy GeoJSON file
+    if (newPolicy !== currentPolicy) {
+        console.debug(`[Sidebar] Policy changed from '${currentPolicy}' to '${newPolicy}' - preloading policy GeoJSON`);
+        preloadPolicyGeoJSON(newPolicy).catch(err => 
+            console.error('Error preloading policy GeoJSON:', err)
+        );
+    }
+    
     // Clear any existing dynamic layers first
     removeDynamicLayers();
     removeGeoJSONLayers();
@@ -875,8 +926,8 @@ export function addGeoJSONSources(configPrefix, policyName) {
     const currentConfig = getCurrentConfig();
     console.debug(`[Sidebar] Current config: ${currentConfig}`);
     
-    const mainGeojsonPath = `${currentConfig}/aa_${policyName}_${configPrefix}.geojson`;
-    const sectorsGeojsonPath = `${currentConfig}/aa_${policyName}_${configPrefix}_sectors1.geojson`;
+    const mainGeojsonPath = `${DATA_BASE_PATH}/${currentConfig}/aa_${policyName}_${configPrefix}.geojson`;
+    const sectorsGeojsonPath = `${DATA_BASE_PATH}/${currentConfig}/aa_${policyName}_${configPrefix}_sectors1.geojson`;
     
     console.debug(`[Sidebar] Main GeoJSON path: ${mainGeojsonPath}`);
     console.debug(`[Sidebar] Sectors GeoJSON path: ${sectorsGeojsonPath}`);

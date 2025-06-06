@@ -7,3 +7,19 @@ zclone.py
 # Ignore the entire tiles folder and all its contents
 tiles/
 tiles/**
+alpes/
+alpes/**
+alps/
+alps/**
+West_alps_with_fields/
+West_alps_with_fields/**
+norway/
+norway/**
+node_modules/
+node_modules/**
+.wrangler/
+package-lock.json
+package.json
+
+# R2 API credentials - never commit these!
+r2_credentials.conf
