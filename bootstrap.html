@@ -157,7 +157,7 @@
         // Add event listener for return button
         returnButton.addEventListener('click', () => {
             const BASE_PATH = getBasePath();
-            window.location.href = `${BASE_PATH}/index.html?updated=${Date.now()}`;
+            window.location.href = `${BASE_PATH}/?updated=${Date.now()}`;
         });
         
         // Logging functions
@@ -289,7 +289,7 @@
             
             // Automatically return to application after 2 seconds
             const BASE_PATH = getBasePath();
-            window.location.href = `${BASE_PATH}/index.html?updated=${Date.now()}`;
+            window.location.href = `${BASE_PATH}/?updated=${Date.now()}`;
         }
         
         // Function to show error UI instead of alert
