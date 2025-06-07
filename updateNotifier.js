@@ -8,7 +8,7 @@ import { BASE_PATH } from './config.js';
 
 // Constants
 const AIRSPACE_ETAG_KEY = 'airspace_etag';
-const APP_CORE_ETAG_KEY = 'app_core_etag';
+const CACHED_VERSION_KEY = 'cached_version';
 
 // Web Worker instance
 let updateWorker = null;
@@ -32,21 +32,20 @@ export function initUpdateNotifier() {
             console.error('[UpdateNotifier] Worker error:', error);
         };
         
-        // Check if we already have ETags in localStorage
+        // Check if we already have version and ETag in localStorage
         const storedAirspaceETag = localStorage.getItem(AIRSPACE_ETAG_KEY);
-        const storedCoreFilesETag = localStorage.getItem(APP_CORE_ETAG_KEY);
+        const cachedVersion = parseInt(localStorage.getItem(CACHED_VERSION_KEY)) || 0;
         
-        // Initialize the worker with stored ETags from localStorage
+        // Initialize the worker with stored values from localStorage
         updateWorker.postMessage({
             type: 'init',
             data: {
                 airspaceETag: storedAirspaceETag,
-                coreFilesETag: storedCoreFilesETag
+                version: cachedVersion
             }
         });
         
-        console.log('[UpdateNotifier] Update checker worker initialized with ETags:', 
-            { airspaceETag: storedAirspaceETag, coreFilesETag: storedCoreFilesETag });
+        console.log('[UpdateNotifier] Update checker worker initialized with version:', cachedVersion);
         
         return true;
     } catch (error) {
@@ -102,28 +101,28 @@ function handleAirspaceUpdateResult(result) {
 }
 
 /**
- * Handle core files update check results
- * @param {Object} result - Result from the core files update check
+ * Handle version update check results
+ * @param {Object} result - Result from the version update check
  */
 function handleCoreFilesUpdateResult(result) {
-    console.log('[UpdateNotifier] Received core files update result:', result);
+    console.log('[UpdateNotifier] Received version update result:', result);
     
     if (result.error) {
-        console.error('[UpdateNotifier] Core files update check error:', result.error);
+        console.error('[UpdateNotifier] Version update check error:', result.error);
         return;
     }
     
     if (result.hasUpdate) {
+        console.log(`[UpdateNotifier] App update available: cached version ${result.cachedVersion}, server version ${result.serverVersion}`);
         // Show notification for available update
         showAppUpdateNotification();
-    } else if (result.filesChecked > 0) {
-        // Don't show up-to-date notification
-        console.log('[UpdateNotifier] App is up to date');
+    } else {
+        console.log(`[UpdateNotifier] App is up to date: version ${result.cachedVersion}`);
     }
 }
 
 /**
- * Check for all updates (airspace and core files)
+ * Check for all updates (airspace and version)
  */
 export function checkForUpdates() {
     if (!updateWorker) {
@@ -131,38 +130,35 @@ export function checkForUpdates() {
         return false;
     }
     
-    // Extract files list
-    const files = extractCoreFilesList();
+    // Check if we have a cached version
+    const cachedVersion = parseInt(localStorage.getItem(CACHED_VERSION_KEY)) || 0;
     
-    // Check if we have core ETags already stored
-    const coreETag = localStorage.getItem(APP_CORE_ETAG_KEY);
-    
-    if (coreETag) {
-        // We have ETags, run the check immediately
-        console.log('[UpdateNotifier] Found core ETags, running update check immediately');
-        return performUpdateCheck(files, BASE_PATH);
+    if (cachedVersion > 0) {
+        // We have a version, run the check immediately
+        console.log('[UpdateNotifier] Found cached version, running update check immediately');
+        return performUpdateCheck(BASE_PATH);
     } else {
-        // No ETags yet, set up a one-time listener for the etagsReceived event
-        console.log('[UpdateNotifier] No core ETags found, waiting for ETags...');
+        // No version yet, set up a one-time listener for the versionReceived event
+        console.log('[UpdateNotifier] No cached version found, waiting for version...');
         
         // Set up a one-time listener
-        window.addEventListener('etagsReceived', () => {
-            console.log('[UpdateNotifier] ETags received, running update check now');
+        window.addEventListener('versionReceived', () => {
+            console.log('[UpdateNotifier] Version received, running update check now');
             
-            // Re-read the ETag from localStorage
-            const updatedCoreETag = localStorage.getItem(APP_CORE_ETAG_KEY);
+            // Re-read the version from localStorage
+            const updatedVersion = parseInt(localStorage.getItem(CACHED_VERSION_KEY)) || 0;
             
-            // Update the worker with the new ETag
+            // Update the worker with the new version
             updateWorker.postMessage({
                 type: 'init',
                 data: {
                     airspaceETag: localStorage.getItem(AIRSPACE_ETAG_KEY),
-                    coreFilesETag: updatedCoreETag
+                    version: updatedVersion
                 }
             });
             
             // Perform the check
-            performUpdateCheck(files, BASE_PATH);
+            performUpdateCheck(BASE_PATH);
         }, { once: true });
         
         return true;
@@ -171,16 +167,14 @@ export function checkForUpdates() {
 
 /**
  * Actually perform the update check
- * @param {Array} files - Files to check
  * @param {string} basePath - Base path
  * @returns {boolean} Success
  */
-function performUpdateCheck(files, basePath) {
+function performUpdateCheck(basePath) {
     // Send message to worker to check both types of updates
     updateWorker.postMessage({
         type: 'checkAllUpdates',
         data: {
-            files: files,
             basePath: basePath
         }
     });
@@ -189,64 +183,19 @@ function performUpdateCheck(files, basePath) {
 }
 
 /**
- * Extract list of core files to check for updates
- * @returns {Array} List of core files
+ * Receive cached version from service worker
+ * @param {Object} data - Version data from service worker
  */
-function extractCoreFilesList() {
-    // This should match INITIAL_CACHE_RESOURCES in sw.js
-    // Excluding external resources
-    return [
-        // HTML files
-        'index.html', // Special case: will be fetched from root '/' but treated as index.html
-        'manifest.json',
-        
-        // CSS files
-        'styles.css',
-        'airspacePopup.css',
-        'installPrompt.css',
-        'mapDock.css',
-        'menu.css',
-        'navbox.css',
-        'parameters.css',
-        'progressBar.css',
-        'secondaryDock.css',
-        'sidebar.css',
-        
-        // JS files
-        'airspace.js',
-        'airspaceStyle.js',
-        'cacheConfig.js',
-        'cacheEdl.js',
-        'cacheTiles.js',
-        'circlesUI.js',
-        'config.js',
-        'dock.js',
-        'edl.js',
-        'edlUI.js',
-        'igc.js',
-        'init.js',
-        'install.js',
-        'LayerManager.js',
-        'layers.js',
-        'layerStyles.js',
-        'location.js',
-        'main.js',
-        'map.js',
-        'mapInitializer.js',
-        'mappings.js',
-        'mbtiles.js',
-        'menu.js',
-        'navboxManager.js',
-        'notification.js',
-        'sidebar.js',
-        'state.js',
-        'sw.js',
-        'toggleManager.js',
-        'tracking.js',
-        'utils.js',
-        'updateChecker.js',
-        'updateNotifier.js'
-    ];
+export function receiveCachedVersion(data) {
+    const version = data.version;
+    
+    // Store the version in localStorage
+    localStorage.setItem(CACHED_VERSION_KEY, version.toString());
+    
+    console.log(`[DEBUG] Version: Storing new version in localStorage. New=${version}`);
+    
+    // Dispatch event to notify that version has been received
+    window.dispatchEvent(new CustomEvent('versionReceived'));
 }
 
 /**

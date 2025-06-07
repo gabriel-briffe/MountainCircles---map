@@ -110,6 +110,7 @@ const EXTERNAL_RESOURCES = [
 const INITIAL_CACHE_RESOURCES = [
     // HTML files
     `${BASE_PATH}/`,
+    `${BASE_PATH}/version.txt`,
     `${BASE_PATH}/manifest.json`,
     
     // CSS files
@@ -214,128 +215,56 @@ self.addEventListener('activate', event => {
     // Claim clients immediately
     self.clients.claim();
     
-    // Collect ETags for core files and send to clients
-    event.waitUntil(collectAndSendCoreETags());
+    // Get cached version and send to clients
+    event.waitUntil(getCachedVersionAndSend());
 });
 
 /**
- * Collect and combine ETags for all core files
+ * Get cached version and send to clients
  */
-async function collectAndSendCoreETags() {
+async function getCachedVersionAndSend() {
     try {
         // Get client references
         const clients = await self.clients.matchAll();
         if (clients.length === 0) {
-            console.log('SW - No clients available to receive ETags');
+            console.log('SW - No clients available to receive version');
             return;
         }
         
-        console.log('SW - Collecting ETags for core files');
+        console.log('SW - Getting cached version');
         
-        // Get all the cached resource requests
+        // Get the cached version.txt
         const cache = await caches.open(CACHE_NAME);
+        const versionUrl = `${BASE_PATH}/version.txt`;
+        const response = await cache.match(versionUrl);
         
-        // Get all cached requests
-        const cachedRequests = await cache.keys();
-        
-        // Debug: Log all cached URLs to see what we have
-        console.log('SW - All cached URLs:');
-        cachedRequests.forEach(request => {
-            const url = new URL(request.url);
-            console.log(`SW - Cached: ${url.pathname}`);
-        });
-        
-        // Filter to only include files in the core files directory and root page
-        const coreRequests = cachedRequests.filter(request => {
-            const url = new URL(request.url);
-            const matches = url.pathname.startsWith(CORE_FILES_DIR) || 
-                           url.pathname === `${BASE_PATH}/` ||
-                           url.pathname === '/';
-            
-            if (matches) {
-                console.log(`SW - Including in ETag collection: ${url.pathname}`);
-            }
-            
-            return matches;
-        });
-        
-        console.log(`SW - Found ${coreRequests.length} core files in directory to collect ETags for`);
-        
-        // Process files in batches to prevent overwhelming the browser
-        const etags = [];
-        const batchSize = 10;
-        
-        for (let i = 0; i < coreRequests.length; i += batchSize) {
-            const batch = coreRequests.slice(i, i + batchSize);
-            
-            await Promise.all(batch.map(async (request) => {
-                try {
-                    const response = await cache.match(request);
-                    
-                    if (!response) {
-                        return;
-                    }
-                    
-                    // Extract filename from URL
-                    const url = new URL(request.url);
-                    let filename;
-                    if (url.pathname.startsWith(CORE_FILES_DIR)) {
-                        filename = url.pathname.replace(CORE_FILES_DIR, '');
-                    } else if (url.pathname === `${BASE_PATH}/` || url.pathname === '/') {
-                        // For root page, use index.html as identifier
-                        filename = 'index.html';
-                    } else {
-                        // For other non-core files, use just the filename
-                        filename = url.pathname.split('/').pop();
-                    }
-                    
-                    // Prioritize Last-Modified header
-                    const lastModified = response.headers.get('Last-Modified');
-                    if (lastModified) {
-                        etags.push(`${filename}:last-modified:${lastModified}`);
-                        return;
-                    }
-                    
-                    // Fallbacks in order of preference
-                    const etag = response.headers.get('ETag');
-                    if (etag) {
-                        etags.push(`${filename}:${etag}`);
-                        return;
-                    }
-                    
-                    const contentLength = response.headers.get('Content-Length');
-                    if (contentLength) {
-                        etags.push(`${filename}:size:${contentLength}`);
-                    }
-                } catch (error) {
-                    console.error(`SW - Error processing file ${request.url}:`, error);
-                }
-            }));
-        }
-        
-        if (etags.length === 0) {
-            console.warn('SW - No ETags collected for core files');
+        if (!response) {
+            console.warn('SW - No cached version.txt found');
             return;
         }
         
-        // Create a combined ETag string with all collected ETags
-        const combinedETag = etags.sort().join('|');
-        console.log(`SW - Collected ${etags.length} ETags, created combined value`);
+        const versionText = await response.text();
+        const cachedVersion = parseInt(versionText.trim());
         
-        // Broadcast ETags to all clients in one operation
-        const allClients = await self.clients.matchAll();
+        if (isNaN(cachedVersion)) {
+            console.warn('SW - Invalid version number in cached version.txt:', versionText);
+            return;
+        }
+        
+        console.log(`SW - Cached version: ${cachedVersion}`);
+        
+        // Send version to all clients
         const message = {
-            type: 'coreFilesETags',
+            type: 'cachedVersion',
             data: { 
-                combinedETag,
-                replaceExisting: true // Flag to indicate this should replace existing ETags, not append
+                version: cachedVersion
             }
         };
         
-        allClients.forEach(client => client.postMessage(message));
-        console.log(`SW - Sending core ETags to ${allClients.length} clients`);
+        clients.forEach(client => client.postMessage(message));
+        console.log(`SW - Sending cached version ${cachedVersion} to ${clients.length} clients`);
     } catch (error) {
-        console.error('SW - Error collecting and sending core ETags:', error);
+        console.error('SW - Error getting cached version:', error);
     }
 }
 
@@ -521,6 +450,12 @@ self.addEventListener('fetch', event => {
     event.respondWith(
         (async () => {
             try {
+                // Special handling for version.txt update checks - bypass cache when cache-busting is used
+                if (url.pathname.endsWith('/version.txt') && url.searchParams.has('check')) {
+                    console.log(`SW - Bypassing cache for version check: ${event.request.url}`);
+                    return fetch(event.request);
+                }
+                
                 const cache = await caches.open(CACHE_NAME);
                 
                 // Convert the requested URL to a cache URL for core files

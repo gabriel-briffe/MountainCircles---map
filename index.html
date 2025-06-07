@@ -426,22 +426,22 @@
                     }
                 } else if (event.data.type === 'loadWarning' || event.data.type === 'loadError') {
                     alert(event.data.message);
-                } else if (event.data.type === 'coreFilesETags') {
-                    // Store ETags directly in localStorage and trigger update check
-                    console.log('Received core files ETags from service worker');
-                    const { combinedETag } = event.data.data;
+                } else if (event.data.type === 'cachedVersion') {
+                    // Store version directly in localStorage and trigger update check
+                    console.log('Received cached version from service worker');
+                    const { version } = event.data.data;
                     
-                    if (combinedETag) {
-                        // Remove old ETags first to prevent duplication
+                    if (version !== undefined) {
+                        // Remove old ETag first to prevent confusion
                         localStorage.removeItem('app_core_etag');
                         
-                        // Then set the new value
-                        localStorage.setItem('app_core_etag', combinedETag);
-                        console.log(`[DEBUG] Core ETags: Storing new ETags in localStorage. New=${combinedETag}`);
+                        // Store the new version
+                        localStorage.setItem('cached_version', version.toString());
+                        console.log(`[DEBUG] Version: Storing new version in localStorage. New=${version}`);
                         
-                        // Trigger update check now that we have ETags
+                        // Trigger update check now that we have version
                         // Dispatch a custom event that updateNotifier.js can listen for
-                        window.dispatchEvent(new CustomEvent('etagsReceived'));
+                        window.dispatchEvent(new CustomEvent('versionReceived'));
                     }
                 } else if (event.data.type === 'cacheStart') {
                     // Show the progress bar at the start of caching
