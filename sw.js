@@ -238,12 +238,25 @@ async function collectAndSendCoreETags() {
         // Get all cached requests
         const cachedRequests = await cache.keys();
         
+        // Debug: Log all cached URLs to see what we have
+        console.log('SW - All cached URLs:');
+        cachedRequests.forEach(request => {
+            const url = new URL(request.url);
+            console.log(`SW - Cached: ${url.pathname}`);
+        });
+        
         // Filter to only include files in the core files directory and root page
         const coreRequests = cachedRequests.filter(request => {
             const url = new URL(request.url);
-            return url.pathname.startsWith(CORE_FILES_DIR) || 
-                   url.pathname === `${BASE_PATH}/` ||
-                   url.pathname === '/';
+            const matches = url.pathname.startsWith(CORE_FILES_DIR) || 
+                           url.pathname === `${BASE_PATH}/` ||
+                           url.pathname === '/';
+            
+            if (matches) {
+                console.log(`SW - Including in ETag collection: ${url.pathname}`);
+            }
+            
+            return matches;
         });
         
         console.log(`SW - Found ${coreRequests.length} core files in directory to collect ETags for`);

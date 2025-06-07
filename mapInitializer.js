@@ -313,8 +313,8 @@ function setupUIElements() {
     });
 
     // Show cache options always (removed mobile/standalone restriction)
-    cacheContainer.style.display = 'flex';
-    mapCacheContainer.style.display = 'flex';
+        cacheContainer.style.display = 'flex';
+        mapCacheContainer.style.display = 'flex';
     
     // No longer hiding zoom buttons here, as they will now only be created on desktop
     
