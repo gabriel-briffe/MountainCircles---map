@@ -85,6 +85,11 @@ function getCacheUrl(url) {
         return `${EXTERNAL_RESOURCES_DIR}${hostPath}_${pathPart}`;
     }
     
+    // Data files from data.mountain-circles.org - preserve original URL for cache consistency
+    if (urlObj.hostname === 'data.mountain-circles.org') {
+        return urlString;
+    }
+    
     // All other resources (including proxy) - use original path to avoid translation issues
     return pathname;
 }
