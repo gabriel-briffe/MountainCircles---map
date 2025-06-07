@@ -402,18 +402,48 @@ self.addEventListener('fetch', event => {
                     
                     // If not in cache, fetch from network
                     console.log(`SW - Fetching R2 data from network: ${event.request.url}`);
+                    
+                    // Send fetchStart message to trigger spinner
+                    sendMessageToClients({
+                        type: 'fetchStart',
+                        url: event.request.url
+                    });
+                    
                     const networkResponse = await fetch(event.request);
                     
                     if (networkResponse && networkResponse.status === 200) {
-                        // Cache the response
+                        // Cache the response (this reads the full response body)
                         const responseToCache = networkResponse.clone();
                         await cache.put(event.request, responseToCache);
                         console.log(`SW - Cached R2 data: ${event.request.url}`);
+                        
+                        // Send fetchComplete message after full download is cached
+                        sendMessageToClients({
+                            type: 'fetchComplete',
+                            url: event.request.url,
+                            success: true
+                        });
+                    } else {
+                        // Send fetchComplete message for non-200 responses
+                        sendMessageToClients({
+                            type: 'fetchComplete',
+                            url: event.request.url,
+                            success: false
+                        });
                     }
                     
                     return networkResponse;
                 } catch (error) {
                     console.error(`SW - Error handling R2 data request: ${event.request.url}`, error);
+                    
+                    // Send fetchComplete message for error case
+                    sendMessageToClients({
+                        type: 'fetchComplete',
+                        url: event.request.url,
+                        success: false,
+                        error: error.message
+                    });
+                    
                     return fetch(event.request);
                 }
             })()
@@ -470,23 +500,52 @@ self.addEventListener('fetch', event => {
                 
                 // If not in cache, try to fetch from network using original URL
                 console.log(`SW - Fetching from network using original URL: ${event.request.url}`);
+                
+                // Send fetchStart message to trigger spinner
+                sendMessageToClients({
+                    type: 'fetchStart',
+                    url: event.request.url
+                });
+                
                 const networkResponse = await fetch(event.request);
                 
                 // Don't cache opaque responses or errors
                 if (!networkResponse || networkResponse.status !== 200 || networkResponse.type === 'opaque') {
+                    // Send fetchComplete message for failed/opaque responses
+                    sendMessageToClients({
+                        type: 'fetchComplete',
+                        url: event.request.url,
+                        success: false
+                    });
                     return networkResponse;
                 }
                 
-                // Cache the response with the directory structure
+                // Cache the response with the directory structure (this reads the full response body)
                 const responseToCache = networkResponse.clone();
                 console.log(`SW - Caching response as: ${cacheUrl}`);
                 
                 // Store in cache with directory structure
                 await cache.put(new Request(cacheUrl), responseToCache);
                 
+                // Send fetchComplete message after full download is cached
+                sendMessageToClients({
+                    type: 'fetchComplete',
+                    url: event.request.url,
+                    success: true
+                });
+                
                 return networkResponse;
             } catch (error) {
                 console.error(`SW - Fetch error for ${event.request.url}:`, error);
+                
+                // Send fetchComplete message for error case
+                sendMessageToClients({
+                    type: 'fetchComplete',
+                    url: event.request.url,
+                    success: false,
+                    error: error.message
+                });
+                
                 // If everything fails, just try to fetch from network and return whatever we get
                 return fetch(event.request);
             }
