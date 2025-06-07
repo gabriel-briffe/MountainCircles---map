@@ -110,7 +110,6 @@ const EXTERNAL_RESOURCES = [
 const INITIAL_CACHE_RESOURCES = [
     // HTML files
     `${BASE_PATH}/`,
-    `${BASE_PATH}/index.html`,
     `${BASE_PATH}/manifest.json`,
     
     // CSS files
@@ -239,10 +238,12 @@ async function collectAndSendCoreETags() {
         // Get all cached requests
         const cachedRequests = await cache.keys();
         
-        // Filter to only include files in the core files directory
+        // Filter to only include files in the core files directory and root page
         const coreRequests = cachedRequests.filter(request => {
             const url = new URL(request.url);
-            return url.pathname.startsWith(CORE_FILES_DIR);
+            return url.pathname.startsWith(CORE_FILES_DIR) || 
+                   url.pathname === `${BASE_PATH}/` ||
+                   url.pathname === '/';
         });
         
         console.log(`SW - Found ${coreRequests.length} core files in directory to collect ETags for`);
@@ -264,7 +265,16 @@ async function collectAndSendCoreETags() {
                     
                     // Extract filename from URL
                     const url = new URL(request.url);
-                    const filename = url.pathname.replace(CORE_FILES_DIR, '');
+                    let filename;
+                    if (url.pathname.startsWith(CORE_FILES_DIR)) {
+                        filename = url.pathname.replace(CORE_FILES_DIR, '');
+                    } else if (url.pathname === `${BASE_PATH}/` || url.pathname === '/') {
+                        // For root page, use index.html as identifier
+                        filename = 'index.html';
+                    } else {
+                        // For other non-core files, use just the filename
+                        filename = url.pathname.split('/').pop();
+                    }
                     
                     // Prioritize Last-Modified header
                     const lastModified = response.headers.get('Last-Modified');

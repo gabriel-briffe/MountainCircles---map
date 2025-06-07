@@ -197,7 +197,7 @@ function extractCoreFilesList() {
     // Excluding external resources
     return [
         // HTML files
-        'index.html',
+        // Note: index.html is served at root '/' by Cloudflare Pages, not as '/index.html'
         'manifest.json',
         
         // CSS files
