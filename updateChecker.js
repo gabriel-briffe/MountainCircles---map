@@ -382,8 +382,14 @@ function getPreferredVersionIdentifier(response, filename) {
         return `${filename}:size:${contentLength}`;
     }
     
-    // Last resort
-    return `${filename}:time:${Date.now()}`;
+    // Last resort - use content length + response date if available, otherwise a stable fallback
+    const responseDate = response.headers.get('Date');
+    if (responseDate) {
+        return `${filename}:date:${responseDate}`;
+    }
+    
+    // If no headers available, use a stable identifier indicating no versioning
+    return `${filename}:no-version:stable`;
 }
 
 /**
