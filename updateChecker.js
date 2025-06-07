@@ -157,7 +157,13 @@ async function checkCoreFilesUpdate(files, basePath) {
             // Process each file in the chunk
             await Promise.all(chunk.map(async (file) => {
                 try {
-                    const fullPath = `${basePath}/${file}`;
+                    // Special handling for index.html - fetch from root instead
+                    let fullPath;
+                    if (file === 'index.html') {
+                        fullPath = basePath === '' ? '/' : `${basePath}/`;
+                    } else {
+                        fullPath = `${basePath}/${file}`;
+                    }
                     
                     // Add a cache-busting parameter to avoid getting cached responses
                     const url = new URL(fullPath, self.location.origin);
