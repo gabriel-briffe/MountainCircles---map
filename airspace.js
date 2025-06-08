@@ -196,11 +196,12 @@ export function toggleFeatureHighlight(feature, index) {
     const barRefs = getBarRefs();
     const highlightedFeatureKey = getHighlightedFeatureKey();
     
-    // Use AI field (UUID) instead of AN field (name) for unique identification
-    const featureKey = feature.properties.AI || feature.properties.AN;
+    // Use AN field (name) for identification instead of AI field (UUID)
+    const featureName = feature.properties.AN || feature.properties.type;
+    const featureId = feature.properties.AI;
     
     // Check if the clicked feature is already highlighted
-    if (highlightedFeatureKey === featureKey) {
+    if (highlightedFeatureKey === featureName) {
         // If already highlighted, just clear the highlight
         clearHighlight();
         return;
@@ -209,8 +210,8 @@ export function toggleFeatureHighlight(feature, index) {
     // Clear any existing highlights
     clearHighlight();
     
-    // Set the highlighted feature key in state using AI field
-    setHighlightedFeatureKey(featureKey);
+    // Set the highlighted feature key in state using AN field (name)
+    setHighlightedFeatureKey(featureName);
     
     // Highlight the section and bar
     const section = sectionRefs.get(index);
@@ -225,15 +226,28 @@ export function toggleFeatureHighlight(feature, index) {
         bar.classList.add('highlighted-bar');
     }
     
-    // Get the complete feature from our stored data using AI field for unique identification
+    // Get the complete feature from our stored data using name-based search with ID preference
     const airspaceData = getAirspaceData();
     if (airspaceData && airspaceData.features) {
-        const completeFeature = airspaceData.features.find(f => 
-            f.properties.AI === feature.properties.AI || 
-            (!feature.properties.AI && f.properties.AN === feature.properties.AN)
-        );
+        let completeFeature = null;
+        
+        // First, try to find airspace by name AND matching ID
+        if (featureId) {
+            completeFeature = airspaceData.features.find(f => 
+                (f.properties.AN === featureName || f.properties.type === featureName) && 
+                f.properties.AI === featureId
+            );
+        }
+        
+        // If not found by name + ID, find by name only (take first match)
+        if (!completeFeature) {
+            completeFeature = airspaceData.features.find(f => 
+                f.properties.AN === featureName || f.properties.type === featureName
+            );
+        }
         
         if (completeFeature) {
+            console.log(`Highlighting airspace by name: "${featureName}", ID: ${featureId || 'none'}, found ID: ${completeFeature.properties.AI || 'none'}`);
             getLayerManager().addOrUpdateSource('highlight-airspace-source', {
                 type: 'geojson',
                 data: {
@@ -241,6 +255,8 @@ export function toggleFeatureHighlight(feature, index) {
                     features: [completeFeature]
                 }
             });
+        } else {
+            console.warn(`No airspace found with name: "${featureName}"`);
         }
     }
 }
