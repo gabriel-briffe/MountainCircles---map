@@ -247,32 +247,37 @@ async function downloadAndExtractMBTiles(urlInfo, progressCallback) {
 
 /**
  * Test the EDL proxy and URL construction to ensure we're getting valid responses
+ * @param {boolean} useYesterdayForecast - Whether to test with yesterday's forecast
  * @returns {Promise<boolean>} Success status
  */
-async function testEDLProxy() {
+async function testEDLProxy(useYesterdayForecast = false) {
   try {
-    console.log('[edlCache] Testing EDL proxy with new GitHub URL format...');
+    console.log(`[edlCache] Testing EDL proxy with new GitHub URL format... (useYesterdayForecast: ${useYesterdayForecast})`);
     
-    // Create a test URL using today's UTC date
+    // Create a test URL using UTC date
     const currentDate = new Date();
     const hour = 15; // Use 15 as default test hour
     const pressure = 700; // Use 700 hPa as default test pressure
     
     // Create a Date object with proper UTC time
-    const utcDate = new Date(Date.UTC(currentDate.getUTCFullYear(), currentDate.getUTCMonth(), currentDate.getUTCDate()));
+    const utcToday = new Date(Date.UTC(currentDate.getUTCFullYear(), currentDate.getUTCMonth(), currentDate.getUTCDate()));
     
-    // Forecast date is today
-    const forecastDate = utcDate.toISOString().slice(0, 10);
+    // Get the forecast date (today in UTC or yesterday if useYesterdayForecast is true)
+    const forecastDate = useYesterdayForecast 
+      ? new Date(utcToday.getTime() - 86400000)  // Yesterday's forecast
+      : utcToday;                                // Today's forecast
     
-    // Target date is also today for the test
-    const targetDate = forecastDate;
+    const forecastDateStr = forecastDate.toISOString().slice(0, 10);
     
-    console.log(`[MODIFIED] cacheEdl.js - Using forecast date: ${forecastDate}, target date: ${targetDate} for testing`);
+    // Target date is today for the test (we're testing forecast for today)
+    const targetDateStr = utcToday.toISOString().slice(0, 10);
+    
+    console.log(`[MODIFIED] cacheEdl.js - Using forecast date: ${forecastDateStr}, target date: ${targetDateStr} for testing`);
     
     // Format using new URL pattern:
     // arome_vv_forecastDate_forDate_forHour_for_pressure.mbtiles
-    const releaseTag = `arome-${forecastDate}`;
-    const filename = `arome_vv_${forecastDate}_${targetDate}_${hour.toString().padStart(2, '0')}_${pressure}.mbtiles`;
+    const releaseTag = `arome-${forecastDateStr}`;
+    const filename = `arome_vv_${forecastDateStr}_${targetDateStr}_${hour.toString().padStart(2, '0')}_${pressure}.mbtiles`;
     const testUrl = `${mbtilesURLBase}${releaseTag}/${filename}`;
     
     console.log(`[MODIFIED] cacheEdl.js - Test URL with new format: ${testUrl}`);
@@ -502,7 +507,7 @@ export async function cacheEDLTiles(isTomorrow = false, useYesterdayForecast = f
   try {
     // First test the proxy
     ui.statusElement.textContent = 'Testing EDL proxy connection...';
-    const proxyTestResult = await testEDLProxy();
+    const proxyTestResult = await testEDLProxy(useYesterdayForecast);
     
     if (!proxyTestResult) {
       throw new Error('EDL proxy test failed. The server may be unavailable or not returning proper MBTiles files.');
