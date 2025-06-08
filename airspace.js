@@ -200,8 +200,11 @@ export function toggleFeatureHighlight(feature, index) {
     const featureName = feature.properties.AN || feature.properties.type;
     const featureId = feature.properties.AI;
     
-    // Check if the clicked feature is already highlighted
-    if (highlightedFeatureKey === featureName) {
+    // Create a unique key that combines name and ID for proper comparison
+    const currentFeatureKey = featureId ? `${featureName}|${featureId}` : featureName;
+    
+    // Check if the clicked feature is already highlighted using same name+ID logic
+    if (highlightedFeatureKey === currentFeatureKey) {
         // If already highlighted, just clear the highlight
         clearHighlight();
         return;
@@ -210,8 +213,8 @@ export function toggleFeatureHighlight(feature, index) {
     // Clear any existing highlights
     clearHighlight();
     
-    // Set the highlighted feature key in state using AN field (name)
-    setHighlightedFeatureKey(featureName);
+    // Set the highlighted feature key in state using combined name+ID
+    setHighlightedFeatureKey(currentFeatureKey);
     
     // Highlight the section and bar
     const section = sectionRefs.get(index);
