@@ -17,6 +17,8 @@ norway/
 norway/**
 Pyrenees/
 Pyrenees/**
+vosges/
+vosges/**
 node_modules/
 node_modules/**
 .wrangler/
