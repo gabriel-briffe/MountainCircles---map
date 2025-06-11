@@ -7,23 +7,14 @@ const style = {
     "name": "Custom Map",
     "glyphs": "https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf",
     "sources": {
-        "custom-tiles": {
+        "unified-tiles": {
             "type": "raster",
             "tiles": [
-                `${BASE_PATH}/tiles/{z}/{x}/{y}.png`  // Relative path to your tiles folder on GitHub Pages
-            ],
-            "tileSize": 256,
-            "maxzoom": 12,  // This ensures that even if you zoom past level 12, the map uses these tiles.
-            "attribution": "Map data © OpenStreetMap contributors + Alos topographic data"
-        },
-        "osm-fallback": {
-            "type": "raster",
-            "tiles": [
-                "https://tile.openstreetmap.org/{z}/{x}/{y}.png"
+                "custom://tiles/{z}/{x}/{y}"  // Custom protocol that checks IndexedDB first, then OSM fallback
             ],
             "tileSize": 256,
             "maxzoom": 19,
-            "attribution": "© OpenStreetMap contributors"
+            "attribution": "Map data © OpenStreetMap contributors + hillshade generated from srtm3"
         },
         "airspace": {
             "type": "geojson",
@@ -35,17 +26,11 @@ const style = {
     },
     "layers": [
         {
-            "id": "osm-fallback",
+            "id": "unified-tiles",
             "type": "raster",
-            "source": "osm-fallback",
-            "minzoom": 0
-        },
-        {
-            "id": "custom-tiles",
-            "type": "raster",
-            "source": "custom-tiles",
+            "source": "unified-tiles",
             "minzoom": 0,
-            "maxzoom": 12   // Hide this layer beyond zoom 12 to reveal OSM tiles
+            "maxzoom": 19
         },
         {
             "id": "airspace-fill",

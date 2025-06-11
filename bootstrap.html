@@ -156,8 +156,7 @@
         
         // Add event listener for return button
         returnButton.addEventListener('click', () => {
-            const BASE_PATH = getBasePath();
-            window.location.href = `${BASE_PATH}/?updated=${Date.now()}`;
+            window.location.href = getReturnURL();
         });
         
         // Logging functions
@@ -225,6 +224,22 @@
                 return '';
             }
         }
+
+        // Helper function to get the redirect URL for returning to the app
+        function getReturnURL() {
+            const BASE_PATH = getBasePath();
+            const timestamp = Date.now();
+            
+            // For localhost, redirect to index.html
+            if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+                logInfo("Redirecting to index.html for localhost");
+                return `${BASE_PATH}/index.html?updated=${timestamp}`;
+            }
+            
+            // For production (Cloudflare hosting), redirect to root since entry point is root directory
+            logInfo("Redirecting to root for production hosting");
+            return `${BASE_PATH}/?updated=${timestamp}`;
+        }
         
         // Get core files list - similar to coreFiles.js
         async function getCoreFiles(basePath) {
@@ -274,8 +289,10 @@
                 `${basePath}/sidebar.js`,
                 `${basePath}/state.js`,
                 `${basePath}/sw.js`,
+                `${basePath}/tileProtocol.js`,
                 `${basePath}/toggleManager.js`,
                 `${basePath}/tracking.js`,
+                `${basePath}/unifiedTiles.js`,
                 `${basePath}/updateChecker.js`,
                 `${basePath}/updateNotifier.js`,
                 `${basePath}/utils.js`,
@@ -288,8 +305,7 @@
             // returnButton.style.display = 'block';
             
             // Automatically return to application after 2 seconds
-            const BASE_PATH = getBasePath();
-            window.location.href = `${BASE_PATH}/?updated=${Date.now()}`;
+            window.location.href = getReturnURL();
         }
         
         // Function to show error UI instead of alert
@@ -418,40 +434,32 @@
             }
             updateProgress(40);
             
-            // Clear EDL tiles from cache
-            if (!('caches' in window)) {
-                logWarning("Cache API not available, skipping EDL cache cleaning");
+            // Clear EDL tiles from IndexedDB
+            if (!('indexedDB' in window)) {
+                logWarning("IndexedDB not available, skipping EDL cache cleaning");
                 updateProgress(100);
                 return false;
             }
             
             try {
-                const cache = await caches.open('mountaincircles-tiles-v1');
-                const requests = await cache.keys();
+                // Delete the entire EDL IndexedDB
+                await new Promise((resolve, reject) => {
+                    const deleteRequest = indexedDB.deleteDatabase('mountaincircles-edl');
+                    deleteRequest.onsuccess = () => {
+                        logSuccess("Deleted EDL IndexedDB successfully");
+                        resolve();
+                    };
+                    deleteRequest.onerror = () => {
+                        logError(`Error deleting EDL database: ${deleteRequest.error}`);
+                        reject(deleteRequest.error);
+                    };
+                    deleteRequest.onblocked = () => {
+                        logWarning("EDL database deletion blocked, trying to continue...");
+                        // Don't wait indefinitely, just resolve
+                        setTimeout(() => resolve(), 2000);
+                    };
+                });
                 
-                // Filter for EDL tiles
-                const edlRequests = requests.filter(req => 
-                    req.url.includes('/edl_tiles/')
-                );
-                
-                logInfo(`Found ${edlRequests.length} EDL tiles to remove from cache`);
-                updateProgress(60);
-                
-                // Delete each EDL tile from cache
-                let deletedCount = 0;
-                for (const request of edlRequests) {
-                    await cache.delete(request);
-                    deletedCount++;
-                    
-                    // Update progress every 50 files
-                    if (deletedCount % 50 === 0) {
-                        const progress = 60 + (deletedCount / edlRequests.length) * 40;
-                        updateProgress(Math.min(99, progress));
-                        logInfo(`Deleted ${deletedCount}/${edlRequests.length} EDL tiles`);
-                    }
-                }
-                
-                logSuccess(`Deleted ${deletedCount} EDL tiles from cache`);
                 updateProgress(100);
                 return true;
             } catch (error) {

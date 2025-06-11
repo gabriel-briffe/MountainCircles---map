@@ -147,6 +147,8 @@ const INITIAL_CACHE_RESOURCES = [
     `${BASE_PATH}/mapInitializer.js`,
     `${BASE_PATH}/mappings.js`,
     `${BASE_PATH}/mbtiles.js`,
+    `${BASE_PATH}/unifiedTileStorage.js`,
+    `${BASE_PATH}/tileProtocol.js`,
     `${BASE_PATH}/menu.js`,
     `${BASE_PATH}/navboxManager.js`,
     `${BASE_PATH}/notification.js`,
@@ -275,6 +277,10 @@ function sendMessageToClients(message) {
     });
 }
 
+// IndexedDB tile serving functionality
+// IndexedDB tile handling removed - now using custom protocols (custom:// and edl://)
+// Tiles are served directly by MapLibre's addProtocol handlers
+
 // Fetch event - serve from cache or network
 self.addEventListener('fetch', event => {
     // Only handle GET requests
@@ -291,61 +297,16 @@ self.addEventListener('fetch', event => {
         return; // Do not intercept, let the browser handle it directly
     }
 
-    // Special handling for tile requests - explicitly check tile cache first, then network
-    const isRegularTile = url.pathname.includes('/tiles/') && url.pathname.match(/\/\d+\/\d+\/\d+\.png$/);
-    const isEdlTile = url.pathname.includes('/edl_tiles/') && url.pathname.match(/\/\d+\/\d+\/\d+\.png$/);
-    
-    if (isRegularTile || isEdlTile) {
-        const tileType = isRegularTile ? 'regular' : 'EDL';
-        
-        event.respondWith(
-            // Explicitly check the tile cache first
-            caches.open(TILE_CACHE_NAME)
-                .then(tileCache => tileCache.match(event.request))
-                .then(response => {
-                    if (response) {
-                        // Return the cached tile if we have it
-                        console.log(`SW - Serving ${tileType} tile from tile cache: ${url.pathname}`);
-                        return response;
-                    }
-                    
-                    // For regular tiles (custom server tiles), don't fetch from network if not in cache
-                    // This allows the map to fall back to OSM tiles instead
-                    if (isRegularTile) {
-                        console.log(`SW - ${tileType} tile not in cache, returning 404 to trigger OSM fallback: ${url.pathname}`);
-                        return new Response('', { status: 404, statusText: 'Tile not in cache' });
-                    }
-                    
-                    // For EDL tiles, still try to fetch from network as they're dynamic
-                    console.log(`SW - ${tileType} tile not in cache, fetching from network: ${event.request.url}`);
-                    return fetch(event.request)
-                        .then(networkResponse => {
-                            if (!networkResponse || networkResponse.status !== 200) {
-                                return networkResponse;
-                            }
-                            
-                            // Cache the response in the tile cache
-                            const responseToCache = networkResponse.clone();
-                            caches.open(TILE_CACHE_NAME)
-                                .then(cache => {
-                                    cache.put(event.request, responseToCache);
-                                    console.log(`SW - ${tileType} tile cached in tile cache: ${url.pathname}`);
-                                });
-                            
-                            return networkResponse;
-                        });
-                })
-                .catch(error => {
-                    console.error(`SW - Error fetching ${tileType} tile: ${error.message}`);
-                    // For regular tiles, return 404 instead of trying to fetch
-                    if (isRegularTile) {
-                        return new Response('', { status: 404, statusText: 'Tile fetch error' });
-                    }
-                    return fetch(event.request);
-                })
-        );
-        return;
+    // Don't intercept OSM tiles - let browser cache handle them naturally
+    const isOSMTile = url.hostname.includes('openstreetmap.org') || 
+                      url.hostname.includes('tile.openstreetmap.org');
+    if (isOSMTile) {
+        console.log('SW - Bypassing service worker for OSM tile, letting browser cache handle it:', url.href);
+        return; // Let browser handle OSM tiles with its own cache
     }
+
+    // Custom protocols (custom:// and edl://) are handled by MapLibre addProtocol
+    // No need for service worker tile handling anymore
 
     // Special handling for our proxied airspace URL
     if (event.request.url.includes(PROXY_URL) && 
@@ -494,7 +455,7 @@ self.addEventListener('fetch', event => {
                 // Check if we have the resource in cache
                 const cachedResponse = await cache.match(new Request(cacheUrl));
                 if (cachedResponse) {
-                    console.log(`SW - Serving from cache: ${cacheUrl}`);
+                    console.log(`SW - Serving from cache: Request=${event.request.url} | Cached=${cacheUrl}`);
                     return cachedResponse;
                 }
                 

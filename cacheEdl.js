@@ -200,19 +200,27 @@ async function downloadAndExtractMBTiles(urlInfo, progressCallback) {
     const customBaseUrl = `${BASE_PATH}/${urlInfo.tilePath}`;
     console.log(`[edlCache] Extracting tiles with base path: ${customBaseUrl}`);
     
-    const extractSuccess = await mbtilesHandler.extractAndCacheTiles(
-      TILE_CACHE_NAME,
+    // Extract forecast date and parameters from urlInfo
+    const forecastDate = urlInfo.forecastDate ? urlInfo.forecastDate.toISOString().slice(0, 10) : new Date().toISOString().slice(0, 10);
+    const targetDate = urlInfo.date ? urlInfo.date.toISOString().slice(0, 10) : forecastDate;
+    const hour = urlInfo.hour || 15;
+    const pressure = urlInfo.isobare || 700;
+    
+    // Create a unique ID for this specific EDL tile set
+    const edlTileSetId = `${forecastDate}_${targetDate}_${hour}_${pressure}`;
+    
+    const extractSuccess = await mbtilesHandler.extractAndStoreEDLTiles(
+      edlTileSetId,
       (progress, processed, total, message) => {
         // Map progress from 0-1 to 0.5-1.0 for extraction phase
         const adjustedProgress = 0.5 + (progress * 0.5);
         if (progressCallback) {
           progressCallback(
             adjustedProgress,
-            `Extracting tiles: ${processed}/${total} - ${urlInfo.label}`
+            `Storing tiles: ${processed}/${total} - ${urlInfo.label}`
           );
         }
-      },
-      customBaseUrl
+      }
     );
     
     if (!extractSuccess) {

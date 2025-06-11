@@ -235,11 +235,11 @@ export async function cacheTilesFromMBTiles(region = 'alps') {
       throw new Error('Failed to load MBTiles file');
     }
     
-    // Extract and cache tiles
-    const extractSuccess = await mbtilesHandler.extractAndCacheTiles(
-      TILE_CACHE_NAME, 
+    // Extract and store tiles to IndexedDB
+    const extractSuccess = await mbtilesHandler.extractAndStoreToIndexedDB(
+      region,
       (progress, processed, total, message) => {
-        updateProgressUI(progress, processed, total, message || 'Extracting tiles...');
+        updateProgressUI(progress, processed, total, message || 'Storing tiles...');
       }
     );
     

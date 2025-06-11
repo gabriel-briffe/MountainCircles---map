@@ -18,6 +18,8 @@ import { setupMenuEventListeners } from "./menu.js";
 import { getLayerManager } from "./state.js";
 import { isMobileDevice, requestWakeLock } from "./utils.js";
 import { initializeTracking } from "./tracking.js";
+import { registerTileProtocols } from "./tileProtocol.js";
+import { unifiedTileStorage } from "./unifiedTileStorage.js";
 
 /**
  * Initializes the application
@@ -29,6 +31,31 @@ export async function initializeApp(mapContainerId = 'map') {
     window.APP_CONFIG = {
         isMobile: isMobileDevice()
     };
+    
+    // Register custom tile protocols before map initialization
+    console.log('[Init] Registering custom tile protocols...');
+    const protocolsRegistered = registerTileProtocols();
+    if (!protocolsRegistered) {
+        console.error('[Init] Failed to register tile protocols - falling back to standard tiles');
+        alert('Warning: Custom tile protocols failed to register. Some offline features may not work properly.');
+    }
+    
+    // Initialize unified tile storage
+    console.log('[Init] Initializing unified tile storage...');
+    try {
+        await unifiedTileStorage.initRegionsDB();
+        await unifiedTileStorage.initEDLDB();
+        console.log('[Init] Unified tile storage initialized successfully');
+        
+        // Optional: Run migration from legacy storage if needed
+        // Uncomment the next line if you want to migrate existing regional tiles automatically
+        // This will consolidate tiles from separate regional databases into the unified storage
+        // await unifiedTileStorage.migrateFromLegacyStorage();
+        
+    } catch (error) {
+        console.error('[Init] Failed to initialize unified tile storage:', error);
+        alert('Warning: Tile storage initialization failed. Offline tiles may not work properly.');
+    }
     
     // Try to load saved state from Cache API
     const stateLoaded = await loadStateFromLocalStorage();

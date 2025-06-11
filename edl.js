@@ -95,23 +95,21 @@ export function createEDLLayer(map, options = {}) {
         pressure: pressure
     };
     
-    // Create the tile layer path based on cached tiles with the new structure
-    const tilePath = BASE_PATH 
-        ? `${BASE_PATH}/edl_tiles/${forecastDate}/${targetDate}_${nearestHour}_${pressure}/{z}/{x}/{y}.png`
-        : `/edl_tiles/${forecastDate}/${targetDate}_${nearestHour}_${pressure}/{z}/{x}/{y}.png`;
-    console.log(`[EDL] Tile path: ${tilePath}`);
+    // Use the new EDL protocol instead of file paths
+    const tileProtocolUrl = `edl://tiles/${forecastDate}/{z}/{x}/{y}`;
+    console.log(`[EDL] Using EDL protocol URL: ${tileProtocolUrl}`);
     
     try {
-        // Add source for EDL layer
+        // Add source for EDL layer using custom protocol
         getLayerManager().addOrUpdateSource('edl-source', {
             type: 'raster',
-            tiles: [tilePath],
+            tiles: [tileProtocolUrl],
             tileSize: 256,
             minzoom: 6,
             maxzoom: 8
         });
         
-        console.log(`[EDL] Added EDL source with tilePath: ${tilePath}`);
+        console.log(`[EDL] Added EDL source with protocol URL: ${tileProtocolUrl}`);
         
         // Define layer style
         const edlLayerStyle = {
@@ -134,6 +132,9 @@ export function createEDLLayer(map, options = {}) {
             id: 'edl-layer',
             info: currentLayerInfo
         };
+        
+        // Make current layer info available globally for the EDL protocol
+        window.currentEDLLayerInfo = currentLayerInfo;
         
         // Update lastUsedForecastDate in metadata
         updateLastUsedForecastDate(forecastDate);
@@ -189,25 +190,23 @@ export function updateEDLLayer(date, hour, pressure, forecastDate) {
     }
     
     try {
-        // Create new tile URL with proper BASE_PATH and the new structure
-        const tilePath = BASE_PATH 
-            ? `${BASE_PATH}/edl_tiles/${forecastDate}/${date}_${hour}_${pressure}/{z}/{x}/{y}.png`
-            : `/edl_tiles/${forecastDate}/${date}_${hour}_${pressure}/{z}/{x}/{y}.png`;
+        // Use the EDL protocol instead of file paths
+        const tileProtocolUrl = `edl://tiles/${forecastDate}/{z}/{x}/{y}`;
         
-        console.log(`[EDL] Using tile path: ${tilePath}`);
+        console.log(`[EDL] Using EDL protocol URL: ${tileProtocolUrl}`);
         
         const layerManager = getLayerManager();
         
-        // Add/update the source with new tile URL and zoom level constraints
+        // Add/update the source with new protocol URL and zoom level constraints
         layerManager.addOrUpdateSource('edl-source', {
             type: 'raster',
-            tiles: [tilePath],
+            tiles: [tileProtocolUrl],
             tileSize: 256,
             minzoom: 6,
             maxzoom: 8
         });
         
-        console.log(`[EDL] Updated EDL source with tilePath: ${tilePath}`);
+        console.log(`[EDL] Updated EDL source with protocol URL: ${tileProtocolUrl}`);
         
         // Re-add the layer if needed
         const edlLayerStyle = {
@@ -230,6 +229,9 @@ export function updateEDLLayer(date, hour, pressure, forecastDate) {
             hour,
             pressure
         };
+        
+        // Make current layer info available globally for the EDL protocol
+        window.currentEDLLayerInfo = currentLayerInfo;
         
         // Update lastUsedForecastDate in metadata
         updateLastUsedForecastDate(forecastDate);

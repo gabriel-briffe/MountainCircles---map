@@ -21,6 +21,8 @@ vosges/
 vosges/**
 node_modules/
 node_modules/**
+wasm/
+wasm/**
 .wrangler/
 package-lock.json
 package.json

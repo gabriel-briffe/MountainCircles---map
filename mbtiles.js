@@ -6,6 +6,7 @@
 // Import path utilities
 import { latLngToTile } from './utils.js';
 import { BASE_PATH } from './config.js';
+import { unifiedTileStorage } from './unifiedTileStorage.js';
 
 /**
  * MBTiles handler class
@@ -249,13 +250,12 @@ export class MBTilesHandler {
   }
 
   /**
-   * Extract and cache tiles to browser cache
-   * @param {string} cacheName - Cache name to use
+   * Extract and store tiles to IndexedDB
+   * @param {string} region - Region identifier for the tiles
    * @param {Function} progressCallback - Callback for extraction progress
-   * @param {string} [customBasePath] - Optional custom base path for tiles
    * @returns {Promise<boolean>} Success status
    */
-  async extractAndCacheTiles(cacheName, progressCallback, customBasePath) {
+  async extractAndStoreToIndexedDB(region, progressCallback) {
     if (!this.db) {
       throw new Error('Database not initialized');
     }
@@ -277,11 +277,24 @@ export class MBTilesHandler {
         );
       }
       
-      // Open the cache
-      const cache = await caches.open(cacheName);
+      // Initialize unified IndexedDB storage
+      await unifiedTileStorage.initRegionsDB();
       
       // Get all tiles
       const tiles = await this.getAllTiles();
+      
+      // Determine content type from metadata
+      let contentType = 'image/png';
+      if (this.metadata && this.metadata.format) {
+        if (['jpg', 'jpeg'].includes(this.metadata.format.toLowerCase())) {
+          contentType = 'image/jpeg';
+        } else if (['pbf', 'mvt'].includes(this.metadata.format.toLowerCase())) {
+          contentType = 'application/x-protobuf';
+        }
+      }
+      
+      // Store metadata
+      await unifiedTileStorage.storeRegionalMetadata(region, this.metadata);
       
       // Determine batch size based on total number of tiles
       const batchSize = this.totalTiles > 5000 ? 100 : 50;
@@ -302,44 +315,26 @@ export class MBTilesHandler {
         // Process batch in parallel
         await Promise.all(batch.map(async (tile) => {
           try {
-            // Determine tile URL based on provided base path or default
-            const basePath = customBasePath || `${BASE_PATH}/tiles`;
-            const url = `${basePath}/${tile.z}/${tile.x}/${tile.y}.png`;
-            
-            // Log tile URL for debugging
+            // Log tile processing for debugging
             if (batchIndex === 0 || this.processedTiles % 50 === 0) {
-              console.log(`[DEBUG] Caching tile at: ${url} (z:${tile.z}, x:${tile.x}, y:${tile.y})`);
+              console.log(`[DEBUG] Storing tile: z:${tile.z}, x:${tile.x}, y:${tile.y}`);
             }
             
-            // Determine content type based on metadata
-            let contentType = 'image/png';
-            if (this.metadata && this.metadata.format) {
-              if (['jpg', 'jpeg'].includes(this.metadata.format.toLowerCase())) {
-                contentType = 'image/jpeg';
-              } else if (['pbf', 'mvt'].includes(this.metadata.format.toLowerCase())) {
-                contentType = 'application/x-protobuf';
-              }
-            }
-            
-            // Create response from tile data
-            const response = new Response(
-              new Blob([tile.data], { type: contentType }),
-              { 
-                status: 200,
-                headers: { 'Content-Type': contentType }
-              }
+            // Store tile to unified IndexedDB
+            await unifiedTileStorage.storeRegionalTile(
+              tile.z, 
+              tile.x, 
+              tile.y, 
+              tile.data, 
+              region, 
+              contentType
             );
-            
-            // Cache the response
-            await cache.put(url, response);
             
             // Update progress count
             this.processedTiles++;
             this.extractionProgress = this.processedTiles / this.totalTiles;
-            
-            // No individual tile progress updates to prevent UI flickering
           } catch (error) {
-            console.error(`[DEBUG] Error processing tile: ${error.message}`, error);
+            console.error(`[DEBUG] Error storing tile ${tile.z}/${tile.x}/${tile.y}:`, error);
           }
         }));
         
@@ -351,7 +346,7 @@ export class MBTilesHandler {
             this.extractionProgress,
             this.processedTiles, 
             this.totalTiles,
-            `Extracting tiles: batch ${batchIndex + 1}/${totalBatches}`
+            `Storing tiles: batch ${batchIndex + 1}/${totalBatches}`
           );
         }
       }
@@ -362,16 +357,154 @@ export class MBTilesHandler {
           1.0,
           this.processedTiles,
           this.totalTiles,
-          'Tile extraction complete!'
+          'Tile storage complete!'
         );
       }
       
-      console.log(`[DEBUG] Extracted ${this.processedTiles} tiles from MBTiles file`);
+      console.log(`[DEBUG] Stored ${this.processedTiles} tiles to IndexedDB for region: ${region}`);
       return true;
     } catch (error) {
-      console.error('[DEBUG] Error extracting tiles:', error);
+      console.error('[DEBUG] Error storing tiles to IndexedDB:', error);
       return false;
     }
+  }
+
+  /**
+   * Extract and store EDL tiles to unified IndexedDB
+   * @param {string} forecastDate - ISO date string for forecast date (e.g., "2024-01-15")
+   * @param {Function} progressCallback - Callback for extraction progress
+   * @returns {Promise<boolean>} Success status
+   */
+  async extractAndStoreEDLTiles(forecastDate, progressCallback) {
+    if (!this.db) {
+      throw new Error('Database not initialized');
+    }
+
+    try {
+      // Count total tiles
+      const countResult = this.db.exec("SELECT COUNT(*) FROM tiles");
+      this.totalTiles = countResult[0].values[0][0];
+      this.processedTiles = 0;
+      console.log(`[DEBUG] Total EDL tiles to extract: ${this.totalTiles}`);
+      
+      // Initial progress update
+      if (typeof progressCallback === 'function') {
+        progressCallback(
+          0,
+          0,
+          this.totalTiles,
+          'Starting EDL tile extraction...'
+        );
+      }
+      
+      // Initialize EDL IndexedDB storage
+      await unifiedTileStorage.initEDLDB();
+      
+      // Get all tiles
+      const tiles = await this.getAllTiles();
+      
+      // Determine content type from metadata
+      let contentType = 'image/png';
+      if (this.metadata && this.metadata.format) {
+        if (['jpg', 'jpeg'].includes(this.metadata.format.toLowerCase())) {
+          contentType = 'image/jpeg';
+        } else if (['pbf', 'mvt'].includes(this.metadata.format.toLowerCase())) {
+          contentType = 'application/x-protobuf';
+        }
+      }
+      
+      // Store metadata
+      await unifiedTileStorage.storeEDLMetadata(forecastDate, this.metadata);
+      
+      // Determine batch size based on total number of tiles
+      const batchSize = this.totalTiles > 5000 ? 100 : 50;
+      const totalBatches = Math.ceil(this.totalTiles / batchSize);
+      
+      // To avoid UI flickering, we'll use a throttled progress update
+      let lastUpdateTime = 0;
+      const updateThreshold = 500; // Only update UI every 500ms
+      
+      // Process tiles in batches
+      for (let batchIndex = 0; batchIndex < totalBatches; batchIndex++) {
+        const start = batchIndex * batchSize;
+        const end = Math.min(start + batchSize, this.totalTiles);
+        const batch = tiles.slice(start, end);
+        
+        console.log(`[DEBUG] Processing EDL batch ${batchIndex + 1}/${totalBatches}: tiles ${start}-${end}`);
+        
+        // Process batch in parallel
+        await Promise.all(batch.map(async (tile) => {
+          try {
+            // Log tile processing for debugging
+            if (batchIndex === 0 || this.processedTiles % 50 === 0) {
+              console.log(`[DEBUG] Storing EDL tile: z:${tile.z}, x:${tile.x}, y:${tile.y} for ${forecastDate}`);
+            }
+            
+            // Store tile to EDL IndexedDB
+            await unifiedTileStorage.storeEDLTile(
+              tile.z, 
+              tile.x, 
+              tile.y, 
+              tile.data, 
+              forecastDate,
+              contentType
+            );
+            
+            // Update progress count
+            this.processedTiles++;
+            this.extractionProgress = this.processedTiles / this.totalTiles;
+          } catch (error) {
+            console.error(`[DEBUG] Error storing EDL tile ${tile.z}/${tile.x}/${tile.y}:`, error);
+          }
+        }));
+        
+        // Only update progress at batch completion and if enough time has passed
+        const now = Date.now();
+        if (typeof progressCallback === 'function' && (now - lastUpdateTime > updateThreshold || batchIndex === totalBatches - 1)) {
+          lastUpdateTime = now;
+          progressCallback(
+            this.extractionProgress,
+            this.processedTiles, 
+            this.totalTiles,
+            `Storing EDL tiles: batch ${batchIndex + 1}/${totalBatches}`
+          );
+        }
+      }
+      
+      // Final progress update
+      if (typeof progressCallback === 'function') {
+        progressCallback(
+          1.0,
+          this.processedTiles,
+          this.totalTiles,
+          'EDL tile storage complete!'
+        );
+      }
+      
+      console.log(`[DEBUG] Stored ${this.processedTiles} EDL tiles to IndexedDB for forecast: ${forecastDate}`);
+      return true;
+    } catch (error) {
+      console.error('[DEBUG] Error storing EDL tiles to IndexedDB:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Legacy method for backward compatibility - now uses IndexedDB
+   * @param {string} cacheName - Ignored, kept for compatibility
+   * @param {Function} progressCallback - Callback for extraction progress
+   * @param {string} customBasePath - Used to determine region from path
+   * @returns {Promise<boolean>} Success status
+   */
+  async extractAndCacheTiles(cacheName, progressCallback, customBasePath) {
+    // Extract region from customBasePath or use default
+    let region = 'default';
+    if (customBasePath) {
+      const pathParts = customBasePath.split('/');
+      region = pathParts[pathParts.length - 1] || 'default';
+    }
+    
+    return this.extractAndStoreToIndexedDB(region, progressCallback);
   }
 
   /**
