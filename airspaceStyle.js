@@ -63,7 +63,7 @@ const style = {
                     "DANGER", COLOR_MAPPING["DANGER"],
                     "RESTRICTED", COLOR_MAPPING["RESTRICTED"],
                     "FIR", COLOR_MAPPING["FIR"],
-                    "FIS_SECTOR", COLOR_MAPPING["FIS_SECTOR"],
+                    "FIS", COLOR_MAPPING["FIS"],
                     "OVERFLIGHT_RESTRICTION", COLOR_MAPPING["OVERFLIGHT_RESTRICTION"],
                     "TRA", COLOR_MAPPING["TRA"],
                     "UNCLASSIFIED", COLOR_MAPPING["UNCLASSIFIED"],

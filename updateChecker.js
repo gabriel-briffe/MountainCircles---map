@@ -4,12 +4,12 @@
  */
 
 // Constants
-const AIRSPACE_URL = 'https://github.com/gabriel-briffe/openaip_airspace/releases/latest/download/airspace.geojson';
+// Airspace URL removed - no longer checking for airspace updates
 const PROXY_URL = 'https://edl-proxy.gabriel-briffe.workers.dev/?url=';
 
 // Store cached version
 let cachedVersion = 0;
-let storedAirspaceETag = null; // Keep airspace checking as-is for now
+// Airspace ETag tracking removed
 
 /**
  * Handle worker messages
@@ -19,14 +19,11 @@ self.addEventListener('message', (event) => {
     
     switch (type) {
         case 'init':
-            // Store cached version and airspace ETag
-            cachedVersion = data.version || 0;
-            storedAirspaceETag = data.airspaceETag;
+                // Store cached version
+    cachedVersion = data.version || 0;
             console.log('[UpdateChecker] Initialized with cached version:', cachedVersion);
             break;
-        case 'checkAirspaceUpdate':
-            checkAirspaceUpdate();
-            break;
+        // Airspace update checking removed
         case 'checkCoreFilesUpdate':
             checkVersionUpdate(data.basePath);
             break;
@@ -38,88 +35,7 @@ self.addEventListener('message', (event) => {
     }
 });
 
-/**
- * Check for airspace data updates (keeping existing logic)
- */
-async function checkAirspaceUpdate() {
-    console.log('[UpdateChecker] Checking for airspace updates');
-    
-    // If we don't have a stored ETag, no need to check
-    if (!storedAirspaceETag) {
-        console.log('[UpdateChecker] No stored airspace ETag, skipping check');
-        self.postMessage({ 
-            type: 'airspaceUpdateResult', 
-            result: { hasUpdate: false, noETag: true } 
-        });
-        return;
-    }
-    
-    try {
-        // Create an AbortController for the timeout
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => {
-            controller.abort();
-        }, 10000); // 10 seconds timeout
-        
-        // Make a HEAD request to check headers without downloading the full file
-        const proxyAirspaceUrl = `${PROXY_URL}${encodeURIComponent(AIRSPACE_URL)}`;
-        const response = await fetch(proxyAirspaceUrl, { 
-            method: 'HEAD',
-            signal: controller.signal
-        });
-        
-        // Clear the timeout since the request completed
-        clearTimeout(timeoutId);
-        
-        if (!response.ok) {
-            throw new Error(`Failed to check for updates: ${response.status} ${response.statusText}`);
-        }
-        
-        // Get the current ETag
-        let currentEtag = response.headers.get('ETag');
-        
-        // If no ETag, try Last-Modified as fallback
-        if (!currentEtag) {
-            const lastModified = response.headers.get('Last-Modified');
-            if (lastModified) {
-                currentEtag = `last-modified:${lastModified}`;
-            }
-        }
-        
-        // If we couldn't get any version identifier, return false
-        if (!currentEtag) {
-            console.log('[UpdateChecker] No version identifier in response');
-            self.postMessage({ 
-                type: 'airspaceUpdateResult', 
-                result: { hasUpdate: false, noVersionInfo: true } 
-            });
-            return;
-        }
-        
-        // Compare the ETags
-        const hasUpdate = storedAirspaceETag !== currentEtag;
-        console.log(`[UpdateChecker] Airspace update check: stored=${storedAirspaceETag}, current=${currentEtag}, hasUpdate=${hasUpdate}`);
-        
-        self.postMessage({ 
-            type: 'airspaceUpdateResult', 
-            result: { hasUpdate, currentEtag, storedEtag: storedAirspaceETag }
-        });
-    } catch (error) {
-        if (error.name === 'AbortError') {
-            console.error('[UpdateChecker] Airspace update check timed out after 10 seconds');
-            self.postMessage({ 
-                type: 'airspaceUpdateResult', 
-                result: { hasUpdate: false, error: 'Timeout after 10 seconds' } 
-            });
-        } else {
-            console.error('[UpdateChecker] Error checking for airspace updates:', error);
-            self.postMessage({ 
-                type: 'airspaceUpdateResult', 
-                result: { hasUpdate: false, error: error.message } 
-            });
-        }
-    }
-}
+// Airspace update checking function removed
 
 /**
  * Check for version updates using version.txt
@@ -174,16 +90,13 @@ async function checkVersionUpdate(basePath) {
 }
 
 /**
- * Check all updates (airspace and version)
+ * Check all updates (only version now)
  * @param {string} basePath - Base path for files
  */
 async function checkAllUpdates(basePath) {
-    console.log('[UpdateChecker] Checking all updates');
+    console.log('[UpdateChecker] Checking version updates');
     
-    // Check airspace first
-    checkAirspaceUpdate();
-    
-    // Then check version
+    // Only check version (airspace checking removed)
     checkVersionUpdate(basePath);
 }
 

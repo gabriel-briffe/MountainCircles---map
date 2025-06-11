@@ -19,9 +19,9 @@ const CORE_FILES_DIR = '/coreFiles/';
 const EXTERNAL_RESOURCES_DIR = '/externalResources/';
 
 // Airspace data URL that should be cached
-const AIRSPACE_URL = 'https://github.com/gabriel-briffe/openaip_airspace/releases/latest/download/airspace.geojson';
+// Airspace URL removed - no longer auto-caching airspace data
 const PROXY_URL = 'https://edl-proxy.gabriel-briffe.workers.dev/?url=';
-const PROXIED_AIRSPACE_URL = `${PROXY_URL}${encodeURIComponent(AIRSPACE_URL)}`;
+// Proxied airspace URL removed
 
 // Import BASE_PATH from config
 // Note: Since service workers run in a different context, 
@@ -115,6 +115,7 @@ const INITIAL_CACHE_RESOURCES = [
     
     // CSS files
     `${BASE_PATH}/styles.css`,
+    `${BASE_PATH}/airspaceImport.css`,
     `${BASE_PATH}/airspacePopup.css`,
     `${BASE_PATH}/installPrompt.css`,
     `${BASE_PATH}/mapDock.css`,
@@ -126,6 +127,8 @@ const INITIAL_CACHE_RESOURCES = [
     `${BASE_PATH}/sidebar.css`,
     // JS files
     `${BASE_PATH}/airspace.js`,
+    `${BASE_PATH}/airspaceImport.js`,
+    `${BASE_PATH}/airspaceProcessor.js`,
     `${BASE_PATH}/airspaceStyle.js`,
     `${BASE_PATH}/cacheConfig.js`,
     `${BASE_PATH}/cacheEdl.js`,
@@ -147,19 +150,20 @@ const INITIAL_CACHE_RESOURCES = [
     `${BASE_PATH}/mapInitializer.js`,
     `${BASE_PATH}/mappings.js`,
     `${BASE_PATH}/mbtiles.js`,
-    `${BASE_PATH}/unifiedTileStorage.js`,
-    `${BASE_PATH}/tileProtocol.js`,
     `${BASE_PATH}/menu.js`,
     `${BASE_PATH}/navboxManager.js`,
     `${BASE_PATH}/notification.js`,
+    `${BASE_PATH}/processOpenAip.js`,
     `${BASE_PATH}/sidebar.js`,
     `${BASE_PATH}/state.js`,
     `${BASE_PATH}/sw.js`,
+    `${BASE_PATH}/tileProtocol.js`,
     `${BASE_PATH}/toggleManager.js`,
     `${BASE_PATH}/tracking.js`,
-    `${BASE_PATH}/utils.js`,
+    `${BASE_PATH}/unifiedTileStorage.js`,
     `${BASE_PATH}/updateChecker.js`,
     `${BASE_PATH}/updateNotifier.js`,
+    `${BASE_PATH}/utils.js`,
     
     // GeoJSON data files
     `${BASE_PATH}/peaks.geojson`,
@@ -308,44 +312,7 @@ self.addEventListener('fetch', event => {
     // Custom protocols (custom:// and edl://) are handled by MapLibre addProtocol
     // No need for service worker tile handling anymore
 
-    // Special handling for our proxied airspace URL
-    if (event.request.url.includes(PROXY_URL) && 
-        event.request.url.includes(encodeURIComponent(AIRSPACE_URL))) {
-        
-        // Simple airspace cache path in the root
-        const airspaceCacheUrl = `${BASE_PATH}/airspace.geojson`;
-        
-        event.respondWith(
-            caches.match(airspaceCacheUrl)
-                .then(response => {
-                    if (response) {
-                        // Return the cached response if we have it
-                        console.log(`SW - Serving cached airspace data from: ${airspaceCacheUrl}`);
-                        return response;
-                    }
-                    
-                    // If not in cache, fetch from network using original URL
-                    console.log('SW - Fetching airspace data from network using original URL');
-                    return fetch(event.request)
-                        .then(networkResponse => {
-                            if (!networkResponse || networkResponse.status !== 200) {
-                                return networkResponse;
-                            }
-                            
-                            // Cache the response with simple URL
-                            const responseToCache = networkResponse.clone();
-                            caches.open(CACHE_NAME)
-                                .then(cache => {
-                                    cache.put(airspaceCacheUrl, responseToCache);
-                                    console.log(`SW - Airspace data cached as: ${airspaceCacheUrl}`);
-                                });
-                            
-                            return networkResponse;
-                        });
-                })
-        );
-        return;
-    }
+    // Automatic airspace URL handling removed - now handled by import system
 
     // Handle R2 data custom domain URLs with cache-first behavior
     if (url.hostname === 'data.mountain-circles.org') {
@@ -412,17 +379,7 @@ self.addEventListener('fetch', event => {
         return;
     }
 
-    // Handle EDL proxy URLs (only for airspace now)
-    if (url.hostname === 'edl-proxy.gabriel-briffe.workers.dev') {
-        const isAirspaceUrl = event.request.url.includes(encodeURIComponent(AIRSPACE_URL));
-        
-        if (!isAirspaceUrl) {
-            console.log(`SW - Bypassing service worker for non-airspace proxy URL: ${url.href}`);
-            return; // Do not intercept non-airspace proxy URLs
-        }
-        
-        // Continue with existing airspace handling
-    }
+    // EDL proxy handling removed - import system handles airspace downloads directly
 
     // Check if this request should be intercepted by the service worker
     const shouldIntercept = (
@@ -432,6 +389,11 @@ self.addEventListener('fetch', event => {
         url.hostname === 'fonts.googleapis.com' ||
         url.hostname === 'fonts.gstatic.com'
     );
+    
+    // Do not intercept EDL proxy URLs - let import system handle them directly
+    if (url.hostname === 'edl-proxy.gabriel-briffe.workers.dev') {
+        return; // Let the import system handle these directly
+    }
 
     if (!shouldIntercept) {
         return;
@@ -550,15 +512,10 @@ self.addEventListener('message', async (event) => {
                         
                         // For proxy URLs for MBTiles, use the original URL to prevent issues
                         const isProxyUrl = file.includes(PROXY_URL);
-                        const isAirspaceUrl = isProxyUrl && file.includes(encodeURIComponent(AIRSPACE_URL));
 
                         let cacheRequest;
-                        if (isAirspaceUrl) {
-                            // Special case for airspace - use the fixed cache path
-                            cacheRequest = new Request(`${BASE_PATH}/airspace.geojson`);
-                            console.log(`SW - Using fixed cache path for airspace: ${cacheRequest.url}`);
-                        } else if (isProxyUrl) {
-                            // Other proxy URLs - use original to prevent issues
+                        if (isProxyUrl) {
+                            // Proxy URLs - use original to prevent issues
                             cacheRequest = new Request(file);
                             console.log(`SW - Using original URL for proxy request: ${file}`);
                         } else {

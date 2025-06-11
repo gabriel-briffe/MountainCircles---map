@@ -100,13 +100,7 @@ export function setupMenuEventListeners() {
         cacheEDLTiles(false, true); // false = today, true = use yesterday's forecast
     });
     
-    // Refresh Airspace Data button
-    document.getElementById('refreshAirspaceBtn').addEventListener('click', () => {
-        console.log('[Menu] Refreshing airspace data');
-        if (confirm('This will refresh the airspace data from the server. The app will reload. Continue?')) {
-            window.location.href = `${BASE_PATH}/bootstrap.html?cleanAirspace=true`;
-        }
-    });
+    // Refresh Airspace Data button removed - now handled by airspace import system
     
     // Clean EDL Cache button
     document.getElementById('cleanEDLCacheBtn').addEventListener('click', () => {

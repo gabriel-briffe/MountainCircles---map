@@ -20,6 +20,7 @@ import { isMobileDevice, requestWakeLock } from "./utils.js";
 import { initializeTracking } from "./tracking.js";
 import { registerTileProtocols } from "./tileProtocol.js";
 import { unifiedTileStorage } from "./unifiedTileStorage.js";
+import { initializeAirspaceImport } from "./airspaceImport.js";
 
 /**
  * Initializes the application
@@ -132,6 +133,9 @@ export async function initializeApp(mapContainerId = 'map') {
 
             // Initialize the tracklog recording functionality
             initializeTracking();
+            
+            // Initialize airspace import system
+            initializeAirspaceImport();
             
             // After all initialization is done, ensure visibility states match saved state
             mapInstance.once('idle', async () => {

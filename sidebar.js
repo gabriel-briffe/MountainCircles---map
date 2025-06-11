@@ -130,7 +130,21 @@ export function createTypeCheckboxes(features) {
     // Clear existing content
     sidebar.innerHTML = '';
     
-    // Add a section title instead of header
+    // Add import button at the top
+    const importButton = document.createElement('button');
+    importButton.className = 'sidebar-import-btn';
+    importButton.innerHTML = '<span class="material-icons">download</span> Import Airspace Data';
+    importButton.addEventListener('click', () => {
+        // Import the airspace import module dynamically
+        import('./airspaceImport.js').then(module => {
+            module.showImportPopup();
+        }).catch(error => {
+            console.error('Failed to load airspace import module:', error);
+        });
+    });
+    sidebar.appendChild(importButton);
+    
+    // Add a section title
     const title = document.createElement('h3');
     title.textContent = 'Airspace Types';
     sidebar.appendChild(title);
@@ -212,8 +226,21 @@ export function addAirspaceTypeCheckboxes(sidebar, features) {
     // Add checkbox for each type using the factory function
     sortedTypes.forEach(type => {
         const id = `toggle-${type.replace(/\s+/g, '-')}`;
-        // Use saved state if available, otherwise default to true
-        const isChecked = savedEnabledTypes ? savedEnabledTypes.has(type) : true;
+        // Use saved state only if we have both saved state AND current features match saved types
+        // Otherwise default to true (checked)
+        let isChecked = true; // Default to checked
+        
+        if (savedEnabledTypes && savedEnabledTypes.size > 0) {
+            // Only use saved state if the saved types include at least one of our current types
+            // This ensures we don't use stale saved state from previous airspace data
+            const savedTypesArray = Array.from(savedEnabledTypes);
+            const hasMatchingTypes = savedTypesArray.some(savedType => sortedTypes.includes(savedType));
+            
+            if (hasMatchingTypes) {
+                isChecked = savedEnabledTypes.has(type);
+            }
+        }
+        
         const checkbox = createOptionCheckbox(id, type, isChecked, updateAirspaceFilter);
         checkboxContainer.appendChild(checkbox);
     });

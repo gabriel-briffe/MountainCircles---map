@@ -250,6 +250,7 @@
                 
                 // CSS files
                 `${basePath}/styles.css`,
+                `${basePath}/airspaceImport.css`,
                 `${basePath}/airspacePopup.css`,
                 `${basePath}/installPrompt.css`,
                 `${basePath}/mapDock.css`,
@@ -261,52 +262,54 @@
                 `${basePath}/sidebar.css`,
                 
                 // JS files
-                `${basePath}/airspace.js`,
-                `${basePath}/airspaceStyle.js`,
-                `${basePath}/cacheConfig.js`,
-                `${basePath}/cacheEdl.js`,
-                `${basePath}/cacheTiles.js`,
-                `${basePath}/circlesUI.js`,
-                `${basePath}/config.js`,
-                `${basePath}/dock.js`,
-                `${basePath}/edl.js`,
-                `${basePath}/edlUI.js`,
-                `${basePath}/igc.js`,
-                `${basePath}/init.js`,
-                `${basePath}/install.js`,
-                `${basePath}/LayerManager.js`,
-                `${basePath}/layers.js`,
-                `${basePath}/layerStyles.js`,
-                `${basePath}/location.js`,
-                `${basePath}/main.js`,
-                `${basePath}/map.js`,
-                `${basePath}/mapInitializer.js`,
-                `${basePath}/mappings.js`,
-                `${basePath}/mbtiles.js`,
-                `${basePath}/menu.js`,
-                `${basePath}/navboxManager.js`,
-                `${basePath}/notification.js`,
-                `${basePath}/sidebar.js`,
-                `${basePath}/state.js`,
-                `${basePath}/sw.js`,
-                `${basePath}/tileProtocol.js`,
-                `${basePath}/toggleManager.js`,
-                `${basePath}/tracking.js`,
-                `${basePath}/unifiedTiles.js`,
-                `${basePath}/updateChecker.js`,
-                `${basePath}/updateNotifier.js`,
-                `${basePath}/utils.js`,
+                `${BASE_PATH}/airspace.js`,
+                `${BASE_PATH}/airspaceImport.js`,
+                `${BASE_PATH}/airspaceProcessor.js`,
+                `${BASE_PATH}/airspaceStyle.js`,
+                `${BASE_PATH}/cacheConfig.js`,
+                `${BASE_PATH}/cacheEdl.js`,
+                `${BASE_PATH}/cacheTiles.js`,
+                `${BASE_PATH}/circlesUI.js`,
+                `${BASE_PATH}/config.js`,
+                `${BASE_PATH}/dock.js`,
+                `${BASE_PATH}/edl.js`,
+                `${BASE_PATH}/edlUI.js`,
+                `${BASE_PATH}/igc.js`,
+                `${BASE_PATH}/init.js`,
+                `${BASE_PATH}/install.js`,
+                `${BASE_PATH}/LayerManager.js`,
+                `${BASE_PATH}/layers.js`,
+                `${BASE_PATH}/layerStyles.js`,
+                `${BASE_PATH}/location.js`,
+                `${BASE_PATH}/main.js`,
+                `${BASE_PATH}/map.js`,
+                `${BASE_PATH}/mapInitializer.js`,
+                `${BASE_PATH}/mappings.js`,
+                `${BASE_PATH}/mbtiles.js`,
+                `${BASE_PATH}/menu.js`,
+                `${BASE_PATH}/navboxManager.js`,
+                `${BASE_PATH}/notification.js`,
+                `${BASE_PATH}/processOpenAip.js`,
+                `${BASE_PATH}/sidebar.js`,
+                `${BASE_PATH}/state.js`,
+                `${BASE_PATH}/sw.js`,
+                `${BASE_PATH}/tileProtocol.js`,
+                `${BASE_PATH}/toggleManager.js`,
+                `${BASE_PATH}/tracking.js`,
+                `${BASE_PATH}/unifiedTileStorage.js`,
+                `${BASE_PATH}/updateChecker.js`,
+                `${BASE_PATH}/updateNotifier.js`,
+                `${BASE_PATH}/utils.js`,
             ];
         }
         
-        // Function to show completion UI instead of alert
-        function showCompletionUI() {
-            // completionMessage.style.display = 'block';
-            // returnButton.style.display = 'block';
-            
-            // Automatically return to application after 2 seconds
-            window.location.href = getReturnURL();
-        }
+                  // Function to show completion UI instead of alert
+          function showCompletionUI() {
+              completionMessage.style.display = 'block';
+              returnButton.style.display = 'block';
+              
+              // Removed automatic redirect - user must click button manually
+          }
         
         // Function to show error UI instead of alert
         function showErrorUI(errorMessage) {

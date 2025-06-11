@@ -6,6 +6,8 @@
 // Import from config
 import {
     COLOR_MAPPING,
+    BASE_PATH,
+    CACHE_NAME
 } from "./config.js";
 
 // Import from state management
@@ -43,9 +45,7 @@ import {
 
 import { getCurrentAltitude } from "./location.js";
 
-// Constants for airspace data
-const AIRSPACE_URL = 'https://github.com/gabriel-briffe/openaip_airspace/releases/latest/download/airspace.geojson';
-const PROXY_URL = 'https://edl-proxy.gabriel-briffe.workers.dev/?url=';
+// Constants removed - no longer fetching from external URLs
 
 /**
  * Utility function to filter map features based on checkbox state
@@ -63,7 +63,7 @@ export function filterMapFeatures(features) {
 }
 
 /**
- * Fetches and stores the complete airspace data
+ * Loads airspace data from cache only (no external fetching)
  * @returns {Promise<Object>} Promise resolving to the airspace GeoJSON data
  */
 export async function fetchAirspaceData() {
@@ -73,45 +73,41 @@ export async function fetchAirspaceData() {
     }
     
     try {
-        const proxyAirspaceUrl = `${PROXY_URL}${encodeURIComponent(AIRSPACE_URL)}`;
-        console.log('[Airspace] Fetching airspace data via proxy:', proxyAirspaceUrl);
+        console.log('[Airspace] Loading airspace data from cache only');
         
-        // Dispatch fetchStart event to trigger spinner
-        window.dispatchEvent(new CustomEvent('fetchStart', { detail: { url: proxyAirspaceUrl } }));
+        // Try to load from cache
+        const cache = await caches.open(CACHE_NAME);
+        const airspaceCacheUrl = `${BASE_PATH}/airspace.geojson`;
+        const cachedResponse = await cache.match(airspaceCacheUrl);
         
-        const response = await fetch(proxyAirspaceUrl);
-        if (!response.ok) {
-            throw new Error(`Failed to fetch airspace data: ${response.status} ${response.statusText}`);
-        }
-        
-        // Store the ETag if available (still needed for the Web Worker to compare later)
-        const etag = response.headers.get('ETag');
-        if (etag) {
-            console.log('[Airspace] Received ETag:', etag);
-            localStorage.setItem('airspace_etag', etag);
+        let data;
+        if (cachedResponse) {
+            console.log('[Airspace] Found cached airspace data');
+            data = await cachedResponse.json();
         } else {
-            // If no ETag, try to use Last-Modified as a fallback
-            const lastModified = response.headers.get('Last-Modified');
-            if (lastModified) {
-                console.log('[Airspace] No ETag, using Last-Modified:', lastModified);
-                localStorage.setItem('airspace_etag', `last-modified:${lastModified}`);
-            }
+            console.log('[Airspace] No cached airspace data found, returning empty GeoJSON');
+            // Return empty GeoJSON when no cached data exists
+            data = {
+                type: "FeatureCollection",
+                features: []
+            };
         }
-        
-        const data = await response.json();
-        
-        // Dispatch fetchComplete event to hide spinner
-        window.dispatchEvent(new CustomEvent('fetchComplete', { detail: { url: proxyAirspaceUrl } }));
         
         // Store the data in state
         setAirspaceData(data);
         return data;
-    } catch (error) {
-        // Make sure to dispatch fetchComplete even on error to hide the spinner
-        window.dispatchEvent(new CustomEvent('fetchComplete', { detail: { error: true } }));
         
-        console.error('Error fetching airspace data:', error);
-        throw error; // Re-throw to allow caller to handle
+    } catch (error) {
+        console.error('[Airspace] Error loading airspace data from cache:', error);
+        
+        // Return empty GeoJSON on error
+        const emptyData = {
+            type: "FeatureCollection", 
+            features: []
+        };
+        
+        setAirspaceData(emptyData);
+        return emptyData;
     }
 }
 

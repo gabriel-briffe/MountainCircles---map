@@ -11,7 +11,7 @@ export const COLOR_MAPPING = {
     "DANGER": "rgb(255, 0, 0)",                 // Red
     "RESTRICTED": "rgb(255, 0, 0)",             // Red
     "FIR": "rgb(0, 163, 0)",                    // Dark Green
-    "FIS_SECTOR": "rgb(0, 66, 0)",              // Dark Green
+    "FIS": "rgb(0, 66, 0)",              // Dark Green
     "OVERFLIGHT_RESTRICTION": "rgb(255, 0, 0)", // Red
     "TRA": "rgb(255, 0, 0)",                    // Red
     "UNCLASSIFIED": "rgb(0, 0, 0)",             // Black
@@ -43,7 +43,9 @@ export const AIRSPACE_TYPE_ORDER = [
     "TRA",
     "RMZ",
     "TMZ",
-    "FIS_SECTOR",
+    "FIS",
+    "ATZ",
+    "VFRSEC",
     "FIR",
     "UNCLASSIFIED"  // Always last
 ];

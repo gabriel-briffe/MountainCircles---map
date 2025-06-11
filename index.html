@@ -45,6 +45,8 @@
     </script>
     <link href="styles.css" rel="stylesheet" onerror="console.error('Failed to load styles.css')"
         onload="console.log('Successfully loaded styles.css')" />
+    <link href="airspaceImport.css" rel="stylesheet" />
+    <script src="processOpenAip.js"></script>
     <!-- Add error handlers to resources -->
     <link rel="manifest" href="manifest.json" onerror="console.error('Failed to load manifest.json')"
         onload="console.log('Successfully loaded manifest.json')" />
@@ -127,13 +129,7 @@
                 <span class="material-icons">close</span>
             </button>
 
-            <!-- Refresh Airspace Data Button -->
-            <div>
-                <button id="refreshAirspaceBtn" class="menu-btn button-with-icon">
-                    <span class="material-icons">update</span>
-                    <span>Refresh Airspace Data</span>
-                </button>
-            </div>
+            <!-- Refresh Airspace Data Button removed - now handled by airspace import system -->
 
 
 
@@ -296,6 +292,78 @@
         </div>
     </div>
 
+    <!-- Airspace Import Popup -->
+    <div id="airspaceImportModal" class="popup-modal">
+        <div class="popup-content">
+            <button class="close" id="closeAirspaceImportBtn">
+                <span class="material-icons">close</span>
+            </button>
+            
+            <h3>Import Airspace Data</h3>
+            
+            <div class="country-selection-section">
+                <h4>Select Countries:</h4>
+                <div class="country-selection-container">
+                    <div class="country-item"><input type="checkbox" id="airspace-fr" value="fr"><label for="airspace-fr">🇫🇷 France</label></div>
+                    <div class="country-item"><input type="checkbox" id="airspace-it" value="it"><label for="airspace-it">🇮🇹 Italy</label></div>
+                    <div class="country-item"><input type="checkbox" id="airspace-de" value="de"><label for="airspace-de">🇩🇪 Germany</label></div>
+                    <div class="country-item"><input type="checkbox" id="airspace-es" value="es"><label for="airspace-es">🇪🇸 Spain</label></div>
+                    <div class="country-item"><input type="checkbox" id="airspace-gb" value="gb"><label for="airspace-gb">🇬🇧 United Kingdom</label></div>
+                    <div class="country-item"><input type="checkbox" id="airspace-ch" value="ch"><label for="airspace-ch">🇨🇭 Switzerland</label></div>
+                    <div class="country-item"><input type="checkbox" id="airspace-at" value="at"><label for="airspace-at">🇦🇹 Austria</label></div>
+                    <div class="country-item"><input type="checkbox" id="airspace-be" value="be"><label for="airspace-be">🇧🇪 Belgium</label></div>
+                    <div class="country-item"><input type="checkbox" id="airspace-nl" value="nl"><label for="airspace-nl">🇳🇱 Netherlands</label></div>
+                    <div class="country-item"><input type="checkbox" id="airspace-pt" value="pt"><label for="airspace-pt">🇵🇹 Portugal</label></div>
+                    <div class="country-item"><input type="checkbox" id="airspace-ie" value="ie"><label for="airspace-ie">🇮🇪 Ireland</label></div>
+                    <div class="country-item"><input type="checkbox" id="airspace-dk" value="dk"><label for="airspace-dk">🇩🇰 Denmark</label></div>
+                    <div class="country-item"><input type="checkbox" id="airspace-se" value="se"><label for="airspace-se">🇸🇪 Sweden</label></div>
+                    <div class="country-item"><input type="checkbox" id="airspace-no" value="no"><label for="airspace-no">🇳🇴 Norway</label></div>
+                    <div class="country-item"><input type="checkbox" id="airspace-fi" value="fi"><label for="airspace-fi">🇫🇮 Finland</label></div>
+                    <div class="country-item"><input type="checkbox" id="airspace-pl" value="pl"><label for="airspace-pl">🇵🇱 Poland</label></div>
+                    <div class="country-item"><input type="checkbox" id="airspace-cz" value="cz"><label for="airspace-cz">🇨🇿 Czech Republic</label></div>
+                    <div class="country-item"><input type="checkbox" id="airspace-sk" value="sk"><label for="airspace-sk">🇸🇰 Slovakia</label></div>
+                    <div class="country-item"><input type="checkbox" id="airspace-hu" value="hu"><label for="airspace-hu">🇭🇺 Hungary</label></div>
+                    <div class="country-item"><input type="checkbox" id="airspace-ro" value="ro"><label for="airspace-ro">🇷🇴 Romania</label></div>
+                    <div class="country-item"><input type="checkbox" id="airspace-bg" value="bg"><label for="airspace-bg">🇧🇬 Bulgaria</label></div>
+                    <div class="country-item"><input type="checkbox" id="airspace-gr" value="gr"><label for="airspace-gr">🇬🇷 Greece</label></div>
+                    <div class="country-item"><input type="checkbox" id="airspace-hr" value="hr"><label for="airspace-hr">🇭🇷 Croatia</label></div>
+                    <div class="country-item"><input type="checkbox" id="airspace-si" value="si"><label for="airspace-si">🇸🇮 Slovenia</label></div>
+                    <div class="country-item"><input type="checkbox" id="airspace-lt" value="lt"><label for="airspace-lt">🇱🇹 Lithuania</label></div>
+                    <div class="country-item"><input type="checkbox" id="airspace-lv" value="lv"><label for="airspace-lv">🇱🇻 Latvia</label></div>
+                    <div class="country-item"><input type="checkbox" id="airspace-ee" value="ee"><label for="airspace-ee">🇪🇪 Estonia</label></div>
+                    <div class="country-item"><input type="checkbox" id="airspace-lu" value="lu"><label for="airspace-lu">🇱🇺 Luxembourg</label></div>
+                    <div class="country-item"><input type="checkbox" id="airspace-mt" value="mt"><label for="airspace-mt">🇲🇹 Malta</label></div>
+                    <div class="country-item"><input type="checkbox" id="airspace-cy" value="cy"><label for="airspace-cy">🇨🇾 Cyprus</label></div>
+                </div>
+                
+                <div class="country-controls">
+                    <button id="selectAllCountriesBtn" class="menu-btn">Select All</button>
+                    <button id="deselectAllCountriesBtn" class="menu-btn">Deselect All</button>
+                </div>
+            </div>
+            
+            <div class="import-controls">
+                <button id="importAirspaceBtn" class="menu-btn button-with-icon">
+                    <span class="material-icons">download</span>
+                    <span>Import/Refresh Selected Airspace</span>
+                </button>
+                <button id="clearAirspaceBtn" class="menu-btn button-with-icon">
+                    <span class="material-icons">delete</span>
+                    <span>Clear Airspace Data</span>
+                </button>
+            </div>
+            
+            <div id="airspaceImportProgress" class="airspace-import-progress">
+                <div class="airspace-import-progress-status">Processing: <span id="airspaceImportCount">0</span>/<span id="airspaceImportTotal">0</span></div>
+                <div class="airspace-import-progress-container">
+                    <div id="airspaceImportProgressBar" class="airspace-import-progress-fill"></div>
+                </div>
+            </div>
+            
+            <div id="airspaceImportStatus" class="import-status"></div>
+        </div>
+    </div>
+
     <!-- EDL Navigation Container (initially hidden) -->
     <div id="edlNavContainer" class="secondary-dock-container" style="display: none;">
         <div id="edlNavRow" class="secondary-dock-row">
@@ -359,18 +427,76 @@
 
     <script>
         // Register service worker immediately (moved to top for early activation)
+        let mainAppLoaded = false;
+        
         if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
+            window.addEventListener('load', async () => {
                 console.log('Registering service worker with BASE_PATH:', window.BASE_PATH);
                 console.log('Service worker URL:', `${window.BASE_PATH}/sw.js`);
                 console.log('Service worker scope:', `${window.BASE_PATH}/`);
 
-                navigator.serviceWorker.register(`${window.BASE_PATH}/sw.js`, { scope: `${window.BASE_PATH}/` })
-                    .then(registration => {
-                        console.log('Service Worker registered:', registration.scope);
-                        registration.update();
-                    })
-                    .catch(error => console.error('Service Worker registration failed:', error));
+                try {
+                    const registration = await navigator.serviceWorker.register(`${window.BASE_PATH}/sw.js`, { scope: `${window.BASE_PATH}/` });
+                    console.log('Service Worker registered:', registration.scope);
+                    registration.update();
+                    
+                    // Wait for service worker to be fully active before loading main app
+                    console.log('Waiting for service worker to activate...');
+                    
+                    if (registration.installing) {
+                        console.log('Service worker is installing...');
+                        await new Promise(resolve => {
+                            registration.installing.addEventListener('statechange', function() {
+                                if (this.state === 'installed') {
+                                    console.log('Service worker installed');
+                                    resolve();
+                                }
+                            });
+                        });
+                    }
+                    
+                    if (registration.waiting) {
+                        console.log('Service worker is waiting...');
+                        await new Promise(resolve => {
+                            registration.waiting.addEventListener('statechange', function() {
+                                if (this.state === 'activated') {
+                                    console.log('Service worker activated');
+                                    resolve();
+                                }
+                            });
+                        });
+                    }
+                    
+                    if (registration.active) {
+                        if (registration.active.state !== 'activated') {
+                            console.log('Waiting for service worker to activate...');
+                            await new Promise(resolve => {
+                                registration.active.addEventListener('statechange', function() {
+                                    if (this.state === 'activated') {
+                                        console.log('Service worker activated');
+                                        resolve();
+                                    }
+                                });
+                            });
+                        } else {
+                            console.log('Service worker already active');
+                        }
+                    }
+                    
+                    // Additional wait to ensure service worker is ready to intercept requests
+                    console.log('Waiting for service worker to be ready to intercept requests...');
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                    
+                    console.log('Service worker is fully active and ready to intercept requests');
+                    
+                    // Now load the main app
+                    loadMainApp();
+                    
+                } catch (error) {
+                    console.error('Service Worker registration failed:', error);
+                    // Load main app anyway if service worker fails
+                    loadMainApp();
+                }
             });
 
             // Remove the previous sourcedata-based spinner handler.
@@ -475,11 +601,33 @@
                 }
             });
         }
+        
+        // Function to load the main app
+        function loadMainApp() {
+            if (mainAppLoaded) {
+                console.log('Main app already loaded, skipping');
+                return;
+            }
+            
+            mainAppLoaded = true;
+            console.log('Loading main app...');
+            
+            // Dynamically import the main module
+            import('./main.js')
+                .then(() => {
+                    console.log('Successfully loaded main.js');
+                })
+                .catch(error => {
+                    console.error('Failed to load main.js:', error);
+                });
+        }
+        
+        // If service worker is not supported, load the main app immediately
+        if (!('serviceWorker' in navigator)) {
+            console.log('Service worker not supported, loading main app immediately');
+            window.addEventListener('load', loadMainApp);
+        }
     </script>
-
-    <!-- Import the main JavaScript file -->
-    <script type="module" src="main.js" onerror="console.error('Failed to load main.js')"
-        onload="console.log('Successfully loaded main.js')"></script>
 </body>
 
 </html>
