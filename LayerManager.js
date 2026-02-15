@@ -164,7 +164,9 @@ export class LayerManager {
 
     // Remove sources by prefix
     removeSourcesByPrefix(prefix) {
-        const sourceIds = Object.keys(this.map.style.sourceCaches);
+        const style = this.map.getStyle();
+        if (!style || !style.sources) return;
+        const sourceIds = Object.keys(style.sources);
         sourceIds.forEach(sourceId => {
             if (sourceId.startsWith(prefix)) {
                 this.removeSourceIfExists(sourceId);
