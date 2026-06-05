@@ -30,6 +30,9 @@ import {
     getPolygonOpacity,
     getEnabledAirspaceTypes,
     setEnabledAirspaceTypes,
+    getEnabledAirportTypes,
+    setEnabledAirportTypes,
+    getAirportsData,
     saveStateToLocalStorage,
     getAirspaceVisible,
     setAirspaceVisible,
@@ -60,6 +63,8 @@ import {
 import {
     clearMarker
 } from "./map.js";
+
+import { AIRPORT_TYPE_ORDER } from "./airportMappings.js";
 
 // Import layer styles
 import { 
@@ -133,7 +138,7 @@ export function createTypeCheckboxes(features) {
     // Add import button at the top
     const importButton = document.createElement('button');
     importButton.className = 'sidebar-import-btn';
-    importButton.innerHTML = '<span class="material-icons">download</span> Import Airspace Data';
+    importButton.innerHTML = '<span class="material-icons">download</span> Import Airspace &amp; Airport Data';
     importButton.addEventListener('click', () => {
         // Import the airspace import module dynamically
         import('./airspaceImport.js').then(module => {
@@ -151,6 +156,11 @@ export function createTypeCheckboxes(features) {
     
     // Add airspace type checkboxes
     addAirspaceTypeCheckboxes(sidebar, features);
+
+    const airportData = getAirportsData();
+    if (airportData?.features?.length > 0) {
+        createAirportTypeCheckboxes(airportData.features);
+    }
     
     // Add a divider
     addSidebarDivider(sidebar);
@@ -252,6 +262,89 @@ export function addAirspaceTypeCheckboxes(sidebar, features) {
     
     // Set initial airspace visibility based on state
     toggleAirspaceVisibility(getAirspaceVisible());
+}
+
+/**
+ * Adds airport type checkboxes to the sidebar
+ * @param {HTMLElement} container - Parent element for the airport section
+ * @param {Array} features - Airport features
+ */
+function addAirportTypeCheckboxes(container, features) {
+    const types = {};
+    features.forEach(feature => {
+        const type = feature.properties?.type;
+        if (type) {
+            types[type] = (types[type] || 0) + 1;
+        }
+    });
+
+    const sortedTypes = Object.keys(types).sort((a, b) => {
+        const indexA = AIRPORT_TYPE_ORDER.indexOf(a);
+        const indexB = AIRPORT_TYPE_ORDER.indexOf(b);
+        const orderA = indexA === -1 ? AIRPORT_TYPE_ORDER.length : indexA;
+        const orderB = indexB === -1 ? AIRPORT_TYPE_ORDER.length : indexB;
+        return orderA - orderB;
+    });
+
+    const savedEnabledTypes = getEnabledAirportTypes();
+    const checkboxContainer = document.createElement('div');
+    checkboxContainer.className = 'checkbox-container';
+
+    sortedTypes.forEach(type => {
+        const id = `airport-toggle-${type.replace(/\s+/g, '-')}`;
+        let isChecked = true;
+
+        if (savedEnabledTypes && savedEnabledTypes.size > 0) {
+            const savedTypesArray = Array.from(savedEnabledTypes);
+            const hasMatchingTypes = savedTypesArray.some(savedType => sortedTypes.includes(savedType));
+
+            if (hasMatchingTypes) {
+                isChecked = savedEnabledTypes.has(type);
+            }
+        }
+
+        const checkbox = createOptionCheckbox(id, type, isChecked, updateAirportFilter);
+        checkboxContainer.appendChild(checkbox);
+    });
+
+    container.appendChild(checkboxContainer);
+    updateAirportFilter();
+}
+
+/**
+ * Creates or refreshes the airport types section in the sidebar
+ * @param {Array} features - Airport features
+ */
+export function createAirportTypeCheckboxes(features) {
+    if (!features || features.length === 0) {
+        return;
+    }
+
+    const sidebar = document.getElementById('airspace-sidebar');
+    if (!sidebar) {
+        return;
+    }
+
+    const existingSection = document.getElementById('airport-types-section');
+    if (existingSection) {
+        existingSection.remove();
+    }
+
+    const section = document.createElement('div');
+    section.id = 'airport-types-section';
+
+    const title = document.createElement('h3');
+    title.textContent = 'Airport Types';
+    section.appendChild(title);
+
+    addAirportTypeCheckboxes(section, features);
+
+    const firstDivider = sidebar.querySelector('hr.sidebar-divider');
+    if (firstDivider) {
+        sidebar.insertBefore(section, firstDivider);
+    } else {
+        sidebar.appendChild(section);
+    }
 }
 
 /**
@@ -414,6 +507,27 @@ export function addTextSizeControls(sidebar) {
     textSizeContainer.appendChild(decreaseTextBtn);
     textSizeContainer.appendChild(increaseTextBtn);
     sidebar.appendChild(textSizeContainer);
+}
+
+/**
+ * Updates the airspace filter based on checkbox state
+ */
+export function updateAirportFilter() {
+    const checkboxes = document.querySelectorAll('#airspace-sidebar input[type="checkbox"][id^="airport-toggle-"]');
+    const enabledTypes = Array.from(checkboxes)
+        .filter(cb => cb.checked)
+        .map(cb => cb.id.replace('airport-toggle-', '').replace(/-/g, ' '));
+
+    setEnabledAirportTypes(enabledTypes);
+
+    const layerManager = getLayerManager();
+    if (!layerManager?.hasLayer('airports-circles')) {
+        return;
+    }
+
+    const filter = ['in', ['get', 'type'], ['literal', enabledTypes]];
+    layerManager.setFilter('airports-circles', filter);
+    layerManager.setFilter('airports-labels', filter);
 }
 
 /**
