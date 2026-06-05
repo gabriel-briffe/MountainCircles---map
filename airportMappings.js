@@ -60,6 +60,22 @@ export function getAirportTypeColor(type) {
     return AIRPORT_TYPE_COLORS[type] || "#000000";
 }
 
+/** Traffic type mappings (MC-kmp AirportsStorage.kt) */
+export const TRAFFIC_TYPE_MAP = {
+    0: "VFR",
+    1: "IFR"
+};
+
+/** Runway surface mappings (MC-kmp AirportsClickAreaLayer.kt) */
+export const RUNWAY_SURFACE_MAP = {
+    0: "Asphalt",
+    1: "Concrete",
+    2: "Grass",
+    3: "Sand",
+    4: "Water",
+    5: "Bitume"
+};
+
 /** MapLibre match expression for circle color by airport type */
 export const AIRPORT_COLOR_EXPRESSION = [
     "match",
