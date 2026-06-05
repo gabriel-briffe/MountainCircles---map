@@ -263,6 +263,9 @@
                 
                 // JS files
                 `${basePath}/airspace.js`,
+                `${basePath}/airportLayers.js`,
+                `${basePath}/airportMappings.js`,
+                `${basePath}/airportProcessor.js`,
                 `${basePath}/airspaceImport.js`,
                 `${basePath}/airspaceProcessor.js`,
                 `${basePath}/airspaceStyle.js`,
@@ -497,21 +500,21 @@
                     const requests = await cache.keys();
                     
                     // Filter for airspace data
-                    const airspaceRequests = requests.filter(req => 
-                        req.url.includes('airspace.geojson')
+                    const aviationDataRequests = requests.filter(req => 
+                        req.url.includes('airspace.geojson') || req.url.includes('airports.geojson')
                     );
                     
-                    logInfo(`Found ${airspaceRequests.length} airspace entries in cache: ${cacheName}`);
+                    logInfo(`Found ${aviationDataRequests.length} airspace/airport entries in cache: ${cacheName}`);
                     
-                    // Delete each airspace entry
-                    for (const request of airspaceRequests) {
+                    // Delete each airspace/airport entry
+                    for (const request of aviationDataRequests) {
                         await cache.delete(request);
                         totalDeleted++;
                         logInfo(`Deleted: ${request.url}`);
                     }
                 }
                 
-                logSuccess(`Deleted ${totalDeleted} airspace entries from cache`);
+                logSuccess(`Deleted ${totalDeleted} airspace/airport entries from cache`);
                 updateProgress(90);
                 
                 // Clear any airspace data from localStorage
@@ -600,7 +603,7 @@
                     logInfo("AIRSPACE CACHE CLEANING requested (cleanAirspace=true)");
                     await cleanAirspaceCache();
                     logSuccess("Airspace cache cleaning completed successfully!");
-                    completionMessage.textContent = "Airspace data refreshed successfully!";
+                    completionMessage.textContent = "Airspace and airport data refreshed successfully!";
                     showCompletionUI();
                     return;
                 }

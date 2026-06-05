@@ -60,6 +60,9 @@ const _state = {
     
     // Airspace data
     airspaceData: null,
+
+    // Airport data
+    airportsData: null,
     
     // Configuration - critical for aviation safety
     currentPolicy: DEFAULT_POLICY,
@@ -122,6 +125,7 @@ export const getLastPopupLngLat = () => _state.lastPopupLngLat;
 export const getHighlightedFeatureKey = () => _state.highlightedFeatureKey;
 export const getPopupMarker = () => _state.popupMarker;
 export const getAirspaceData = () => _state.airspaceData;
+export const getAirportsData = () => _state.airportsData;
 export const getCurrentPolicy = () => _state.currentPolicy;
 export const getCurrentConfig = () => _state.currentConfig;
 export const getPopup = () => _state.popup;
@@ -147,6 +151,7 @@ export const setLastPopupLngLat = (lngLat) => { _state.lastPopupLngLat = lngLat;
 export const setHighlightedFeatureKey = (key) => { _state.highlightedFeatureKey = key; };
 export const setPopupMarker = (marker) => { _state.popupMarker = marker; };
 export const setAirspaceData = (data) => { _state.airspaceData = data; };
+export const setAirportsData = (data) => { _state.airportsData = data; };
 export const setCurrentPolicy = (policy) => { _state.currentPolicy = policy; };
 export const setCurrentConfig = (config) => { _state.currentConfig = config; };
 export const setPopup = (popup) => { _state.popup = popup; };

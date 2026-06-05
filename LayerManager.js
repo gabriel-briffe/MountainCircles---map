@@ -236,9 +236,13 @@ export class LayerManager {
             
             // IGC track layers will be inserted here programmatically
             
-            // Peaks and passes - above most layers but below airspace
+            // Peaks and passes - above most layers but below airports/airspace
             'passes-symbols',
             'peaks-symbols',
+
+            // Airport layers - above peaks/passes, below airspace
+            'airports-circles',
+            'airports-labels',
             
             // Airspace layers - always at the top
             'airspace-fill',

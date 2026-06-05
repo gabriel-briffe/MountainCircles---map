@@ -3,6 +3,7 @@ import { initializeMap } from "./mapInitializer.js";
 import { addGeoJSONLayers, updateParametersBox, switchConfig, updateSidebarConfigButtonStyles } from "./sidebar.js";
 import { setupLayerEventHandlers } from "./layers.js";
 import { initializeAirspaceData, setupAirspacePopupHandler } from "./map.js";
+import { initializeAirportsData } from "./airportLayers.js";
 import { setupDockEventListeners, toggleAirspaceVisibility } from "./dock.js";
 import { updatePopupStyle } from "./airspace.js";
 import { 
@@ -121,6 +122,9 @@ export async function initializeApp(mapContainerId = 'map') {
             
             // Initialize airspace data
             await initializeAirspaceData();
+
+            // Initialize airport data
+            await initializeAirportsData();
             
             // Set up airspace popup handler
             setupAirspacePopupHandler(mapInstance);

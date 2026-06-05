@@ -10,7 +10,12 @@ import {
     getAvailableCountries 
 } from "./airspaceProcessor.js";
 
-import { getMap, setAirspaceData } from "./state.js";
+import {
+    importSelectedAirports,
+    hasAirportsCache
+} from "./airportProcessor.js";
+
+import { getMap, setAirspaceData, setAirportsData } from "./state.js";
 
 // UI elements
 let modal = null;
@@ -219,7 +224,7 @@ async function handleImportAirspace() {
     
     // Confirm action
     const countryCount = selectedCountries.length;
-    const confirmMessage = `Import airspace data for ${countryCount} selected countr${countryCount === 1 ? 'y' : 'ies'}?\n\nThis will overwrite any existing airspace data.`;
+    const confirmMessage = `Import airspace and airport data for ${countryCount} selected countr${countryCount === 1 ? 'y' : 'ies'}?\n\nThis will overwrite any existing airspace and airport data.`;
     
     if (!confirm(confirmMessage)) {
         return;
@@ -232,16 +237,26 @@ async function handleImportAirspace() {
     showProgress();
     
     try {
-        // Import the data
+        const totalSteps = selectedCountries.length * 2;
+
         const combinedData = await importSelectedCountries(selectedCountries, {
-            onProgress: updateProgress,
+            onProgress: (current, total, status) => {
+                updateProgress(current, totalSteps, status);
+            },
+            onStatus: updateStatus
+        });
+
+        const airportData = await importSelectedAirports(selectedCountries, {
+            onProgress: (current, total, status) => {
+                updateProgress(selectedCountries.length + current, totalSteps, status);
+            },
             onStatus: updateStatus
         });
         
         // Update the map with new data
-        await updateMapWithNewData(combinedData);
+        await updateMapWithNewData(combinedData, airportData);
         
-        showStatus(`Successfully imported ${combinedData.features.length} airspace features! The map will reload to display the new data.`, 'success');
+        showStatus(`Successfully imported ${combinedData.features.length} airspace features and ${airportData.features.length} airports! The map will reload to display the new data.`, 'success');
         
         // Reload the page to ensure all systems pick up the new data
         setTimeout(() => {
@@ -263,14 +278,15 @@ async function handleClearAirspace() {
     console.log('[AirspaceImport] Clear airspace requested');
     
     // Check if there's cached data first
-    const hasCache = await hasAirspaceCache();
-    if (!hasCache) {
-        showStatus('No airspace data found to clear.', 'error');
+    const hasAirspace = await hasAirspaceCache();
+    const hasAirports = await hasAirportsCache();
+    if (!hasAirspace && !hasAirports) {
+        showStatus('No airspace or airport data found to clear.', 'error');
         return;
     }
     
     // Confirm action
-    if (!confirm('Clear all airspace data?\n\nThis will remove all imported airspace from the cache. The airspace layer will be empty until you import new data.')) {
+    if (!confirm('Clear all airspace and airport data?\n\nThis will remove all imported airspace and airports from the cache. Both layers will be empty until you import new data.')) {
         return;
     }
     
@@ -283,8 +299,9 @@ async function handleClearAirspace() {
 /**
  * Updates the map with newly imported airspace data
  * @param {Object} geoJSON - The new airspace GeoJSON data
+ * @param {Object} airportGeoJSON - The new airport GeoJSON data
  */
-async function updateMapWithNewData(geoJSON) {
+async function updateMapWithNewData(geoJSON, airportGeoJSON) {
     const map = getMap();
     
     if (map && map.getSource('airspace')) {
@@ -303,6 +320,12 @@ async function updateMapWithNewData(geoJSON) {
         }
         
         console.log('[AirspaceImport] Map updated with new airspace data');
+    }
+
+    if (map && airportGeoJSON && map.getSource('airports')) {
+        map.getSource('airports').setData(airportGeoJSON);
+        setAirportsData(airportGeoJSON);
+        console.log('[AirspaceImport] Map updated with new airport data');
     }
 }
 
