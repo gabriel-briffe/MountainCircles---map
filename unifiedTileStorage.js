@@ -124,6 +124,58 @@ class UnifiedTileStorage {
     });
   }
 
+  async storeMapterhornTile(z, x, y, tileData, contentType = 'image/webp') {
+    if (!this.regionsDB) {
+      await this.initRegionsDB();
+    }
+
+    const transaction = this.regionsDB.transaction([TILES_STORE], 'readwrite');
+    const store = transaction.objectStore(TILES_STORE);
+
+    const tileRecord = {
+      id: `dem/${z}/${x}/${y}`,
+      z, x, y,
+      data: tileData,
+      contentType,
+      region: 'mapterhorn',
+      lastAccessed: Date.now(),
+      size: tileData.byteLength
+    };
+
+    return new Promise((resolve, reject) => {
+      const request = store.put(tileRecord);
+      request.onsuccess = () => resolve();
+      request.onerror = () => reject(request.error);
+    });
+  }
+
+  async getMapterhornTile(z, x, y) {
+    if (!this.regionsDB) {
+      await this.initRegionsDB();
+    }
+
+    const transaction = this.regionsDB.transaction([TILES_STORE], 'readwrite');
+    const store = transaction.objectStore(TILES_STORE);
+
+    return new Promise((resolve, reject) => {
+      const getRequest = store.get(`dem/${z}/${x}/${y}`);
+
+      getRequest.onsuccess = () => {
+        const tile = getRequest.result;
+        if (tile) {
+          tile.lastAccessed = Date.now();
+          const updateRequest = store.put(tile);
+          updateRequest.onsuccess = () => resolve(tile);
+          updateRequest.onerror = () => resolve(tile);
+        } else {
+          resolve(null);
+        }
+      };
+
+      getRequest.onerror = () => reject(getRequest.error);
+    });
+  }
+
   async getRegionalTile(z, x, y) {
     if (!this.regionsDB) {
       await this.initRegionsDB();
