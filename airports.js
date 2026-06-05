@@ -2,7 +2,11 @@
  * Airport popup and interaction for MountainCircles Map
  */
 
-import { getAirportTypeColor } from "./airportMappings.js";
+import {
+    getAirportTypeColor,
+    TRAFFIC_TYPE_MAP,
+    RUNWAY_SURFACE_MAP
+} from "./airportMappings.js";
 import {
     getMap,
     getAirportsData,
@@ -16,11 +20,20 @@ import {
 } from "./state.js";
 import { clearHighlight, updatePopupStyle } from "./airspace.js";
 
-const AIRPORT_QUERY_LAYERS = ['airports-click', 'airports-circles'];
+const AIRPORT_QUERY_LAYERS = ["airports-click", "airports-circles"];
+
+function formatDimensionPart(part) {
+    if (!part || part.value == null) {
+        return null;
+    }
+
+    const unit = part.unit === 2 ? "ft" : part.unit === 0 ? "m" : "";
+    return `${part.value}${unit}`;
+}
 
 /**
- * Formats elevation for display
- * @param {Object|number|null} elevation
+ * Formats elevation for display (MC-kmp format: e.g. "67m msl")
+ * @param {Object|number|string|null} elevation
  * @returns {string|null}
  */
 function formatElevation(elevation) {
@@ -28,34 +41,175 @@ function formatElevation(elevation) {
         return null;
     }
 
-    if (typeof elevation === 'number') {
-        return `${elevation} m`;
+    if (typeof elevation === "number") {
+        return `${elevation}m msl`;
     }
 
-    if (typeof elevation === 'object' && elevation.value != null) {
-        return `${elevation.value} m`;
+    if (typeof elevation === "string") {
+        return elevation;
+    }
+
+    if (typeof elevation === "object" && elevation.value != null) {
+        const unit = elevation.unit === 2 ? "ft" : elevation.unit === 0 ? "m" : "?";
+        const datum = elevation.referenceDatum === 1 ? "msl" : "?";
+        return `${elevation.value}${unit} ${datum}`;
     }
 
     return null;
 }
 
 /**
- * Formats the primary radio frequency for display
- * @param {Array} frequencies
+ * Formats traffic types for display
+ * @param {Array<number|string>|null} trafficType
  * @returns {string|null}
  */
-function formatPrimaryFrequency(frequencies) {
-    if (!Array.isArray(frequencies) || frequencies.length === 0) {
+function formatTrafficTypes(trafficType) {
+    if (!Array.isArray(trafficType) || trafficType.length === 0) {
         return null;
     }
 
-    const primary = frequencies.find((entry) => entry.primary) || frequencies[0];
-    if (!primary?.value) {
-        return null;
+    const labels = trafficType.map((entry) => {
+        if (typeof entry === "number") {
+            return TRAFFIC_TYPE_MAP[entry] ?? String(entry);
+        }
+
+        if (typeof entry === "string" && entry.trim() !== "" && !Number.isNaN(Number(entry))) {
+            return TRAFFIC_TYPE_MAP[Number(entry)] ?? entry;
+        }
+
+        return String(entry);
+    });
+
+    return labels.join(", ");
+}
+
+/**
+ * Parses frequency entries from airport properties
+ * @param {Array} frequencies
+ * @returns {Array<{name: string, value: string, primary: boolean}>}
+ */
+function parseFrequencies(frequencies) {
+    if (!Array.isArray(frequencies)) {
+        return [];
     }
 
-    const label = primary.name ? `${primary.name} ` : '';
-    return `${label}${primary.value}`.trim();
+    return frequencies
+        .map((frequency) => {
+            if (!frequency || frequency.value == null) {
+                return null;
+            }
+
+            return {
+                name: frequency.name || "",
+                value: String(frequency.value),
+                primary: Boolean(frequency.primary)
+            };
+        })
+        .filter(Boolean)
+        .sort((a, b) => Number(b.primary) - Number(a.primary));
+}
+
+/**
+ * Parses runway entries from airport properties
+ * @param {Array} runways
+ * @returns {Array<{designator: string, length: string, width: string, mainComposite: string}>}
+ */
+function parseRunways(runways) {
+    if (!Array.isArray(runways)) {
+        return [];
+    }
+
+    return runways
+        .map((runway) => {
+            if (!runway?.designator) {
+                return null;
+            }
+
+            const length = formatDimensionPart(runway.dimension?.length);
+            const width = formatDimensionPart(runway.dimension?.width);
+            if (!length || !width) {
+                return null;
+            }
+
+            let mainComposite = "";
+            const surfaceValue = runway.surface?.mainComposite;
+            if (typeof surfaceValue === "number") {
+                mainComposite = RUNWAY_SURFACE_MAP[surfaceValue] || "Unknown";
+            } else if (surfaceValue != null) {
+                mainComposite = String(surfaceValue);
+            }
+
+            return {
+                designator: runway.designator,
+                length,
+                width,
+                mainComposite
+            };
+        })
+        .filter(Boolean);
+}
+
+function appendInfoRow(parent, label, value) {
+    const row = document.createElement("div");
+    row.className = "airport-popup-row";
+
+    const labelEl = document.createElement("span");
+    labelEl.className = "airport-popup-label";
+    labelEl.textContent = label;
+
+    const valueEl = document.createElement("span");
+    valueEl.className = "airport-popup-value";
+    valueEl.textContent = value;
+
+    row.append(labelEl, valueEl);
+    parent.appendChild(row);
+}
+
+function appendSectionTitle(parent, title) {
+    const heading = document.createElement("h4");
+    heading.className = "airport-popup-section-title";
+    heading.textContent = title;
+    parent.appendChild(heading);
+}
+
+function appendFrequencyRow(parent, frequency) {
+    const row = document.createElement("div");
+    row.className = "airport-popup-frequency-row";
+
+    const marker = document.createElement("span");
+    marker.className = "airport-popup-frequency-marker";
+    marker.textContent = frequency.primary ? "★" : "";
+
+    const name = document.createElement("span");
+    name.className = "airport-popup-frequency-name";
+    name.textContent = frequency.name;
+
+    const value = document.createElement("span");
+    value.className = "airport-popup-frequency-value";
+    value.textContent = frequency.value;
+
+    row.append(marker, name, value);
+    parent.appendChild(row);
+}
+
+function appendRunwayRow(parent, runway) {
+    const row = document.createElement("div");
+    row.className = "airport-popup-runway-row";
+
+    const designator = document.createElement("span");
+    designator.className = "airport-popup-runway-designator";
+    designator.textContent = runway.designator;
+
+    const surface = document.createElement("span");
+    surface.className = "airport-popup-runway-surface";
+    surface.textContent = runway.mainComposite;
+
+    const dimensions = document.createElement("span");
+    dimensions.className = "airport-popup-runway-dimensions";
+    dimensions.textContent = `${runway.length} × ${runway.width}`;
+
+    row.append(designator, surface, dimensions);
+    parent.appendChild(row);
 }
 
 /**
@@ -95,55 +249,68 @@ function resolveAirportFeature(renderedFeature) {
  */
 function buildAirportPopupContent(feature) {
     const props = feature.properties || {};
-    const content = document.createElement('div');
-    content.className = 'airport-popup-content';
+    const content = document.createElement("div");
+    content.className = "airport-popup-content";
 
-    const header = document.createElement('div');
-    header.className = 'airport-popup-header';
-    header.innerHTML = `<strong>${props.name || 'Unknown Airport'}</strong>`;
-    content.appendChild(header);
-
-    const details = document.createElement('div');
-    details.className = 'airport-popup-details';
-
-    if (props.icaoCode) {
-        const icaoRow = document.createElement('div');
-        icaoRow.className = 'airport-popup-row';
-        icaoRow.innerHTML = `<span class="airport-popup-label">ICAO</span><span>${props.icaoCode}</span>`;
-        details.appendChild(icaoRow);
-    }
-
-    if (props.type) {
-        const typeRow = document.createElement('div');
-        typeRow.className = 'airport-popup-row';
-        typeRow.innerHTML = `<span class="airport-popup-label">Type</span><span>${props.type}</span>`;
-        details.appendChild(typeRow);
-    }
-
-    const elevationText = formatElevation(props.elevation);
-    if (elevationText) {
-        const elevationRow = document.createElement('div');
-        elevationRow.className = 'airport-popup-row';
-        elevationRow.innerHTML = `<span class="airport-popup-label">Elevation</span><span>${elevationText}</span>`;
-        details.appendChild(elevationRow);
-    }
-
-    const frequencyText = formatPrimaryFrequency(props.frequencies);
-    if (frequencyText) {
-        const frequencyRow = document.createElement('div');
-        frequencyRow.className = 'airport-popup-row';
-        frequencyRow.style.color = 'darkgreen';
-        frequencyRow.innerHTML = `<span class="airport-popup-label">Frequency</span><span>${frequencyText}</span>`;
-        details.appendChild(frequencyRow);
-    }
-
-    content.appendChild(details);
-
-    const colorBand = document.createElement('div');
-    colorBand.className = 'airport-popup-color-band';
+    const colorBand = document.createElement("div");
+    colorBand.className = "airport-popup-color-band";
     colorBand.style.backgroundColor = getAirportTypeColor(props.type);
     content.appendChild(colorBand);
 
+    const header = document.createElement("div");
+    header.className = "airport-popup-header";
+
+    if (props.icaoCode && props.icaoCode !== "N/A") {
+        const icao = document.createElement("span");
+        icao.className = "airport-popup-icao";
+        icao.textContent = props.icaoCode;
+        header.appendChild(icao);
+    }
+
+    const name = document.createElement("strong");
+    name.className = "airport-popup-name";
+    name.textContent = props.name || "Unknown Airport";
+    header.appendChild(name);
+    content.appendChild(header);
+
+    const details = document.createElement("div");
+    details.className = "airport-popup-details";
+
+    const elevationText = formatElevation(props.elevation);
+    if (elevationText) {
+        appendInfoRow(details, "Elevation", elevationText);
+    }
+
+    if (props.type) {
+        appendInfoRow(details, "Type", props.type);
+    }
+
+    const trafficText = formatTrafficTypes(props.trafficType);
+    if (trafficText) {
+        appendInfoRow(details, "Traffic", trafficText);
+    }
+
+    const frequencies = parseFrequencies(props.frequencies);
+    if (frequencies.length > 0) {
+        appendSectionTitle(details, "Frequencies");
+        frequencies.forEach((frequency) => appendFrequencyRow(details, frequency));
+    }
+
+    const runways = parseRunways(props.runways);
+    if (runways.length > 0) {
+        appendSectionTitle(details, "Runways");
+        runways.forEach((runway) => appendRunwayRow(details, runway));
+    }
+
+    if (props.description) {
+        appendSectionTitle(details, "Description");
+        const description = document.createElement("div");
+        description.className = "airport-popup-description";
+        description.textContent = props.description;
+        details.appendChild(description);
+    }
+
+    content.appendChild(details);
     return content;
 }
 
@@ -155,7 +322,7 @@ export function createAirportPopup() {
     const lngLat = getLastPopupLngLat();
 
     if (!map || !lngLat) {
-        console.warn('[Airports] Cannot create popup: missing map or location');
+        console.warn("[Airports] Cannot create popup: missing map or location");
         return;
     }
 
@@ -173,13 +340,13 @@ export function createAirportPopup() {
     clearPopup();
     clearHighlight();
 
-    const popup = document.createElement('div');
-    popup.className = 'airport-popup';
-    popup.style.display = 'inline-flex';
+    const popup = document.createElement("div");
+    popup.className = "airport-popup";
+    popup.style.display = "inline-flex";
     popup.appendChild(buildAirportPopupContent(feature));
 
     setPopup(popup);
-    document.getElementById('map').appendChild(popup);
+    document.getElementById("map").appendChild(popup);
     updatePopupStyle();
 }
 
@@ -229,7 +396,7 @@ export function refreshAirportPopup() {
  * @returns {Array}
  */
 export function queryAirportFeaturesAtPoint(mapInstance, point) {
-    if (!mapInstance.getLayer('airports-click') && !mapInstance.getLayer('airports-circles')) {
+    if (!mapInstance.getLayer("airports-click") && !mapInstance.getLayer("airports-circles")) {
         return [];
     }
 
@@ -249,7 +416,7 @@ export function showAirportPopupAtClick(mapInstance, lngLat, renderedFeature) {
     clearHighlight();
     clearAirportMarker();
 
-    const marker = new maplibregl.Marker({ color: '#2196F3' })
+    const marker = new maplibregl.Marker({ color: "#2196F3" })
         .setLngLat(lngLat)
         .addTo(mapInstance);
 

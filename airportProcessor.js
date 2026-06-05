@@ -9,7 +9,8 @@ import {
     normalizeAirportType,
     SKIPPED_AIRPORT_TYPE_IDS,
     SKIPPED_AIRPORT_TYPES,
-    AIRPORT_PROPERTIES_TO_STRIP
+    AIRPORT_PROPERTIES_TO_STRIP,
+    TRAFFIC_TYPE_MAP
 } from "./airportMappings.js";
 import { getAirportsData, setAirportsData } from "./state.js";
 
@@ -65,6 +66,22 @@ export function transformAirportFeature(feature, countryCode) {
     });
 
     properties.type = type;
+
+    if (Array.isArray(properties.trafficType)) {
+        properties.trafficType = properties.trafficType
+            .map((entry) => {
+                if (typeof entry === "number") {
+                    return TRAFFIC_TYPE_MAP[entry] ?? String(entry);
+                }
+
+                if (typeof entry === "string" && entry.trim() !== "" && !Number.isNaN(Number(entry))) {
+                    return TRAFFIC_TYPE_MAP[Number(entry)] ?? entry;
+                }
+
+                return entry;
+            })
+            .filter(Boolean);
+    }
 
     if (!properties._id) {
         properties._id = properties.icaoCode || feature.id || null;
