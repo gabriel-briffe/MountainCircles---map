@@ -127,6 +127,8 @@ const INITIAL_CACHE_RESOURCES = [
     `${BASE_PATH}/sidebar.css`,
     // JS files
     `${BASE_PATH}/airspace.js`,
+    `${BASE_PATH}/airportPopup.css`,
+    `${BASE_PATH}/airports.js`,
     `${BASE_PATH}/airportLayers.js`,
     `${BASE_PATH}/airportMappings.js`,
     `${BASE_PATH}/airportProcessor.js`,

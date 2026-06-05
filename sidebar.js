@@ -304,11 +304,11 @@ function addAirportTypeCheckboxes(container, features) {
         }
 
         const checkbox = createOptionCheckbox(id, type, isChecked, updateAirportFilter);
+        checkbox.querySelector('input').dataset.airportType = type;
         checkboxContainer.appendChild(checkbox);
     });
 
     container.appendChild(checkboxContainer);
-    updateAirportFilter();
 }
 
 /**
@@ -345,6 +345,8 @@ export function createAirportTypeCheckboxes(features) {
     } else {
         sidebar.appendChild(section);
     }
+
+    updateAirportFilter();
 }
 
 /**
@@ -513,10 +515,10 @@ export function addTextSizeControls(sidebar) {
  * Updates the airspace filter based on checkbox state
  */
 export function updateAirportFilter() {
-    const checkboxes = document.querySelectorAll('#airspace-sidebar input[type="checkbox"][id^="airport-toggle-"]');
+    const checkboxes = document.querySelectorAll('#airspace-sidebar input[type="checkbox"][data-airport-type]');
     const enabledTypes = Array.from(checkboxes)
         .filter(cb => cb.checked)
-        .map(cb => cb.id.replace('airport-toggle-', '').replace(/-/g, ' '));
+        .map(cb => cb.dataset.airportType);
 
     setEnabledAirportTypes(enabledTypes);
 
@@ -528,6 +530,15 @@ export function updateAirportFilter() {
     const filter = ['in', ['get', 'type'], ['literal', enabledTypes]];
     layerManager.setFilter('airports-circles', filter);
     layerManager.setFilter('airports-labels', filter);
+    layerManager.setFilter('airports-click', filter);
+
+    if (document.querySelector('.airport-popup')) {
+        import('./airports.js').then(module => {
+            module.refreshAirportPopup();
+        }).catch(error => {
+            console.warn('[Sidebar] Could not refresh airport popup after filter change:', error);
+        });
+    }
 }
 
 /**

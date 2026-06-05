@@ -18,6 +18,11 @@ import {
     clearHighlight
 } from "./airspace.js";
 
+import {
+    queryAirportFeaturesAtPoint,
+    showAirportPopupAtClick
+} from "./airports.js";
+
 import { pointClickedFlag } from "./layers.js";
 
 /**
@@ -84,6 +89,12 @@ export function setupAirspacePopupHandler(mapInstance) {
 
         // Clear existing marker
         clearMarker();
+
+        const airportFeatures = queryAirportFeaturesAtPoint(mapInstance, e.point);
+        if (airportFeatures.length > 0) {
+            showAirportPopupAtClick(mapInstance, e.lngLat, airportFeatures[0]);
+            return;
+        }
         
         // Query for features at click location
         const features = mapInstance.queryRenderedFeatures(e.point, { 

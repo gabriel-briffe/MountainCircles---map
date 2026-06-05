@@ -243,6 +243,7 @@ export class LayerManager {
             // Airport layers - above peaks/passes, below airspace
             'airports-circles',
             'airports-labels',
+            'airports-click',
             
             // Airspace layers - always at the top
             'airspace-fill',

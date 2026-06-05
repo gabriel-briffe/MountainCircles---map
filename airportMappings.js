@@ -44,6 +44,22 @@ export const AIRPORT_PROPERTIES_TO_STRIP = [
     "services"
 ];
 
+/** Solid colors by airport type (matches AIRPORT_COLOR_EXPRESSION) */
+export const AIRPORT_TYPE_COLORS = {
+    "International Airport": "#8B0000",
+    "Military Aerodrome": "#8B0000",
+    "Airport (civil/military)": "#2196F3",
+    "Airport resp. Airfield IFR": "#2196F3",
+    "Airfield Civil": "#2196F3",
+    "Glider Site": "#2196F3",
+    "Ultra Light Flying Site": "#FF9800",
+    "Altiport": "#E91E63"
+};
+
+export function getAirportTypeColor(type) {
+    return AIRPORT_TYPE_COLORS[type] || "#000000";
+}
+
 /** MapLibre match expression for circle color by airport type */
 export const AIRPORT_COLOR_EXPRESSION = [
     "match",

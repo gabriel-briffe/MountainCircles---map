@@ -1,0 +1,57 @@
+.airport-popup {
+    position: absolute;
+    background: var(--bg-light-solid);
+    border: 1px solid var(--border-light);
+    box-shadow: 0 2px 6px var(--shadow-light);
+    padding: 0;
+    z-index: 1200;
+    overflow: hidden;
+    display: inline-flex;
+    color: var(--text-light);
+    font-size: var(--airspace-popup-content);
+}
+
+.airport-popup-content {
+    position: relative;
+    padding: 8px 12px 8px 16px;
+    min-width: 180px;
+}
+
+.airport-popup-header strong {
+    font-size: var(--airspace-popup-header);
+    display: block;
+    margin-bottom: 6px;
+}
+
+.airport-popup-details {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.airport-popup-row {
+    display: flex;
+    gap: 8px;
+    font-size: var(--airspace-popup-content);
+}
+
+.airport-popup-label {
+    min-width: 72px;
+    color: var(--text-muted, #666);
+    font-size: var(--airspace-popup-label);
+}
+
+.airport-popup-color-band {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 8px;
+    height: 100%;
+    opacity: 0.85;
+}
+
+@media (orientation: portrait) {
+    .airport-popup {
+        max-width: 100%;
+    }
+}
