@@ -19,6 +19,18 @@ export const airportsCirclesLayerStyle = {
     }
 };
 
+export const airportsClickLayerStyle = {
+    id: "airports-click",
+    type: "circle",
+    source: "airports",
+    minzoom: 6,
+    paint: {
+        "circle-radius": 14,
+        "circle-color": "#000000",
+        "circle-opacity": 0
+    }
+};
+
 export const airportsLabelsLayerStyle = {
     id: "airports-labels",
     type: "symbol",
@@ -63,6 +75,7 @@ export function initializeAirportLayers() {
 
     layerManager.addLayerIfNotExists("airports-circles", airportsCirclesLayerStyle);
     layerManager.addLayerIfNotExists("airports-labels", labelsStyle);
+    layerManager.addLayerIfNotExists("airports-click", airportsClickLayerStyle);
 }
 
 /**
