@@ -214,8 +214,8 @@ export class LayerManager {
         // The last items in this array will be drawn on top
         const layerOrder = [
             // Base map layers - always at the bottom
-            'osm-fallback',      // OSM fallback tiles at the very bottom
-            'custom-tiles',      // Custom tiles on top of OSM fallback
+            'unified-tiles',
+            'mapterhorn-hillshade',
             
             // Polygon layers
             'polygons-layer',

@@ -1,5 +1,5 @@
 import { COLOR_MAPPING } from "./mappings.js";
-import { BASE_PATH } from "./config.js";
+import { MAPTERHORN_TILE_SETTINGS } from "./config.js";
 
 
 const style = {
@@ -10,11 +10,21 @@ const style = {
         "unified-tiles": {
             "type": "raster",
             "tiles": [
-                "custom://tiles/{z}/{x}/{y}"  // Custom protocol that checks IndexedDB first, then OSM fallback
+                "custom://tiles/{z}/{x}/{y}"
             ],
             "tileSize": 256,
             "maxzoom": 19,
-            "attribution": "Map data © OpenStreetMap contributors + hillshade generated from srtm3"
+            "attribution": "Map data © OpenStreetMap contributors"
+        },
+        "mapterhorn-terrain": {
+            "type": "raster-dem",
+            "tiles": [
+                MAPTERHORN_TILE_SETTINGS.protocolTemplate
+            ],
+            "encoding": MAPTERHORN_TILE_SETTINGS.encoding,
+            "tileSize": MAPTERHORN_TILE_SETTINGS.tileSize,
+            "maxzoom": MAPTERHORN_TILE_SETTINGS.maxZoom,
+            "attribution": MAPTERHORN_TILE_SETTINGS.attribution
         },
         "airspace": {
             "type": "geojson",
@@ -31,6 +41,17 @@ const style = {
             "source": "unified-tiles",
             "minzoom": 0,
             "maxzoom": 19
+        },
+        {
+            "id": "mapterhorn-hillshade",
+            "type": "hillshade",
+            "source": "mapterhorn-terrain",
+            "paint": {
+                "hillshade-exaggeration": 0.4,
+                "hillshade-shadow-color": "#473B24",
+                "hillshade-highlight-color": "#FFFFFF",
+                "hillshade-illumination-direction": 310
+            }
         },
         {
             "id": "airspace-fill",

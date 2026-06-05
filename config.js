@@ -124,5 +124,18 @@ export const TILE_CACHE_SETTINGS = {
     basePath: './tiles'
 };
 
+// Mapterhorn terrain tiles (raster-dem, terrarium encoding)
+export const MAPTERHORN_TILE_SETTINGS = {
+    tileUrl: 'https://tiles.mapterhorn.com/{z}/{x}/{y}.webp',
+    protocolTemplate: 'mapterhorn://tiles/{z}/{x}/{y}',
+    tileSize: 512,
+    maxZoom: 14,
+    encoding: 'terrarium',
+    attribution: 'Terrain © <a href="https://mapterhorn.com/attribution">Mapterhorn</a>'
+};
+
+// Unlimited tile cache duration (1 year HTTP cache hint; IndexedDB has no expiry)
+export const TILE_CACHE_MAX_AGE_SECONDS = 31536000;
+
 // Re-export color mappings for convenience
 export { COLOR_MAPPING, AIRSPACE_TYPE_ORDER }; 
