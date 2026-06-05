@@ -89,6 +89,9 @@ const _state = {
     
     // Airspace type visibility
     enabledAirspaceTypes: null,
+
+    // Airport type visibility
+    enabledAirportTypes: null,
     
     // Geolocation enabled/disabled
     geolocationEnabled: false,  // Default to disabled for privacy reasons
@@ -266,9 +269,12 @@ export async function saveStateToLocalStorage() {
             }
         });
 
-        // Handle special case for airspace types
+        // Handle special case for airspace and airport types
         if (_state.enabledAirspaceTypes) {
             persistedState.enabledAirspaceTypes = Array.from(_state.enabledAirspaceTypes);
+        }
+        if (_state.enabledAirportTypes) {
+            persistedState.enabledAirportTypes = Array.from(_state.enabledAirportTypes);
         }
         
         // Convert state object to JSON string, then to Blob for caching
@@ -309,8 +315,12 @@ export async function loadStateFromLocalStorage() {
         // Handle special case for enabledAirspaceTypes - convert array back to Set
         if (savedState.enabledAirspaceTypes) {
             _state.enabledAirspaceTypes = new Set(savedState.enabledAirspaceTypes);
-            // Remove it from parsedState to avoid processing it twice
             delete savedState.enabledAirspaceTypes;
+        }
+
+        if (savedState.enabledAirportTypes) {
+            _state.enabledAirportTypes = new Set(savedState.enabledAirportTypes);
+            delete savedState.enabledAirportTypes;
         }
         
         // Special handling for geolocation permissions
@@ -383,6 +393,23 @@ export function setEnabledAirspaceTypes(types) {
     _state.enabledAirspaceTypes = new Set(types);
     // Save to Cache API whenever we update this
     saveStateToLocalStorage().catch(err => console.error('Error saving airspace types state:', err));
+}
+
+/**
+ * Gets the enabled airport types
+ * @returns {Set<string>|null} Set of enabled airport type names
+ */
+export function getEnabledAirportTypes() {
+    return _state.enabledAirportTypes;
+}
+
+/**
+ * Sets the enabled airport types
+ * @param {Array<string>} types - Array of enabled airport type names
+ */
+export function setEnabledAirportTypes(types) {
+    _state.enabledAirportTypes = new Set(types);
+    saveStateToLocalStorage().catch(err => console.error('Error saving airport types state:', err));
 }
 
 /**

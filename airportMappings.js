@@ -23,6 +23,12 @@ export const AIRPORT_TYPE_MAP = {
 /** Numeric types excluded from import (MC-kmp AirportsStorage) */
 export const SKIPPED_AIRPORT_TYPE_IDS = new Set([4, 7, 8, 10]);
 
+/** Display order for airport type filters (importable types only) */
+export const AIRPORT_TYPE_ORDER = Object.entries(AIRPORT_TYPE_MAP)
+    .filter(([id]) => !SKIPPED_AIRPORT_TYPE_IDS.has(Number(id)))
+    .sort(([a], [b]) => Number(a) - Number(b))
+    .map(([, name]) => name);
+
 /** String types excluded after normalization */
 export const SKIPPED_AIRPORT_TYPES = new Set(
     [...SKIPPED_AIRPORT_TYPE_IDS].map((id) => AIRPORT_TYPE_MAP[id])

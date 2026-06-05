@@ -84,6 +84,9 @@ export async function initializeAirportsData() {
 
         if (data.features.length > 0) {
             console.log(`[AirportLayers] Loaded ${data.features.length} airports`);
+
+            const { createAirportTypeCheckboxes } = await import("./sidebar.js");
+            createAirportTypeCheckboxes(data.features);
         } else {
             console.log("[AirportLayers] No cached airports to display");
         }

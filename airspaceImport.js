@@ -325,6 +325,14 @@ async function updateMapWithNewData(geoJSON, airportGeoJSON) {
     if (map && airportGeoJSON && map.getSource('airports')) {
         map.getSource('airports').setData(airportGeoJSON);
         setAirportsData(airportGeoJSON);
+
+        try {
+            const { createAirportTypeCheckboxes } = await import('./sidebar.js');
+            createAirportTypeCheckboxes(airportGeoJSON.features);
+        } catch (error) {
+            console.warn('[AirspaceImport] Could not update airport type checkboxes:', error);
+        }
+
         console.log('[AirspaceImport] Map updated with new airport data');
     }
 }
