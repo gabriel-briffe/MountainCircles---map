@@ -44,7 +44,6 @@ import {
 } from "./state.js";
 
 import { getCurrentAltitude } from "./location.js";
-import { getPopupBottomOffset } from "./utils.js";
 
 // Constants removed - no longer fetching from external URLs
 
@@ -135,7 +134,7 @@ export function updatePopupStyle() {
         popup.style.maxHeight = (mapEl.clientHeight * 0.5) + 'px';
         popup.style.right = '0px';
         popup.style.top = '';
-        popup.style.bottom = `${getPopupBottomOffset()}px`;
+        popup.style.bottom = '0px';
         popup.style.transform = '';
     }
 }

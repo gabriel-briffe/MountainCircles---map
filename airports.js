@@ -17,7 +17,6 @@ import {
     clearAirportPopup
 } from "./state.js";
 import { calculateDistance, getCurrentAltitude } from "./location.js";
-import { getPopupBottomOffset } from "./utils.js";
 
 const AIRPORT_QUERY_LAYERS = ["airports-click", "airports-circles"];
 
@@ -390,7 +389,7 @@ export function updateAirportPopupStyle() {
             airportPopup.style.bottom = "auto";
         } else {
             airportPopup.style.top = "auto";
-            airportPopup.style.bottom = `${airspacePopup.offsetHeight + 4 + getPopupBottomOffset()}px`;
+            airportPopup.style.bottom = `${airspacePopup.offsetHeight + 4}px`;
         }
         return;
     }
@@ -401,7 +400,7 @@ export function updateAirportPopupStyle() {
         airportPopup.style.transform = "translateY(-50%)";
     } else {
         airportPopup.style.top = "auto";
-        airportPopup.style.bottom = `${getPopupBottomOffset()}px`;
+        airportPopup.style.bottom = "0px";
     }
 }
 
