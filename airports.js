@@ -11,6 +11,7 @@ import {
     getMap,
     getAirportsData,
     getLastPopupLngLat,
+    getLastPosition,
     getPopup,
     getPopupMarker,
     setPopup,
@@ -19,6 +20,7 @@ import {
     clearPopup
 } from "./state.js";
 import { clearHighlight, updatePopupStyle } from "./airspace.js";
+import { calculateDistance } from "./location.js";
 
 const AIRPORT_QUERY_LAYERS = ["airports-click", "airports-circles"];
 
@@ -276,6 +278,20 @@ function buildAirportPopupContent(feature) {
     const details = document.createElement("div");
     details.className = "airport-popup-details";
 
+    const distanceRow = document.createElement("div");
+    distanceRow.className = "airport-popup-row airport-popup-distance-row";
+
+    const distanceLabel = document.createElement("span");
+    distanceLabel.className = "airport-popup-label";
+    distanceLabel.textContent = "Distance";
+
+    const distanceValue = document.createElement("span");
+    distanceValue.className = "airport-popup-value airport-popup-distance-value";
+    distanceValue.textContent = "—";
+
+    distanceRow.append(distanceLabel, distanceValue);
+    details.appendChild(distanceRow);
+
     const elevationText = formatElevation(props.elevation);
     if (elevationText) {
         appendInfoRow(details, "Elevation", elevationText);
@@ -348,6 +364,36 @@ export function createAirportPopup() {
     setPopup(popup);
     document.getElementById("map").appendChild(popup);
     updatePopupStyle();
+    updateAirportPopupDistance();
+}
+
+/**
+ * Updates the distance row in the open airport popup from the user's position
+ */
+export function updateAirportPopupDistance() {
+    const popup = getPopup();
+    if (!popup?.classList.contains("airport-popup")) {
+        return;
+    }
+
+    const distanceValue = popup.querySelector(".airport-popup-distance-value");
+    if (!distanceValue) {
+        return;
+    }
+
+    const airportLngLat = getLastPopupLngLat();
+    const lastPosition = getLastPosition();
+
+    if (!airportLngLat || !lastPosition?.coords) {
+        distanceValue.textContent = "—";
+        return;
+    }
+
+    const userCoords = [lastPosition.coords.longitude, lastPosition.coords.latitude];
+    const airportCoords = [airportLngLat.lng, airportLngLat.lat];
+    const distanceKm = calculateDistance(userCoords, airportCoords) / 1000;
+
+    distanceValue.textContent = `${distanceKm.toFixed(1)} km`;
 }
 
 /**
@@ -365,6 +411,14 @@ export function closeAirportPopup() {
     clearPopup();
     clearAirportMarker();
     setLastPopupLngLat(null);
+}
+
+/**
+ * @returns {boolean} Whether the airport popup is currently open
+ */
+export function isAirportPopupOpen() {
+    const popup = getPopup();
+    return Boolean(popup?.classList.contains("airport-popup"));
 }
 
 /**
