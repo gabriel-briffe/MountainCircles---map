@@ -56,6 +56,7 @@ const _state = {
     highlightedFeatureKey: null,
     popupMarker: null,
     popup: null,
+    airportPopup: null,
     crossSectionContainer: null,
     
     // Airspace data
@@ -132,6 +133,7 @@ export const getAirportsData = () => _state.airportsData;
 export const getCurrentPolicy = () => _state.currentPolicy;
 export const getCurrentConfig = () => _state.currentConfig;
 export const getPopup = () => _state.popup;
+export const getAirportPopup = () => _state.airportPopup;
 export const getCrossSectionContainer = () => _state.crossSectionContainer;
 export const getFeatures = () => _state.features;
 export const getSectionRefs = () => _state.sectionRefs;
@@ -158,6 +160,7 @@ export const setAirportsData = (data) => { _state.airportsData = data; };
 export const setCurrentPolicy = (policy) => { _state.currentPolicy = policy; };
 export const setCurrentConfig = (config) => { _state.currentConfig = config; };
 export const setPopup = (popup) => { _state.popup = popup; };
+export const setAirportPopup = (popup) => { _state.airportPopup = popup; };
 export const setCrossSectionContainer = (container) => { _state.crossSectionContainer = container; };
 export const setFeatures = (features) => { _state.features = features; };
 export const setSectionRef = (index, ref) => { _state.sectionRefs.set(index, ref); };
@@ -190,6 +193,13 @@ export const clearPopup = () => {
         _state.popup = null;
     }
     _state.crossSectionContainer = null;
+};
+
+export const clearAirportPopup = () => {
+    if (_state.airportPopup) {
+        _state.airportPopup.remove();
+        _state.airportPopup = null;
+    }
 };
 
 export const clearFeatures = () => { _state.features = null; };

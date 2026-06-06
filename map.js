@@ -6,10 +6,9 @@ import {
     setPopupMarker,
     setLastPopupLngLat,
     getPopup,
+    getAirportPopup,
     clearPopup,
-    getCurrentConfig,
-    getLastPopupLngLat,
-    setAirspaceVisible
+    clearAirportPopup
 } from "./state.js";
 
 import {
@@ -20,7 +19,8 @@ import {
 
 import {
     queryAirportFeaturesAtPoint,
-    showAirportPopupAtClick
+    showAirportPopupOverlay,
+    clearAirportPopupOverlay
 } from "./airports.js";
 
 import { pointClickedFlag } from "./layers.js";
@@ -48,74 +48,78 @@ function closeSidebarIfOpen() {
     return false;
 }
 
+function clearAllPopups() {
+    clearAirportPopupOverlay();
+    clearPopup();
+    clearHighlight();
+    clearMarker();
+    setLastPopupLngLat(null);
+}
+
+function hasOpenPopups() {
+    return Boolean(getPopup() || getAirportPopup() || getPopupMarker());
+}
+
 /**
  * Sets up the airspace popup click handler on the map
  * @param {Object} mapInstance - The map instance
  */
 export function setupAirspacePopupHandler(mapInstance) {
-    // Add click handler for airspace popups
     mapInstance.on('click', async function(e) {
         const map = getMap();
-        
-        // Don't show airspace popup if a point was just clicked
+
         if (pointClickedFlag) {
             return;
         }
-        
-        // Close the sidebar if it's open
+
         if (closeSidebarIfOpen()) {
             return;
         }
-        
-        // Only process if airspace is visible
+
         if (getLayerManager().getVisibility('airspace-fill') !== 'visible') {
-            // Even if airspace is not visible, we should clear existing popup and marker
-            if (getPopup() || getPopupMarker()) {
-                clearPopup();
-                clearHighlight();
-                clearMarker();
+            if (hasOpenPopups()) {
+                clearAllPopups();
             }
             return;
         }
 
-        // Clear existing popup and marker
-        const existingPopup = getPopup();
-        if (existingPopup) {
-            clearPopup();
-            clearHighlight();
-            clearMarker();
+        if (hasOpenPopups()) {
+            clearAllPopups();
             return;
         }
-
-        // Clear existing marker
-        clearMarker();
 
         const airspaceFeatures = mapInstance.queryRenderedFeatures(e.point, {
             layers: ['airspace-fill']
         });
+        const airportFeatures = queryAirportFeaturesAtPoint(mapInstance, e.point);
 
-        if (airspaceFeatures && airspaceFeatures.length > 0) {
-            const newMarker = new maplibregl.Marker({ color: 'red' })
-                .setLngLat(e.lngLat)
-                .addTo(map);
+        const hasAirspace = airspaceFeatures.length > 0;
+        const hasAirport = airportFeatures.length > 0;
 
-            setPopupMarker(newMarker);
-            setLastPopupLngLat(e.lngLat);
+        if (!hasAirspace && !hasAirport) {
+            return;
+        }
 
+        const newMarker = new maplibregl.Marker({ color: 'red' })
+            .setLngLat(e.lngLat)
+            .addTo(map);
+
+        setPopupMarker(newMarker);
+        setLastPopupLngLat(e.lngLat);
+
+        if (hasAirspace) {
             try {
                 await fetchAirspaceData();
                 createAirspacePopup();
             } catch (error) {
                 console.error('Error creating airspace popup:', error);
-                clearMarker();
-                setLastPopupLngLat(null);
+                clearAllPopups();
+                return;
             }
-            return;
         }
 
-        const airportFeatures = queryAirportFeaturesAtPoint(mapInstance, e.point);
-        if (airportFeatures.length > 0) {
-            showAirportPopupAtClick(mapInstance, e.lngLat, airportFeatures[0]);
+        if (hasAirport) {
+            showAirportPopupOverlay(airportFeatures[0]);
         }
     });
 }
@@ -126,22 +130,16 @@ export function setupAirspacePopupHandler(mapInstance) {
  */
 export async function initializeAirspaceData() {
     try {
-        // We'll use the fetchAirspaceData function which now uses the proxy
         const data = await fetchAirspaceData();
-        
+
         if (data && data.features) {
-            // Update the map source with the fetched data
             const map = getMap();
             if (map && map.getSource('airspace')) {
                 map.getSource('airspace').setData(data);
             }
-            
-            // Import here to avoid circular dependencies
+
             const { createTypeCheckboxes } = await import('./sidebar.js');
             createTypeCheckboxes(data.features, map);
-            
-            // No need to force airspace to be visible here
-            // This will be handled by init.js using the saved state
         } else {
             console.warn('Airspace data is empty or missing features');
         }
@@ -149,4 +147,4 @@ export async function initializeAirspaceData() {
         console.error("Error loading airspace GeoJSON:", error);
         alert(`Failed to load airspace data: ${error.message}`);
     }
-} 
+}

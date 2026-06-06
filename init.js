@@ -6,6 +6,7 @@ import { initializeAirspaceData, setupAirspacePopupHandler } from "./map.js";
 import { initializeAirportsData } from "./airportLayers.js";
 import { setupDockEventListeners, toggleAirspaceVisibility } from "./dock.js";
 import { updatePopupStyle } from "./airspace.js";
+import { updateAirportPopupStyle } from "./airports.js";
 import { 
     getCurrentConfig,
     loadStateFromLocalStorage,
@@ -79,8 +80,12 @@ export async function initializeApp(mapContainerId = 'map') {
     }
     
     // Set up window event listeners for popup style
-    window.addEventListener('resize', updatePopupStyle);
-    window.addEventListener('orientationchange', updatePopupStyle);
+    const handlePopupResize = () => {
+        updatePopupStyle();
+        updateAirportPopupStyle();
+    };
+    window.addEventListener('resize', handlePopupResize);
+    window.addEventListener('orientationchange', handlePopupResize);
     
     // Set up install event listeners
     setupInstallEventListeners();

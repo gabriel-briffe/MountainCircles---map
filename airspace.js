@@ -434,6 +434,14 @@ export function createAirspacePopup() {
         // Check if we have altitude data to highlight relevant airspace
         highlightAirspaceAtCurrentAltitude();
     }
+
+    import("./airports.js").then((module) => {
+        if (module.isAirportPopupOpen()) {
+            module.updateAirportPopupStyle();
+        }
+    }).catch((error) => {
+        console.warn("[Airspace] Could not reposition airport popup:", error);
+    });
 }
 
 /**
