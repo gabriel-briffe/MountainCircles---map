@@ -81,6 +81,22 @@
     text-align: right;
 }
 
+.airport-popup-distance-value {
+    color: #000000;
+}
+
+.airport-popup-reqe-value.reqE-low {
+    color: #006400;
+}
+
+.airport-popup-reqe-value.reqE-mid {
+    color: #ff8c00;
+}
+
+.airport-popup-reqe-value.reqE-high {
+    color: #8b0000;
+}
+
 .airport-popup-section-title {
     margin: 12px 0 6px;
     font-size: var(--airspace-popup-content);
