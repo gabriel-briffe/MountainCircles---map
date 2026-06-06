@@ -18,7 +18,7 @@ import { setupIGCEventListeners } from "./igc.js";
 import { setupInstallEventListeners } from "./install.js";
 import { setupMenuEventListeners } from "./menu.js";
 import { getLayerManager } from "./state.js";
-import { isMobileDevice, requestWakeLock } from "./utils.js";
+import { isMobileDevice, requestWakeLock, setupSafeAreaInsets } from "./utils.js";
 import { initializeTracking } from "./tracking.js";
 import { registerTileProtocols } from "./tileProtocol.js";
 import { unifiedTileStorage } from "./unifiedTileStorage.js";
@@ -30,6 +30,8 @@ import { initializeAirspaceImport } from "./airspaceImport.js";
  * @returns {Promise<void>}
  */
 export async function initializeApp(mapContainerId = 'map') {
+    setupSafeAreaInsets();
+
     // Determine if running on mobile device ONCE at startup
     window.APP_CONFIG = {
         isMobile: isMobileDevice()

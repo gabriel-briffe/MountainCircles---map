@@ -231,7 +231,7 @@
     #airspace-sidebar {
         top: calc(var(--dock-button-size) * 1.5); /* Below the dock */
         left: 0;
-        bottom: 0px;
+        bottom: var(--app-safe-area-bottom, env(safe-area-inset-bottom, 0px));
         height: auto;
         max-height: none;
     }
@@ -241,7 +241,7 @@
 @media (orientation: landscape) {
     #airspace-sidebar {
         top: 0px;
-        bottom: 0px;
+        bottom: var(--app-safe-area-bottom, env(safe-area-inset-bottom, 0px));
         left: calc(var(--dock-button-size) * 1.5);
         height: auto;
         max-height: none;

@@ -74,6 +74,9 @@
 
     /* Parameters Box styling */
     --parameters-font-size: 24px; /* Default size for parameters box, will be dynamically adjusted */
+
+    /* System UI inset (Android nav bar, iOS home indicator); updated in utils.js */
+    --app-safe-area-bottom: env(safe-area-inset-bottom, 0px);
 }
 
 /* =================================
@@ -114,9 +117,23 @@ h3 {
     font-size: var(--font-size-base);
 }
 
+#safe-area-probe {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    width: 0;
+    height: 0;
+    visibility: hidden;
+    pointer-events: none;
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
 #map {
     width: 100%;
-    height: 100vh;
+    height: 100%;
+    height: 100dvh;
+    padding-bottom: var(--app-safe-area-bottom, 0px);
+    box-sizing: border-box;
 }
 
 /* =================================

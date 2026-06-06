@@ -56,7 +56,7 @@
     #mapDock {
         left: calc(var(--dock-button-size) * 0.2);
         top: 0;
-        bottom: 0;
+        bottom: var(--app-safe-area-bottom, env(safe-area-inset-bottom, 0px));
         height: 100%;
         width: auto;
         flex-direction: column;

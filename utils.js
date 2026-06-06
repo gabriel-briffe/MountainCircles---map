@@ -2,6 +2,62 @@
  * Utility functions for MountainCircles Map
  */
 
+/** @type {number} */
+let cachedSafeAreaBottom = 0;
+
+/** Max inset treated as system nav bar (larger gaps are usually the keyboard). */
+const MAX_NAV_BAR_INSET_PX = 80;
+
+/**
+ * Returns the current bottom safe-area inset in pixels.
+ * @returns {number}
+ */
+export function getSafeAreaBottomInset() {
+    return cachedSafeAreaBottom;
+}
+
+/**
+ * Measures bottom inset from env(safe-area-inset-bottom) and visualViewport.
+ */
+export function updateSafeAreaInsets() {
+    let bottom = 0;
+
+    const probe = document.getElementById('safe-area-probe');
+    if (probe) {
+        bottom = parseFloat(getComputedStyle(probe).paddingBottom) || 0;
+    }
+
+    if (bottom === 0 && window.visualViewport) {
+        const viewport = window.visualViewport;
+        const inset = window.innerHeight - viewport.height - viewport.offsetTop;
+        if (inset > 0 && inset <= MAX_NAV_BAR_INSET_PX) {
+            bottom = Math.round(inset);
+        }
+    }
+
+    cachedSafeAreaBottom = bottom;
+    document.documentElement.style.setProperty('--app-safe-area-bottom', `${bottom}px`);
+}
+
+/**
+ * Keeps --app-safe-area-bottom in sync with Android/iOS system UI.
+ */
+export function setupSafeAreaInsets() {
+    const refresh = () => {
+        updateSafeAreaInsets();
+    };
+
+    refresh();
+
+    window.addEventListener('resize', refresh);
+    window.addEventListener('orientationchange', refresh);
+
+    if (window.visualViewport) {
+        window.visualViewport.addEventListener('resize', refresh);
+        window.visualViewport.addEventListener('scroll', refresh);
+    }
+}
+
 /**
  * Checks if the app is running in standalone mode (PWA)
  * @returns {boolean} True if running as standalone app

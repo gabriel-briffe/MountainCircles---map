@@ -3,7 +3,7 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <!-- The base href will be set dynamically via JavaScript -->
     <title>MountainCircles Map - Beta</title>
     <!-- Using jsDelivr instead of unpkg to avoid potential network errors on Windows -->
@@ -58,6 +58,7 @@
 </head>
 
 <body>
+    <div id="safe-area-probe" aria-hidden="true"></div>
     <!-- Spinner for GeoJSON loading -->
     <div id="spinner">
         <div class="spinner"></div>
