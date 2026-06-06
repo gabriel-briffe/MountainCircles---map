@@ -44,6 +44,7 @@ import {
 } from "./state.js";
 
 import { getCurrentAltitude } from "./location.js";
+import { getTopLevelPopupBottomOffset } from "./utils.js";
 
 // Constants removed - no longer fetching from external URLs
 
@@ -112,6 +113,23 @@ export async function fetchAirspaceData() {
 }
 
 /**
+ * Matches cross-section height to the airspace popup for altitude bars
+ */
+function syncCrossSectionHeight() {
+    const popup = getPopup();
+    const crossSection = getCrossSectionContainer();
+
+    if (!popup || !crossSection) {
+        return;
+    }
+
+    const popupHeight = popup.offsetHeight;
+    if (popupHeight > 0) {
+        crossSection.style.height = `${popupHeight}px`;
+    }
+}
+
+/**
  * Updates popup style based on screen orientation
  */
 export function updatePopupStyle() {
@@ -123,20 +141,29 @@ export function updatePopupStyle() {
         popup.style.maxWidth = '50%';
         popup.style.width = 'fit-content';
         popup.style.maxHeight = mapEl.clientHeight + 'px';
+        popup.style.minHeight = '';
         popup.style.right = '0px';
         popup.style.top = '50%';
         popup.style.bottom = '';
         popup.style.transform = 'translateY(-50%)';
     } else {
-        // Portrait mode
+        // Portrait — clear system nav bar; internal layout unchanged
+        const bottomOffset = getTopLevelPopupBottomOffset();
+        const maxHeight = Math.max(220, mapEl.clientHeight * 0.5 - bottomOffset);
+
         popup.style.maxWidth = '100%';
         popup.style.width = 'fit-content';
-        popup.style.maxHeight = (mapEl.clientHeight * 0.5) + 'px';
+        popup.style.maxHeight = `${maxHeight}px`;
+        popup.style.minHeight = '200px';
         popup.style.right = '0px';
         popup.style.top = '';
-        popup.style.bottom = '0px';
+        popup.style.bottom = `${bottomOffset}px`;
         popup.style.transform = '';
     }
+
+    requestAnimationFrame(() => {
+        syncCrossSectionHeight();
+    });
 }
 
 /**
@@ -435,12 +462,16 @@ export function createAirspacePopup() {
         highlightAirspaceAtCurrentAltitude();
     }
 
-    import("./airports.js").then((module) => {
-        if (module.isAirportPopupOpen()) {
-            module.updateAirportPopupStyle();
-        }
-    }).catch((error) => {
-        console.warn("[Airspace] Could not reposition airport popup:", error);
+    requestAnimationFrame(() => {
+        syncCrossSectionHeight();
+
+        import("./airports.js").then((module) => {
+            if (module.isAirportPopupOpen()) {
+                module.updateAirportPopupStyle();
+            }
+        }).catch((error) => {
+            console.warn("[Airspace] Could not reposition airport popup:", error);
+        });
     });
 }
 

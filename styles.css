@@ -178,7 +178,9 @@ button .material-icons {
    4. POPUP CONTENT
    ================================= */
 .popup-content {
-    flex: 1;
+    flex: 1 1 auto;
+    min-width: 0;
+    min-height: 0;
     padding-left: 10px;
     overflow-y: auto;
     overscroll-behavior: contain; /* Prevent scroll chaining */

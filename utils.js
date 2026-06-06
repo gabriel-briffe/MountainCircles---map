@@ -8,6 +8,9 @@ let cachedSafeAreaBottom = 0;
 /** Max inset treated as system nav bar (larger gaps are usually the keyboard). */
 const MAX_NAV_BAR_INSET_PX = 80;
 
+/** Fallback when Android browsers report 0 for safe-area / visualViewport (≈48dp nav bar). */
+const ANDROID_NAV_BAR_FALLBACK_PX = 48;
+
 /**
  * Returns the current bottom safe-area inset in pixels.
  * @returns {number}
@@ -37,6 +40,22 @@ export function updateSafeAreaInsets() {
 
     cachedSafeAreaBottom = bottom;
     document.documentElement.style.setProperty('--app-safe-area-bottom', `${bottom}px`);
+    window.dispatchEvent(new Event('safeareachange'));
+}
+
+/**
+ * Bottom offset for top-level popups (system nav bar only, not parameters bar).
+ * @returns {number}
+ */
+export function getTopLevelPopupBottomOffset() {
+    const inset = getSafeAreaBottomInset();
+    if (inset > 0) {
+        return inset;
+    }
+    if (/Android/i.test(navigator.userAgent)) {
+        return ANDROID_NAV_BAR_FALLBACK_PX;
+    }
+    return 0;
 }
 
 /**

@@ -88,6 +88,7 @@ export async function initializeApp(mapContainerId = 'map') {
     };
     window.addEventListener('resize', handlePopupResize);
     window.addEventListener('orientationchange', handlePopupResize);
+    window.addEventListener('safeareachange', handlePopupResize);
     
     // Set up install event listeners
     setupInstallEventListeners();

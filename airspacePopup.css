@@ -8,9 +8,10 @@
     padding: 0px;
     z-index: 1200;
     /* Higher than the map dock's z-index (1100) */
-    overflow-y: hidden;
-    overflow-x: hidden;
+    overflow: hidden;
     display: inline-flex;
+    flex-direction: row;
+    align-items: stretch;
     color: var(--text-light);
     /* Dark text */
     font-size: var(--airspace-popup-content);
@@ -83,6 +84,9 @@
     background: #f0f0f0;
     /* Light background */
     position: relative;
+    flex-shrink: 0;
+    align-self: stretch;
+    min-height: 200px;
 }
 
 .airspace-bar {
