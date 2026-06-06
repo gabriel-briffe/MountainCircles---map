@@ -232,6 +232,14 @@ export function updateLocation(position) {
     
     // Update navboxes with position data
     updateNavboxesWithPosition(position);
+
+    import("./airports.js").then((module) => {
+        if (module.isAirportPopupOpen()) {
+            module.updateAirportPopupDistance();
+        }
+    }).catch((error) => {
+        console.warn("[Location] Could not update airport popup distance:", error);
+    });
 }
 
 /**
