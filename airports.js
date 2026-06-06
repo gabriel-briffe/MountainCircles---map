@@ -388,8 +388,11 @@ export function updateAirportPopupStyle() {
             airportPopup.style.top = "0px";
             airportPopup.style.bottom = "auto";
         } else {
+            const mapEl = document.getElementById("map");
+            const mapRect = mapEl.getBoundingClientRect();
+            const airspaceRect = airspacePopup.getBoundingClientRect();
             airportPopup.style.top = "auto";
-            airportPopup.style.bottom = `${airspacePopup.offsetHeight + 4}px`;
+            airportPopup.style.bottom = `${Math.max(0, mapRect.bottom - airspaceRect.top + 4)}px`;
         }
         return;
     }
@@ -399,8 +402,10 @@ export function updateAirportPopupStyle() {
         airportPopup.style.bottom = "auto";
         airportPopup.style.transform = "translateY(-50%)";
     } else {
+        const bottomChrome = document.getElementById("bottom-info-container");
+        const bottomOffset = bottomChrome?.offsetHeight || 0;
         airportPopup.style.top = "auto";
-        airportPopup.style.bottom = "0px";
+        airportPopup.style.bottom = `${bottomOffset}px`;
     }
 }
 
