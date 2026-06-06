@@ -14,7 +14,8 @@ import {
     saveStateToLocalStorage,
     getAirspaceVisible,
     setAirspaceVisible,
-    clearPopup
+    clearPopup,
+    clearAirportPopup
 } from "./state.js";
 
 // Import EDL UI functions
@@ -283,6 +284,7 @@ export function toggleAirspaceVisibility(isVisible) {
     
     // If hiding airspace, clear any popup and marker
     if (!isVisible) {
+        clearAirportPopup();
         clearPopup();
         clearHighlight();
         clearMarker();

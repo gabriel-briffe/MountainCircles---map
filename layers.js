@@ -6,6 +6,7 @@ import {
     getCurrentConfig,
     getPopup,
     clearPopup,
+    clearAirportPopup,
     getLayersToggleState,
     setLayersToggleState
 } from "./state.js";
@@ -67,6 +68,7 @@ export function handlePointClick(e) {
         }
     } else {
         // When toggle is off, don't set the pointClickedFlag to allow the airspace popup
+        clearAirportPopup();
         clearPopup();
         clearMarker();
         clearHighlight();

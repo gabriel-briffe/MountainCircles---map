@@ -10,16 +10,12 @@ import {
 import {
     getMap,
     getAirportsData,
-    getLastPopupLngLat,
     getLastPosition,
     getPopup,
-    getPopupMarker,
-    setPopup,
-    setPopupMarker,
-    setLastPopupLngLat,
-    clearPopup
+    getAirportPopup,
+    setAirportPopup,
+    clearAirportPopup
 } from "./state.js";
-import { clearHighlight, updatePopupStyle } from "./airspace.js";
 import { calculateDistance, getCurrentAltitude } from "./location.js";
 
 const AIRPORT_QUERY_LAYERS = ["airports-click", "airports-circles"];
@@ -370,30 +366,55 @@ function buildAirportPopupContent(feature) {
 }
 
 /**
- * Creates an airport popup at the current marker location
+ * Positions the airport overlay above the airspace popup when both are open
  */
-export function createAirportPopup() {
-    const map = getMap();
-    const lngLat = getLastPopupLngLat();
-
-    if (!map || !lngLat) {
-        console.warn("[Airports] Cannot create popup: missing map or location");
+export function updateAirportPopupStyle() {
+    const airportPopup = getAirportPopup();
+    if (!airportPopup) {
         return;
     }
 
-    const renderedFeatures = map.queryRenderedFeatures(map.project(lngLat), {
-        layers: AIRPORT_QUERY_LAYERS
-    });
+    const airspacePopup = getPopup();
+    const isLandscape = window.innerWidth > window.innerHeight;
 
-    if (!renderedFeatures.length) {
-        closeAirportPopup();
+    airportPopup.style.right = "0px";
+    airportPopup.style.width = "fit-content";
+    airportPopup.style.maxWidth = isLandscape ? "50%" : "100%";
+    airportPopup.style.height = "auto";
+    airportPopup.style.transform = "";
+
+    if (airspacePopup) {
+        if (isLandscape) {
+            airportPopup.style.top = "0px";
+            airportPopup.style.bottom = "auto";
+        } else {
+            airportPopup.style.top = "auto";
+            airportPopup.style.bottom = `${airspacePopup.offsetHeight + 4}px`;
+        }
         return;
     }
 
-    const feature = resolveAirportFeature(renderedFeatures[0]);
+    if (isLandscape) {
+        airportPopup.style.top = "50%";
+        airportPopup.style.bottom = "auto";
+        airportPopup.style.transform = "translateY(-50%)";
+    } else {
+        airportPopup.style.top = "auto";
+        airportPopup.style.bottom = "0px";
+    }
+}
 
-    clearPopup();
-    clearHighlight();
+/**
+ * Shows the airport card overlay without disturbing the airspace popup
+ * @param {Object} renderedFeature
+ */
+export function showAirportPopupOverlay(renderedFeature) {
+    const feature = resolveAirportFeature(renderedFeature);
+    if (!feature) {
+        return;
+    }
+
+    clearAirportPopupOverlay();
 
     const popup = document.createElement("div");
     popup.className = "airport-popup";
@@ -404,11 +425,16 @@ export function createAirportPopup() {
         popup.dataset.airportElevationM = String(airportElevationM);
     }
 
+    if (feature.geometry?.coordinates?.length >= 2) {
+        popup.dataset.airportLng = String(feature.geometry.coordinates[0]);
+        popup.dataset.airportLat = String(feature.geometry.coordinates[1]);
+    }
+
     popup.appendChild(buildAirportPopupContent(feature));
 
-    setPopup(popup);
+    setAirportPopup(popup);
     document.getElementById("map").appendChild(popup);
-    updatePopupStyle();
+    updateAirportPopupStyle();
     updateAirportPopupDistance();
 }
 
@@ -432,8 +458,8 @@ function applyReqEColor(element, reqE) {
  * Updates distance and reqE in the open airport popup from the user's position
  */
 export function updateAirportPopupDistance() {
-    const popup = getPopup();
-    if (!popup?.classList.contains("airport-popup")) {
+    const popup = getAirportPopup();
+    if (!popup) {
         return;
     }
 
@@ -443,10 +469,11 @@ export function updateAirportPopupDistance() {
         return;
     }
 
-    const airportLngLat = getLastPopupLngLat();
     const lastPosition = getLastPosition();
+    const airportLng = Number(popup.dataset.airportLng);
+    const airportLat = Number(popup.dataset.airportLat);
 
-    if (!airportLngLat || !lastPosition?.coords) {
+    if (!lastPosition?.coords || !Number.isFinite(airportLng) || !Number.isFinite(airportLat)) {
         distanceValue.textContent = "—";
         reqEValue.textContent = "—";
         applyReqEColor(reqEValue, null);
@@ -454,7 +481,7 @@ export function updateAirportPopupDistance() {
     }
 
     const userCoords = [lastPosition.coords.longitude, lastPosition.coords.latitude];
-    const airportCoords = [airportLngLat.lng, airportLngLat.lat];
+    const airportCoords = [airportLng, airportLat];
     const distanceKm = calculateDistance(userCoords, airportCoords) / 1000;
 
     distanceValue.textContent = `${distanceKm.toFixed(1)} km`;
@@ -485,50 +512,47 @@ export function updateAirportPopupDistance() {
 }
 
 /**
- * Closes the airport popup and marker
+ * Removes only the airport overlay card
  */
-function clearAirportMarker() {
-    const marker = getPopupMarker();
-    if (marker) {
-        marker.remove();
-        setPopupMarker(null);
-    }
-}
-
-export function closeAirportPopup() {
-    clearPopup();
-    clearAirportMarker();
-    setLastPopupLngLat(null);
+export function clearAirportPopupOverlay() {
+    clearAirportPopup();
 }
 
 /**
  * @returns {boolean} Whether the airport popup is currently open
  */
 export function isAirportPopupOpen() {
-    const popup = getPopup();
-    return Boolean(popup?.classList.contains("airport-popup"));
+    return Boolean(getAirportPopup());
 }
 
 /**
  * Refreshes the airport popup after filter changes
  */
 export function refreshAirportPopup() {
-    const lngLat = getLastPopupLngLat();
-    if (!lngLat || !getPopup()) {
+    const airportPopup = getAirportPopup();
+    if (!airportPopup) {
+        return;
+    }
+
+    const airportLng = Number(airportPopup.dataset.airportLng);
+    const airportLat = Number(airportPopup.dataset.airportLat);
+
+    if (!Number.isFinite(airportLng) || !Number.isFinite(airportLat)) {
+        clearAirportPopupOverlay();
         return;
     }
 
     const map = getMap();
-    const renderedFeatures = map.queryRenderedFeatures(map.project(lngLat), {
+    const renderedFeatures = map.queryRenderedFeatures(map.project([airportLng, airportLat]), {
         layers: AIRPORT_QUERY_LAYERS
     });
 
     if (!renderedFeatures.length) {
-        closeAirportPopup();
+        clearAirportPopupOverlay();
         return;
     }
 
-    createAirportPopup();
+    showAirportPopupOverlay(renderedFeatures[0]);
 }
 
 /**
@@ -547,24 +571,3 @@ export function queryAirportFeaturesAtPoint(mapInstance, point) {
     });
 }
 
-/**
- * Shows an airport popup for a clicked feature
- * @param {Object} mapInstance
- * @param {Object} lngLat
- * @param {Object} renderedFeature
- */
-export function showAirportPopupAtClick(mapInstance, lngLat, renderedFeature) {
-    clearPopup();
-    clearHighlight();
-    clearAirportMarker();
-
-    const marker = new maplibregl.Marker({ color: "#2196F3" })
-        .setLngLat(lngLat)
-        .addTo(mapInstance);
-
-    setPopupMarker(marker);
-    setLastPopupLngLat(lngLat);
-
-    resolveAirportFeature(renderedFeature);
-    createAirportPopup();
-}
