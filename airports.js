@@ -20,7 +20,7 @@ import {
     clearPopup
 } from "./state.js";
 import { clearHighlight, updatePopupStyle } from "./airspace.js";
-import { calculateDistance } from "./location.js";
+import { calculateDistance, getCurrentAltitude } from "./location.js";
 
 const AIRPORT_QUERY_LAYERS = ["airports-click", "airports-circles"];
 
@@ -38,6 +38,31 @@ function formatDimensionPart(part) {
  * @param {Object|number|string|null} elevation
  * @returns {string|null}
  */
+/**
+ * Returns airport elevation in meters for calculations
+ * @param {Object|number|string|null} elevation
+ * @returns {number|null}
+ */
+function getElevationMeters(elevation) {
+    if (elevation == null) {
+        return null;
+    }
+
+    if (typeof elevation === "number") {
+        return elevation;
+    }
+
+    if (typeof elevation === "object" && elevation.value != null) {
+        if (elevation.unit === 2) {
+            return elevation.value * 0.3048;
+        }
+
+        return elevation.value;
+    }
+
+    return null;
+}
+
 function formatElevation(elevation) {
     if (elevation == null) {
         return null;
@@ -292,6 +317,20 @@ function buildAirportPopupContent(feature) {
     distanceRow.append(distanceLabel, distanceValue);
     details.appendChild(distanceRow);
 
+    const reqERow = document.createElement("div");
+    reqERow.className = "airport-popup-row airport-popup-reqe-row";
+
+    const reqELabel = document.createElement("span");
+    reqELabel.className = "airport-popup-label";
+    reqELabel.textContent = "reqE";
+
+    const reqEValue = document.createElement("span");
+    reqEValue.className = "airport-popup-value airport-popup-reqe-value";
+    reqEValue.textContent = "—";
+
+    reqERow.append(reqELabel, reqEValue);
+    details.appendChild(reqERow);
+
     const elevationText = formatElevation(props.elevation);
     if (elevationText) {
         appendInfoRow(details, "Elevation", elevationText);
@@ -359,6 +398,12 @@ export function createAirportPopup() {
     const popup = document.createElement("div");
     popup.className = "airport-popup";
     popup.style.display = "inline-flex";
+
+    const airportElevationM = getElevationMeters(feature.properties?.elevation);
+    if (airportElevationM != null) {
+        popup.dataset.airportElevationM = String(airportElevationM);
+    }
+
     popup.appendChild(buildAirportPopupContent(feature));
 
     setPopup(popup);
@@ -367,8 +412,24 @@ export function createAirportPopup() {
     updateAirportPopupDistance();
 }
 
+function applyReqEColor(element, reqE) {
+    element.classList.remove("reqE-low", "reqE-mid", "reqE-high");
+
+    if (reqE == null) {
+        return;
+    }
+
+    if (reqE < 20) {
+        element.classList.add("reqE-low");
+    } else if (reqE <= 25) {
+        element.classList.add("reqE-mid");
+    } else {
+        element.classList.add("reqE-high");
+    }
+}
+
 /**
- * Updates the distance row in the open airport popup from the user's position
+ * Updates distance and reqE in the open airport popup from the user's position
  */
 export function updateAirportPopupDistance() {
     const popup = getPopup();
@@ -377,7 +438,8 @@ export function updateAirportPopupDistance() {
     }
 
     const distanceValue = popup.querySelector(".airport-popup-distance-value");
-    if (!distanceValue) {
+    const reqEValue = popup.querySelector(".airport-popup-reqe-value");
+    if (!distanceValue || !reqEValue) {
         return;
     }
 
@@ -386,6 +448,8 @@ export function updateAirportPopupDistance() {
 
     if (!airportLngLat || !lastPosition?.coords) {
         distanceValue.textContent = "—";
+        reqEValue.textContent = "—";
+        applyReqEColor(reqEValue, null);
         return;
     }
 
@@ -394,6 +458,30 @@ export function updateAirportPopupDistance() {
     const distanceKm = calculateDistance(userCoords, airportCoords) / 1000;
 
     distanceValue.textContent = `${distanceKm.toFixed(1)} km`;
+
+    const airportElevationM = Number(popup.dataset.airportElevationM);
+    const userAltitudeM = getCurrentAltitude();
+
+    if (
+        !Number.isFinite(airportElevationM) ||
+        userAltitudeM == null ||
+        !Number.isFinite(userAltitudeM)
+    ) {
+        reqEValue.textContent = "—";
+        applyReqEColor(reqEValue, null);
+        return;
+    }
+
+    const heightDiff = userAltitudeM - airportElevationM - 250;
+    if (heightDiff <= 0) {
+        reqEValue.textContent = "—";
+        applyReqEColor(reqEValue, null);
+        return;
+    }
+
+    const reqE = (distanceKm * 1000) / heightDiff;
+    reqEValue.textContent = reqE.toFixed(1);
+    applyReqEColor(reqEValue, reqE);
 }
 
 /**

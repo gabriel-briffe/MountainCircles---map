@@ -90,36 +90,32 @@ export function setupAirspacePopupHandler(mapInstance) {
         // Clear existing marker
         clearMarker();
 
-        const airportFeatures = queryAirportFeaturesAtPoint(mapInstance, e.point);
-        if (airportFeatures.length > 0) {
-            showAirportPopupAtClick(mapInstance, e.lngLat, airportFeatures[0]);
-            return;
-        }
-        
-        // Query for features at click location
-        const features = mapInstance.queryRenderedFeatures(e.point, { 
-            layers: ['airspace-fill'] 
+        const airspaceFeatures = mapInstance.queryRenderedFeatures(e.point, {
+            layers: ['airspace-fill']
         });
-        
-        // Only create new marker and popup if we have airspace features at this location
-        if (features && features.length > 0) {
+
+        if (airspaceFeatures && airspaceFeatures.length > 0) {
             const newMarker = new maplibregl.Marker({ color: 'red' })
                 .setLngLat(e.lngLat)
                 .addTo(map);
-            
+
             setPopupMarker(newMarker);
             setLastPopupLngLat(e.lngLat);
 
             try {
-                // Ensure we have the complete data before creating the popup
                 await fetchAirspaceData();
                 createAirspacePopup();
             } catch (error) {
                 console.error('Error creating airspace popup:', error);
-                // Clean up if there's an error
                 clearMarker();
                 setLastPopupLngLat(null);
             }
+            return;
+        }
+
+        const airportFeatures = queryAirportFeaturesAtPoint(mapInstance, e.point);
+        if (airportFeatures.length > 0) {
+            showAirportPopupAtClick(mapInstance, e.lngLat, airportFeatures[0]);
         }
     });
 }
