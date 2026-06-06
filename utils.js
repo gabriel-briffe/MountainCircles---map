@@ -8,6 +8,17 @@ let cachedSafeAreaBottom = 0;
 /** Max inset treated as system nav bar (larger gaps are usually the keyboard). */
 const MAX_NAV_BAR_INSET_PX = 80;
 
+/** Extra lift for bottom-anchored popups (Android nav bar clearance). */
+export const POPUP_BOTTOM_LIFT_PX = 50;
+
+/**
+ * Bottom offset for popups in portrait mode.
+ * @returns {number}
+ */
+export function getPopupBottomOffset() {
+    return getSafeAreaBottomInset() + POPUP_BOTTOM_LIFT_PX;
+}
+
 /**
  * Returns the current bottom safe-area inset in pixels.
  * @returns {number}
